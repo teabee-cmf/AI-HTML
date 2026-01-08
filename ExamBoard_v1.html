@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>期末考看板系統</title>
+    <title>港口國小期末考看板系統</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -56,13 +56,15 @@
         // --- 設定資料 ---
         // 完整的時間表
         const SCHEDULE = [
-            { type: 'break', start: '08:30', end: '08:40', label: '準備' },
-            { type: 'exam',  start: '08:40', end: '09:20', label: '第一節' },
-            { type: 'break', start: '09:20', end: '09:30', label: '下課' },
-            { type: 'exam',  start: '09:30', end: '10:10', label: '第二節' },
-            { type: 'break', start: '10:10', end: '10:30', label: '下課 (大)' },
+           { type: 'break', start: '08:20', end: '08:30', label: '準備' },
+            { type: 'exam',  start: '08:30', end: '09:10', label: '第一節' },
+            { type: 'break', start: '09:10', end: '09:20', label: '收卷，下課' },
+            { type: 'exam',  start: '09:20', end: '10:00', label: '第二節' },
+            { type: 'break', start: '10:00', end: '10:30', label: '收卷，下課 (大)' },
             { type: 'exam',  start: '10:30', end: '11:10', label: '第三節' },
-            { type: 'break', start: '11:10', end: '11:20', label: '收卷' }
+            { type: 'break', start: '11:10', end: '11:20', label: '收卷，下課' },
+            { type: 'exam',  start: '11:20', end: '12:00', label: '第四節' },
+            { type: 'break', start: '12:00', end: '12:10', label: '收卷，下課' } 
         ];
 
         // 僅提取考試時段供 A 區顯示使用
