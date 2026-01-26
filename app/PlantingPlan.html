@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>國小自然：種植蔬菜計畫表 V7.3</title>
+    <title>國小自然：種植蔬菜規劃網頁APP V7.4</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -185,7 +185,7 @@
 <body>
 
 <header>
-    <h1><span>🌱</span> 自然科觀察互動網頁 <span style="font-size:0.7em; opacity:0.8; font-weight:normal;">(V7.3)</span></h1>
+    <h1><span>🌱</span> 國小自然：種植蔬菜規劃網頁APP <span style="font-size:0.7em; opacity:0.8; font-weight:normal;">(V7.4)</span></h1>
     <div style="font-size: 0.9rem;">自動儲存中</div>
 </header>
 
@@ -619,7 +619,7 @@
         startD.setDate(startD.getDate() - 2); 
         let lastEvent = [currentData.computed.fruit, currentData.computed.flower, currentData.computed.harvest].filter(d=>d).sort().pop();
         let endD = lastEvent ? new Date(lastEvent) : new Date(currentData.inputs.plantDate);
-        endD.setDate(endD.getDate() + 14); 
+        endD.setDate(endD.getDate() + 7); // Extended to 7 days after the last event
 
         if (isNaN(startD.getTime())) return;
 
