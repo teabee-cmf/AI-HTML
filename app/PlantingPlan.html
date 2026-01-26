@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>國小自然：種植蔬菜計畫表 V7.3</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f0f4f3;
+            --primary: #2E7D32;
+            --primary-light: #C8E6C9;
+            --warning-bg: #ffebee;
+            --warning-text: #c62828;
+            --info-bg: #e3f2fd;
+            --info-text: #1565c0;
+            --text: #333;
+            --border: #ccc;
+            --holiday: #ffebee;
+            --holiday-text: #c62828;
+            --workday-override: #e8f5e9;
+            --marker-water: #03A9F4;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: "Microsoft JhengHei", "Segoe UI", sans-serif; margin: 0; height: 100vh; display: flex; flex-direction: column; background: var(--bg-color); color: var(--text); overflow: hidden; }
+        
+        /* Header */
+        header { background: var(--primary); color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10; flex-shrink: 0; }
+        header h1 { margin: 0; font-size: 1.4rem; display: flex; align-items: center; gap: 10px; }
+        
+        /* Main Layout */
+        .main-container { display: flex; flex: 1; overflow: hidden; height: 100%; }
+        
+        /* Left Panel */
+        .left-panel { width: 380px; background: white; display: flex; flex-direction: column; border-right: 1px solid var(--border); box-shadow: 2px 0 5px rgba(0,0,0,0.05); z-index: 5; flex-shrink: 0; }
+        .panel-content { padding: 15px; overflow-y: auto; flex: 1; }
+        
+        /* Help Button Area */
+        .help-area { padding-bottom: 15px; border-bottom: 1px solid #eee; margin-bottom: 15px; }
+        .btn-help { width: 100%; background: #FF9800; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 1rem; }
+        .btn-help:hover { background: #F57C00; }
+
+        .section-title { font-size: 1rem; font-weight: bold; color: var(--primary); background: #f1f8e9; padding: 8px 10px; margin: 15px -15px 10px -15px; border-left: 5px solid var(--primary); }
+        .section-title:first-child { margin-top: 0; }
+
+        .form-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 4px; font-weight: 600; font-size: 0.95rem; color: #444; }
+        .input-wrapper { display: flex; align-items: center; gap: 5px; }
+        .input-suffix { font-size: 0.9rem; color: #777; white-space: nowrap; }
+        
+        input[type="text"], input[type="date"], input[type="number"], select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
+        input:focus, select:focus { border-color: var(--primary); outline: none; }
+
+        /* Class Schedule Checkboxes */
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; background: #fafafa; padding: 8px; border-radius: 4px; border: 1px solid #eee; }
+        .checkbox-item { display: flex; align-items: center; gap: 4px; font-size: 0.9rem; cursor: pointer; }
+        .checkbox-item input { width: auto; }
+
+        /* Preset Group */
+        .preset-group { background: #FFF3E0; padding: 10px; border-radius: 6px; border: 1px solid #FFE0B2; margin-bottom: 15px; display: flex; gap: 8px; align-items: flex-end; }
+        .preset-input { flex: 1; }
+        
+        /* Info Button Styles */
+        .btn-info { 
+            width: 36px; height: 36px; 
+            border-radius: 50%; 
+            border: 2px solid #FF9800; 
+            color: #FF9800; 
+            background: white; 
+            font-weight: bold; 
+            cursor: pointer; 
+            flex-shrink: 0; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+        /* Long Cycle Warning State */
+        .btn-info.warning {
+            background: #d32f2f;
+            color: white;
+            border-color: #d32f2f;
+        }
+
+        /* Special Date Adder */
+        .date-adder { display: flex; gap: 5px; margin-bottom: 5px; }
+        .btn-add { padding: 0 12px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .date-list { display: flex; flex-wrap: wrap; gap: 5px; min-height: 25px; background: #fafafa; padding: 5px; border-radius: 4px; border: 1px dashed #ccc; }
+        .date-tag { background: #e0e0e0; padding: 2px 8px; border-radius: 12px; font-size: 0.85rem; display: flex; align-items: center; gap: 5px; }
+        .date-tag span { cursor: pointer; color: #d32f2f; font-weight: bold; }
+
+        /* Buttons */
+        .btn-main { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 5px; font-size: 1.1rem; cursor: pointer; margin-top: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
+        .btn-main:hover { background: #1B5E20; transform: translateY(-1px); }
+        .btn-row { display: flex; gap: 8px; margin-top: 15px; }
+        .btn-small { flex: 1; padding: 10px; font-size: 0.9rem; cursor: pointer; border: 1px solid var(--primary); background: white; color: var(--primary); border-radius: 4px; text-align: center; }
+        .btn-small:hover { background: var(--primary-light); }
+        .btn-danger { color: #c62828; border-color: #ef9a9a; }
+        .btn-danger:hover { background: #ffebee; }
+
+        /* Right Panel */
+        .right-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: white; height: 100%; }
+        
+        /* Visualization Area */
+        .viz-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; border-bottom: 2px solid #ddd; position: relative; }
+        .viz-controls { padding: 8px 15px; background: #f5f5f5; display: flex; align-items: center; gap: 15px; border-bottom: 1px solid #e0e0e0; font-size: 1rem; color: #666; flex-shrink: 0; flex-wrap: wrap; }
+        .viz-scroll-area { flex: 1; overflow: auto; padding: 20px; background-image: radial-gradient(#e0e0e0 1px, transparent 1px); background-size: 20px 20px; position: relative; }
+        
+        .export-group { margin-left: auto; display: flex; gap: 8px; }
+        .btn-export { padding: 5px 10px; font-size: 0.85rem; border: 1px solid #999; border-radius: 4px; background: #fff; cursor: pointer; }
+        .btn-export:hover { background: #eee; }
+
+        /* ------------------ View Modes ------------------ */
+        .view-horizontal .calendar-wrapper { display: flex; gap: 3px; padding-bottom: 20px; height: 100%; }
+        .view-horizontal .day-col { min-width: 80px; max-width: 90px; height: 100%; }
+        
+        .view-month .calendar-wrapper { display: flex; flex-direction: column; gap: 20px; padding-bottom: 50px; }
+        .month-block { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); page-break-inside: avoid; }
+        .month-title { font-size: 1.2rem; font-weight: bold; color: var(--primary); margin-bottom: 10px; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+        .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        .grid-header { text-align: center; font-weight: bold; font-size: 0.9rem; color: #777; padding-bottom: 5px; }
+        .view-month .day-col { min-height: 120px; border: 1px solid #eee; border-radius: 4px; }
+        
+        /* Common Day Cell Styles */
+        .day-col { background: white; border: 1px solid #ccc; border-radius: 4px; display: flex; flex-direction: column; align-items: center; transition: transform 0.1s; position: relative; }
+        .day-col:hover { transform: scale(1.02); border-color: var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10; cursor: pointer; }
+        
+        .day-header { width: 100%; text-align: center; padding: 8px 2px; background: #fafafa; border-bottom: 1px solid #eee; font-size: 1rem; border-radius: 4px 4px 0 0; }
+        .day-header .date-num { font-size: 1.4rem; font-weight: bold; display: block; color: #333; }
+        .day-header .date-week { font-size: 0.85rem; color: #666; }
+        
+        .day-header.holiday { background: var(--holiday); color: var(--holiday-text); }
+        .day-header.holiday .date-week { color: var(--holiday-text); }
+        .day-header.workday-override { background: var(--workday-override); color: var(--primary); }
+        
+        .day-body { flex: 1; width: 100%; padding: 5px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+        
+        /* Weather Icon */
+        .weather-icon { position: absolute; top: 2px; right: 2px; font-size: 1.2rem; filter: drop-shadow(1px 1px 1px white); }
+
+        /* Event Markers */
+        .event-marker { font-size: 0.9rem; padding: 4px; text-align: center; border-radius: 4px; color: white; width: 100%; line-height: 1.3; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .marker-prep { background: #9E9E9E; } 
+        .marker-wait { background: repeating-linear-gradient(45deg, #f1f1f1, #f1f1f1 5px, #e0e0e0 5px, #e0e0e0 10px); color: #888; border: 1px solid #ddd; font-size: 0.8rem; }
+        .marker-sprout { background: #8BC34A; color: #1b5e20; font-weight: bold; } 
+        .marker-thin { background: #FF9800; } 
+        .marker-grow { background: var(--primary); } 
+        .marker-flower { background: #E91E63; } 
+        .marker-fruit { background: #FF5722; } 
+        .marker-harvest { background: #1565C0; font-weight: bold; border: 2px solid #0D47A1; }
+        .marker-water { background: white; color: var(--marker-water); border: 1px solid var(--marker-water); font-weight: bold; margin-top: auto; border-radius: 10px; font-size: 0.8rem; }
+
+        /* Notes Panel (Fixed 1/3 Height) */
+        .notes-container { height: 35vh; min-height: 200px; flex-shrink: 0; background: #FFFDE7; padding: 15px 25px; border-top: 4px solid #FBC02D; overflow-y: auto; display: flex; flex-direction: column; }
+        .notes-header { display: flex; align-items: baseline; gap: 15px; border-bottom: 1px dashed #F9A825; padding-bottom: 8px; margin-bottom: 10px; }
+        .notes-title { font-size: 1.3rem; font-weight: bold; color: #F57F17; }
+        .notes-date { font-size: 1rem; color: #777; font-family: monospace; }
+        .notes-content { font-size: 1.1rem; line-height: 1.6; color: #333; }
+        .notes-content ul { padding-left: 20px; margin: 0; }
+        .notes-content li { margin-bottom: 6px; }
+
+        /* Modals */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+        .modal-box { background: white; width: 90%; max-width: 500px; padding: 25px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); position: relative; max-height: 80vh; overflow-y: auto; }
+        .modal-close { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #999; }
+
+        /* Hidden export container */
+        #exportHiddenArea { position: absolute; top: -9999px; left: -9999px; width: 1000px; }
+
+        @media print {
+            .left-panel, header, .viz-controls, .btn-row, .help-area, .btn-info { display: none !important; }
+            .right-panel { width: 100%; height: auto; overflow: visible; display: block; }
+            .viz-container { height: auto; overflow: visible; display: block; border: none; }
+            .viz-scroll-area { overflow: visible; display: block; }
+            .calendar-wrapper { display: block; }
+            .view-horizontal .calendar-wrapper { display: block; } 
+            .view-horizontal .day-col { display: inline-block; width: 13%; margin: 0.5%; vertical-align: top; }
+            .notes-container { height: auto; border: 1px solid #ccc; page-break-before: always; }
+            .month-block { break-inside: avoid; page-break-inside: avoid; margin-bottom: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1><span>🌱</span> 自然科觀察互動網頁 <span style="font-size:0.7em; opacity:0.8; font-weight:normal;">(V7.3)</span></h1>
+    <div style="font-size: 0.9rem;">自動儲存中</div>
+</header>
+
+<div class="main-container">
+    <!-- 左欄設定區 -->
+    <div class="left-panel">
+        <div class="panel-content">
+            <div class="help-area">
+                <button class="btn-help" onclick="openModal('helpModal')"><span>📖</span> 操作說明與步驟</button>
+            </div>
+
+            <div class="preset-group">
+                <div class="preset-input">
+                    <label>❶ 快速選擇作物</label>
+                    <select id="vegSelect" onchange="applyPreset()">
+                        <option value="">-- 請選擇植物 --</option>
+                        <!-- JS Generated -->
+                    </select>
+                </div>
+                <button class="btn-info" onclick="showVegInfo()" title="查看資訊">i</button>
+            </div>
+
+            <div class="section-title">課堂設定 (自然課)</div>
+            <div class="form-group">
+                <label>每週哪幾天有自然課？</label>
+                <div class="checkbox-group" id="classDayChecks">
+                    <label class="checkbox-item"><input type="checkbox" value="1"> 一</label>
+                    <label class="checkbox-item"><input type="checkbox" value="2"> 二</label>
+                    <label class="checkbox-item"><input type="checkbox" value="3"> 三</label>
+                    <label class="checkbox-item"><input type="checkbox" value="4"> 四</label>
+                    <label class="checkbox-item"><input type="checkbox" value="5"> 五</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-item" style="color:var(--primary); font-weight:bold;">
+                    <input type="checkbox" id="strictClassMode">
+                    操作僅限自然課當天 (自動順延)
+                </label>
+            </div>
+
+            <div class="section-title">生長行程 (輸入天數)</div>
+            <div class="form-group">
+                <label style="color:var(--primary)">❷ 種植日期 (第 0 天)</label>
+                <input type="date" id="datePlant" onchange="checkSeasonality()">
+            </div>
+            
+            <div class="form-group"><label>發芽需時 (天)</label><input type="number" id="daysSprout"></div>
+            <div class="form-group"><label>定植 (天後)</label><input type="number" id="daysTransplant"></div>
+            <div class="form-group"><label>支架 (天後)</label><input type="number" id="daysSupport"></div>
+            <div class="form-group"><label>追肥 (天後，逗號隔開)</label><input type="text" id="daysFertilizer"></div>
+            <div class="form-group"><label>開花 (天後)</label><input type="number" id="daysFlower"></div>
+            <div class="form-group"><label>結果 (天後)</label><input type="number" id="daysFruit"></div>
+            <div class="form-group"><label>採收 (天後)</label><input type="number" id="daysHarvest"></div>
+
+            <div class="section-title">特殊日期</div>
+            <div class="form-group">
+                <label>學校校慶 (上班日)</label>
+                <div class="date-adder">
+                    <input type="date" id="datePickerAnniv">
+                    <button class="btn-add" onclick="addDate('anniv')">＋</button>
+                </div>
+                <div class="date-list" id="listAnniv"></div>
+                <input type="hidden" id="schoolAnniversary">
+            </div>
+            <div class="form-group">
+                <label>補假/颱風假 (假日)</label>
+                <div class="date-adder">
+                    <input type="date" id="datePickerMakeup">
+                    <button class="btn-add" onclick="addDate('makeup')">＋</button>
+                </div>
+                <div class="date-list" id="listMakeup"></div>
+                <input type="hidden" id="makeupHoliday">
+            </div>
+
+            <button class="btn-main" onclick="calculateSchedule()">
+                <span>↻</span> 更新行程與圖表
+            </button>
+
+            <div class="btn-row">
+                <button class="btn-small" onclick="document.getElementById('fileInput').click()">匯入</button>
+                <input type="file" id="fileInput" style="display:none" onchange="importData(this)">
+                <button class="btn-small btn-danger" onclick="clearData()">重置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右欄視覺化區 -->
+    <div class="right-panel">
+        <div class="viz-container">
+            <div class="viz-controls">
+                <label style="margin-right:15px; font-weight:bold; color:var(--primary);">
+                    顯示：
+                </label>
+                <label><input type="radio" name="viewType" value="horizontal" checked onchange="changeView()"> 橫式月曆</label>
+                <label><input type="radio" name="viewType" value="month" onchange="changeView()"> 方塊年月曆</label>
+                
+                <div class="export-group">
+                    <button class="btn-export" onclick="exportMonthPNG(0)">📷 匯出本月PNG</button>
+                    <button class="btn-export" onclick="exportMonthPNG(1)">📷 匯出下月PNG</button>
+                    <button class="btn-export" onclick="exportAllPDF()" style="background:#2E7D32; color:white; border-color:#2E7D32;">📄 匯出全部PDF</button>
+                </div>
+            </div>
+            <div class="viz-scroll-area view-horizontal" id="vizArea">
+                <div style="text-align:center; padding-top:100px; color:#aaa;">
+                    <h2>請先輸入設定並按下更新</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="notes-container">
+            <div class="notes-header">
+                <div class="notes-title" id="noteTitle">觀察日記</div>
+                <div class="notes-date" id="noteDate"></div>
+            </div>
+            <div class="notes-content" id="noteContent">
+                <p style="color:#666;">點擊日期查看詳細任務。</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden area for PNG export -->
+<div id="exportHiddenArea"></div>
+
+<!-- Modal: Help -->
+<div id="helpModal" class="modal-overlay" onclick="if(event.target===this) closeModal('helpModal')">
+    <div class="modal-box">
+        <button class="modal-close" onclick="closeModal('helpModal')">×</button>
+        <div class="modal-title">📖 V7.3 操作說明</div>
+        <div class="modal-body">
+            <ol>
+                <li><b>自然課排程：</b>設定每週自然課時間，可選擇自動順延種植活動。</li>
+                <li><b>作物提示：</b>若左上角的「i」按鈕變為紅色，代表該作物採收期超過4個月。</li>
+                <li><b>完整生命史：</b>系統已內建所有作物的開花與結果時間（包含葉菜類）。</li>
+                <li><b>匯出功能：</b>可針對當月或下個月匯出圖片。</li>
+            </ol>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Veg Info -->
+<div id="vegModal" class="modal-overlay" onclick="if(event.target===this) closeModal('vegModal')">
+    <div class="modal-box">
+        <button class="modal-close" onclick="closeModal('vegModal')">×</button>
+        <div class="modal-title" id="vegModalTitle">蔬菜資訊</div>
+        <div class="modal-body" id="vegModalContent"></div>
+    </div>
+</div>
+
+<script>
+    // --- 1. 資料庫 (Strict Life Cycle Data) ---
+    const vegPresets = {
+        // 茄科
+        "小番茄": { sprout: 7, transplant: 25, support: 25, fert: "20, 40, 60", flower: 45, fruit: 55, harvest: 75, season: [9, 10, 11, 12, 1, 2], desc: "適合秋冬，需整枝修剪側芽。" },
+        "茄子": { sprout: 8, transplant: 30, support: 30, fert: "30, 60, 90", flower: 50, fruit: 60, harvest: 70, season: [1, 2, 3, 7, 8, 9], desc: "喜高溫多濕，需持續追肥。" },
+        "辣椒": { sprout: 8, transplant: 30, support: 30, fert: "30, 60", flower: 50, fruit: 60, harvest: 80, season: [2, 3, 4, 8, 9, 10], desc: "忌淹水，光照需充足。" },
+        "青椒/甜椒": { sprout: 8, transplant: 30, support: 30, fert: "25, 50", flower: 45, fruit: 55, harvest: 70, season: [8, 9, 10, 11, 1, 2], desc: "果實轉色期需控水。" },
+        "龍葵": { sprout: 7, transplant: 0, support: 0, fert: "20", flower: 35, fruit: 45, harvest: 50, season: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], desc: "野生適應力強，俗稱黑甜菜，觀察果實由綠轉黑。" },
+
+        // 十字花科 (葉菜)
+        "小白菜": { sprout: 3, transplant: 20, support: 0, fert: "15", flower: 45, fruit: 60, harvest: 30, season: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], desc: "全年可種，生長期短。若不採收，約45天開黃花，可觀察結角果。" },
+        "高麗菜": { sprout: 5, transplant: 25, support: 0, fert: "20, 40", flower: 100, fruit: 120, harvest: 70, season: [9, 10, 11, 12, 1, 2], desc: "平地難開花(需低溫)，若觀察到開花需極長時間。" },
+        "大白菜": { sprout: 4, transplant: 20, support: 0, fert: "20, 40", flower: 90, fruit: 110, harvest: 75, season: [10, 11, 12, 1], desc: "喜冷涼，結球後期需綁葉。春化後開黃花。" },
+        "青花菜": { sprout: 5, transplant: 25, support: 0, fert: "20, 40", flower: 75, fruit: 95, harvest: 65, season: [9, 10, 11, 12, 1, 2], desc: "食用部位即為花蕾。若不採收會開黃花、結籽。" },
+        "芥藍菜": { sprout: 4, transplant: 20, support: 0, fert: "20", flower: 55, fruit: 75, harvest: 50, season: [9, 10, 11, 12, 1, 2], desc: "花薹為主食。開花為白色或黃色。" },
+
+        // 十字花科 (根莖)
+        "白蘿蔔": { sprout: 4, transplant: 0, support: 0, fert: "20, 40", flower: 80, fruit: 110, harvest: 60, season: [9, 10, 11, 12, 1], desc: "根深忌移植。留種需長時間，花白色或淡紫。" },
+        "櫻桃蘿蔔": { sprout: 3, transplant: 0, support: 0, fert: "15", flower: 45, fruit: 60, harvest: 25, season: [9, 10, 11, 12, 1, 2, 3], desc: "速成作物。觀察生命史的最佳選擇之一。" },
+
+        // 葫蘆科
+        "小黃瓜": { sprout: 4, transplant: 15, support: 20, fert: "20, 35, 50", flower: 30, fruit: 35, harvest: 50, season: [3, 4, 5, 8, 9, 10, 11], desc: "需架支架，須頻繁採收。" },
+        "小西瓜": { sprout: 7, transplant: 20, support: 0, fert: "30, 50", flower: 45, fruit: 55, harvest: 80, season: [3, 4, 5, 6, 7, 8, 9], desc: "喜高溫乾燥，需人工授粉。" },
+        "櫛瓜": { sprout: 5, transplant: 20, support: 0, fert: "25, 40", flower: 35, fruit: 40, harvest: 50, season: [9, 10, 11, 12, 1, 2, 3], desc: "需人工授粉以提高著果率。" },
+        "燈籠南瓜": { sprout: 7, transplant: 20, support: 25, fert: "30, 60", flower: 50, fruit: 60, harvest: 90, season: [9, 10, 11, 12, 1, 2], desc: "生長期長，需大空間。" },
+        "苦瓜": { sprout: 8, transplant: 25, support: 30, fert: "30, 50, 70", flower: 45, fruit: 60, harvest: 75, season: [3, 4, 5, 6, 7, 8], desc: "極耐熱，需網狀棚架。" },
+        "絲瓜": { sprout: 8, transplant: 25, support: 30, fert: "30, 60", flower: 50, fruit: 60, harvest: 80, season: [2, 3, 4, 5, 6, 7, 8], desc: "喜高溫，台灣夏季常見作物。" },
+
+        // 豆科
+        "四季豆": { sprout: 5, transplant: 0, support: 20, fert: "20, 40", flower: 35, fruit: 45, harvest: 60, season: [2, 3, 4, 9, 10, 11], desc: "忌高溫多濕，觀察蝶形花。" },
+        "綠豆": { sprout: 4, transplant: 0, support: 0, fert: "30", flower: 40, fruit: 50, harvest: 65, season: [2, 3, 4, 5, 6, 7, 8, 9], desc: "生長快速，適合觀察發芽與豆莢。" },
+        "花豆": { sprout: 5, transplant: 0, support: 20, fert: "30", flower: 45, fruit: 55, harvest: 70, season: [9, 10, 11, 12, 1], desc: "喜冷涼，花色鮮豔。" },
+        "黃豆": { sprout: 5, transplant: 0, support: 0, fert: "30", flower: 45, fruit: 60, harvest: 80, season: [2, 3, 6, 7, 8], desc: "根瘤菌共生觀察。" },
+        "毛豆": { sprout: 5, transplant: 0, support: 0, fert: "20", flower: 35, fruit: 50, harvest: 70, season: [2, 3, 6, 7, 8], desc: "黃豆的未成熟期。" },
+
+        // 其他
+        "空心菜": { sprout: 4, transplant: 0, support: 0, fert: "10, 20", flower: 70, fruit: 90, harvest: 25, season: [3, 4, 5, 6, 7, 8, 9, 10], desc: "喜高溫，開白色或淡紫漏斗狀花(似牽牛花)。" },
+        "菠菜": { sprout: 6, transplant: 0, support: 0, fert: "20", flower: 55, fruit: 75, harvest: 40, season: [10, 11, 12, 1, 2], desc: "雌雄異株，可觀察不同花型。" },
+        "地瓜葉": { sprout: 7, transplant: 0, support: 0, fert: "15, 30", flower: 80, fruit: 100, harvest: 25, season: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], desc: "短日照開花，花似牽牛花。" },
+        "A菜(本島萵苣)": { sprout: 4, transplant: 0, support: 0, fert: "15", flower: 60, fruit: 80, harvest: 35, season: [1, 2, 3, 4, 9, 10, 11, 12], desc: "若不採收會抽苔開黃花(頭狀花序)。" },
+        "大陸妹(福山萵苣)": { sprout: 4, transplant: 20, support: 0, fert: "20", flower: 65, fruit: 85, harvest: 40, season: [10, 11, 12, 1, 2], desc: "喜冷涼，老化後會抽高開花。" },
+        "秋葵": { sprout: 7, transplant: 20, support: 0, fert: "30, 60", flower: 45, fruit: 50, harvest: 60, season: [3, 4, 5, 6, 7, 8], desc: "花大而美(似扶桑花)，果實老化後可留種。" },
+        "玉米": { sprout: 5, transplant: 15, support: 0, fert: "30, 60", flower: 55, fruit: 85, harvest: 90, season: [2, 3, 4, 8, 9, 10], desc: "雄花在頂端，雌花(玉米鬚)在葉腋。" },
+        "紅蘿蔔": { sprout: 10, transplant: 0, support: 0, fert: "30, 60", flower: 130, fruit: 150, harvest: 100, season: [9, 10, 11, 12, 1], desc: "繖形花序，開花需極長時間。" },
+        "蔥": { sprout: 7, transplant: 0, support: 0, fert: "30, 60", flower: 110, fruit: 130, harvest: 90, season: [1, 2, 3, 4, 9, 10, 11, 12], desc: "蔥坊(花)為球狀繖形花序。" },
+        "香菜": { sprout: 10, transplant: 0, support: 0, fert: "20", flower: 50, fruit: 70, harvest: 40, season: [9, 10, 11, 12, 1, 2], desc: "開白色小花，種子有香味。" },
+        "龍鬚菜": { sprout: 10, transplant: 0, support: 20, fert: "30, 60", flower: 110, fruit: 140, harvest: 50, season: [9, 10, 11, 12, 1, 2, 3, 4], desc: "佛手瓜的嫩梢。果實即為佛手瓜。" }
+    };
+
+    const holidays2026Set = new Set([
+        "2026-01-01","2026-01-02","2026-01-03","2026-01-04","2026-02-14","2026-02-15","2026-02-16","2026-02-17","2026-02-18",
+        "2026-02-19","2026-02-20","2026-02-21","2026-02-22","2026-02-27","2026-02-28","2026-03-01","2026-04-03","2026-04-04",
+        "2026-04-05","2026-04-06","2026-06-19","2026-06-20","2026-06-21","2026-09-25","2026-09-26","2026-09-27","2026-10-09",
+        "2026-10-10","2026-10-11"
+    ]);
+
+    let currentData = {
+        meta: { class: "", group: "", selectedVeg: "", classDays: [], strictClassMode: false },
+        specialDates: { anniversary: "", makeup: "" },
+        inputs: { plantDate: "", daysSprout: "", daysTransplant: "", daysSupport: "", daysFertilizer: "", daysFlower: "", daysFruit: "", daysHarvest: "" },
+        computed: { prep: [], thin: "", transplant: "", support: "", fertilizer: [], flower: "", fruit: "", harvest: "", watering: [] }
+    };
+
+    // --- 2. 初始化 ---
+    window.onload = function() {
+        initVegSelect();
+        loadFromStorage();
+        if(currentData.inputs.plantDate) calculateSchedule();
+        fetchWeather(); 
+    };
+
+    function initVegSelect() {
+        const sel = document.getElementById('vegSelect');
+        for (let veg in vegPresets) {
+            let opt = document.createElement('option');
+            opt.value = veg;
+            opt.innerText = veg;
+            sel.appendChild(opt);
+        }
+    }
+
+    // --- 3. 氣象邏輯 (Open-Meteo) ---
+    let weatherData = {}; 
+
+    async function fetchWeather() {
+        const lat = 25.03;
+        const lon = 121.56;
+        const today = new Date();
+        const startD = new Date(today); startD.setDate(today.getDate() - 7);
+        const endD = new Date(today); endD.setDate(today.getDate() + 7);
+        const sStr = startD.toISOString().split('T')[0];
+        const eStr = endD.toISOString().split('T')[0];
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${sStr}&end_date=${eStr}`;
+
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            if(data.daily) {
+                for(let i=0; i<data.daily.time.length; i++) {
+                    const date = data.daily.time[i];
+                    const code = data.daily.weathercode[i];
+                    const maxT = data.daily.temperature_2m_max[i];
+                    weatherData[date] = { icon: getWeatherIcon(code), temp: `${Math.round(maxT)}°` };
+                }
+                renderViz(); 
+            }
+        } catch(e) { console.log("Weather fetch failed"); }
+    }
+
+    function getWeatherIcon(code) {
+        if(code <= 1) return '☀️';
+        if(code <= 3) return '⛅';
+        if(code <= 48) return '🌫️';
+        if(code <= 67) return '🌧️';
+        if(code <= 77) return '❄️';
+        if(code > 80) return '⛈️';
+        return '☁️';
+    }
+
+    // --- 4. 排程核心計算 ---
+    function isHoliday(dateStr) {
+        const makeupEl = document.getElementById('makeupHoliday');
+        const makeups = makeupEl ? makeupEl.value.split(',').map(s=>s.trim()) : [];
+        if (makeups.includes(dateStr)) return true;
+
+        const annivEl = document.getElementById('schoolAnniversary');
+        const annivs = annivEl ? annivEl.value.split(',').map(s=>s.trim()) : [];
+        if (annivs.includes(dateStr)) return false;
+
+        const d = new Date(dateStr);
+        const day = d.getDay();
+        return day === 0 || day === 6 || holidays2026Set.has(dateStr);
+    }
+
+    function isClassDay(dateStr) {
+        const checks = document.querySelectorAll('#classDayChecks input:checked');
+        const classDays = Array.from(checks).map(cb => parseInt(cb.value));
+        if (classDays.length === 0) return true; 
+        const d = new Date(dateStr);
+        return classDays.includes(d.getDay());
+    }
+
+    function getNextAvailableDay(startDateStr, allowHoliday=false) {
+        if (!startDateStr) return "";
+        let d = new Date(startDateStr);
+        const strictEl = document.getElementById('strictClassMode');
+        const strictMode = strictEl ? strictEl.checked : false;
+        
+        const checks = document.querySelectorAll('#classDayChecks input:checked');
+        const classDays = Array.from(checks).map(cb => parseInt(cb.value));
+        
+        let safety = 0;
+        while(safety < 365) {
+            let s = d.toISOString().split('T')[0];
+            let isHol = isHoliday(s);
+            let isCls = (classDays.length === 0) ? true : classDays.includes(d.getDay());
+
+            let passHoliday = allowHoliday ? true : !isHol;
+            let passClass = strictMode ? isCls : true;
+
+            if (passHoliday && passClass) {
+                if (strictMode && isHol) {
+                } else {
+                    return s;
+                }
+            }
+            d.setDate(d.getDate() + 1);
+            safety++;
+        }
+        return startDateStr;
+    }
+
+    function addDays(dStr, n) {
+        if (!dStr || n === "" || n === undefined) return "";
+        let days = parseInt(n);
+        if (isNaN(days)) return ""; 
+        
+        let d = new Date(dStr);
+        if (isNaN(d.getTime())) return ""; 
+        
+        d.setDate(d.getDate() + days);
+        return d.toISOString().split('T')[0];
+    }
+
+    function calculateSchedule() {
+        saveInputsToMemory();
+        const pDate = currentData.inputs.plantDate;
+        if (!pDate) {
+            const vizArea = document.getElementById('vizArea');
+            if(vizArea) vizArea.innerHTML = '<div style="text-align:center; padding-top:100px; color:#aaa;"><h2>請輸入種植日期</h2></div>';
+            return;
+        }
+
+        let prepList = [];
+        for (let i = 7; i >= 1; i--) {
+            let d = addDays(pDate, -i);
+            if (!isHoliday(d) && d) prepList.push(d); 
+        }
+        currentData.computed.prep = prepList;
+
+        if (currentData.inputs.daysSprout) {
+            let rawThin = addDays(addDays(pDate, currentData.inputs.daysSprout), 3);
+            currentData.computed.thin = getNextAvailableDay(rawThin);
+        } else currentData.computed.thin = "";
+
+        currentData.computed.transplant = getNextAvailableDay(addDays(pDate, currentData.inputs.daysTransplant));
+        currentData.computed.support = getNextAvailableDay(addDays(pDate, currentData.inputs.daysSupport));
+        currentData.computed.flower = getNextAvailableDay(addDays(pDate, currentData.inputs.daysFlower));
+        currentData.computed.fruit = getNextAvailableDay(addDays(pDate, currentData.inputs.daysFruit));
+        currentData.computed.harvest = getNextAvailableDay(addDays(pDate, currentData.inputs.daysHarvest));
+
+        if (currentData.inputs.daysFertilizer) {
+            let arr = currentData.inputs.daysFertilizer.split(/,|、| /);
+            currentData.computed.fertilizer = arr.map(n => {
+                let dNum = parseInt(n.trim());
+                if (isNaN(dNum)) return null;
+                let raw = addDays(pDate, dNum);
+                return getNextAvailableDay(raw);
+            }).filter(x=>x);
+        } else currentData.computed.fertilizer = [];
+
+        calculateWatering();
+        saveToStorage();
+        renderViz();
+    }
+
+    function calculateWatering() {
+        let firstPrep = currentData.computed.prep[0];
+        let start = firstPrep || currentData.inputs.plantDate;
+        let lastEvent = [currentData.computed.fruit, currentData.computed.flower, currentData.computed.harvest].filter(d=>d).sort().pop();
+        let end = lastEvent || addDays(currentData.inputs.plantDate, 90);
+
+        let waterList = [];
+        let curr = new Date(start);
+        let last = new Date(end);
+
+        while(curr <= last) {
+            let sToday = curr.toISOString().split('T')[0];
+            let dNext = new Date(curr); dNext.setDate(curr.getDate()+1);
+            let sNext = dNext.toISOString().split('T')[0];
+            let dPrev = new Date(curr); dPrev.setDate(curr.getDate()-1);
+            let sPrev = dPrev.toISOString().split('T')[0];
+            
+            let needWater = false;
+            let isHolToday = isHoliday(sToday);
+
+            if (!isHolToday) {
+                if (isHoliday(sNext)) needWater = true; 
+                if (isHoliday(sPrev)) needWater = true;
+                if (!needWater) {
+                     let w = curr.getDay(); 
+                     if (w === 1 || w === 3 || w === 5) needWater = true;
+                }
+            }
+            if (needWater) waterList.push(sToday);
+            curr.setDate(curr.getDate() + 1);
+        }
+        currentData.computed.watering = waterList;
+    }
+
+    // --- 5. 視覺化 (雙模式) ---
+    function changeView() {
+        const modeEl = document.querySelector('input[name="viewType"]:checked');
+        if(!modeEl) return;
+        const mode = modeEl.value;
+        const area = document.getElementById('vizArea');
+        area.className = `viz-scroll-area view-${mode}`;
+        renderViz();
+    }
+
+    function renderViz() {
+        const area = document.getElementById('vizArea');
+        if(!area) return;
+        area.innerHTML = '';
+        
+        const modeEl = document.querySelector('input[name="viewType"]:checked');
+        const mode = modeEl ? modeEl.value : 'horizontal';
+
+        let firstPrep = currentData.computed.prep[0];
+        let startD = new Date(firstPrep || currentData.inputs.plantDate);
+        startD.setDate(startD.getDate() - 2); 
+        let lastEvent = [currentData.computed.fruit, currentData.computed.flower, currentData.computed.harvest].filter(d=>d).sort().pop();
+        let endD = lastEvent ? new Date(lastEvent) : new Date(currentData.inputs.plantDate);
+        endD.setDate(endD.getDate() + 14); 
+
+        if (isNaN(startD.getTime())) return;
+
+        if (mode === 'horizontal') {
+            renderHorizontal(area, startD, endD);
+        } else {
+            renderMonthGrid(area, startD, endD);
+        }
+    }
+
+    function renderHorizontal(container, startD, endD) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'calendar-wrapper';
+        
+        let curr = new Date(startD);
+        const annivEl = document.getElementById('schoolAnniversary');
+        const annivArr = annivEl ? annivEl.value.split(',').map(s=>s.trim()) : [];
+
+        while (curr <= endD) {
+            let dateStr = curr.toISOString().split('T')[0];
+            let cell = createDayCell(dateStr, curr, annivArr);
+            wrapper.appendChild(cell);
+            curr.setDate(curr.getDate() + 1);
+        }
+        container.appendChild(wrapper);
+    }
+
+    function renderMonthGrid(container, startD, endD, targetMonthStr=null) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'calendar-wrapper';
+        const annivEl = document.getElementById('schoolAnniversary');
+        const annivArr = annivEl ? annivEl.value.split(',').map(s=>s.trim()) : [];
+
+        let curr = new Date(startD);
+        curr.setDate(1); 
+
+        while (curr <= endD) {
+            let currentYear = curr.getFullYear();
+            let currentMonth = curr.getMonth();
+            let monthStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}`;
+            
+            if (targetMonthStr && monthStr !== targetMonthStr) {
+                curr.setMonth(curr.getMonth() + 1);
+                continue;
+            }
+
+            let monthDiv = document.createElement('div');
+            monthDiv.className = 'month-block';
+            
+            let title = document.createElement('div');
+            title.className = 'month-title';
+            title.innerText = `${currentYear}年 ${currentMonth+1}月`;
+            monthDiv.appendChild(title);
+
+            let grid = document.createElement('div');
+            grid.className = 'month-grid';
+            
+            ['日','一','二','三','四','五','六'].forEach(d => {
+                let th = document.createElement('div');
+                th.className = 'grid-header';
+                th.innerText = d;
+                grid.appendChild(th);
+            });
+
+            let firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            for(let i=0; i<firstDay; i++) {
+                grid.appendChild(document.createElement('div'));
+            }
+
+            while(curr.getMonth() === currentMonth && curr <= endD) {
+                let dateStr = curr.toISOString().split('T')[0];
+                grid.appendChild(createDayCell(dateStr, curr, annivArr));
+                curr.setDate(curr.getDate() + 1);
+            }
+             while(curr.getMonth() === currentMonth) {
+                let dateStr = curr.toISOString().split('T')[0];
+                grid.appendChild(createDayCell(dateStr, curr, annivArr));
+                curr.setDate(curr.getDate() + 1);
+             }
+
+            monthDiv.appendChild(grid);
+            wrapper.appendChild(monthDiv);
+        }
+        container.appendChild(wrapper);
+    }
+
+    function createDayCell(dateStr, dateObj, annivArr) {
+        let isHol = isHoliday(dateStr);
+        let isAnniv = annivArr.includes(dateStr);
+        
+        const col = document.createElement('div');
+        col.className = 'day-col';
+        col.onclick = () => showNote(dateStr);
+
+        let headerClass = isHol ? 'holiday' : '';
+        if (isAnniv) headerClass = 'workday-override';
+        
+        let dayNum = dateObj.getDate();
+        let monthNum = dateObj.getMonth() + 1;
+        let weekArr = ['日','一','二','三','四','五','六'];
+        let wDay = weekArr[dateObj.getDay()];
+        
+        let weatherHtml = '';
+        if (weatherData[dateStr]) {
+            weatherHtml = `<div class="weather-icon" title="${weatherData[dateStr].temp}">${weatherData[dateStr].icon}</div>`;
+        }
+
+        col.innerHTML = `
+            <div class="day-header ${headerClass}">
+                <span class="date-num">${monthNum}/${dayNum}</span>
+                <span class="date-week">${isAnniv ? '校慶' : wDay}</span>
+                ${weatherHtml}
+            </div>
+        `;
+
+        const body = document.createElement('div');
+        body.className = 'day-body';
+        
+        if (currentData.computed.prep.includes(dateStr)) addTag(body, '準備', 'marker-prep');
+        if (dateStr === currentData.inputs.plantDate) addTag(body, '種植', 'marker-grow');
+        if (dateStr === currentData.computed.thin) addTag(body, '間拔', 'marker-thin');
+        if (dateStr === currentData.computed.transplant) addTag(body, '定植', 'marker-grow');
+        if (dateStr === currentData.computed.support) addTag(body, '支架', 'marker-grow');
+        if (currentData.computed.fertilizer.includes(dateStr)) addTag(body, '追肥', 'marker-grow');
+        if (dateStr === currentData.computed.flower) addTag(body, '開花', 'marker-flower');
+        if (dateStr === currentData.computed.fruit) addTag(body, '結果', 'marker-fruit');
+        if (dateStr === currentData.computed.harvest) addTag(body, '★採收', 'marker-harvest');
+
+        if (currentData.inputs.plantDate && currentData.inputs.daysSprout) {
+            let endSprout = addDays(currentData.inputs.plantDate, parseInt(currentData.inputs.daysSprout));
+            if (dateStr > currentData.inputs.plantDate && dateStr <= endSprout) {
+                let text = (dateStr === endSprout) ? '發芽時間' : '';
+                addTag(body, text, 'marker-wait');
+            }
+        }
+        if (currentData.computed.watering.includes(dateStr)) addTag(body, '💧澆水', 'marker-water');
+
+        col.appendChild(body);
+        return col;
+    }
+
+    function addTag(parent, text, cls) {
+        let d = document.createElement('div');
+        d.className = `event-marker ${cls}`;
+        d.innerText = text;
+        if (cls === 'marker-wait' && text === '') { d.style.height = "10px"; d.style.opacity = "0.5"; }
+        parent.appendChild(d);
+    }
+
+    // --- 6. 互動與儲存 ---
+    function showNote(dateStr) {
+        const title = document.getElementById('noteTitle');
+        const dateSpan = document.getElementById('noteDate');
+        const content = document.getElementById('noteContent');
+        
+        let actions = [];
+        let details = [];
+
+        if (weatherData[dateStr]) {
+            details.push(`☁️ 天氣預報：${weatherData[dateStr].icon} ${weatherData[dateStr].temp}`);
+        }
+
+        if (currentData.computed.prep.includes(dateStr)) {
+            actions.push("準備週"); details.push("觀察土壤混和與資材準備。");
+        }
+        if (dateStr === currentData.inputs.plantDate) {
+            actions.push("種植日"); details.push("播種深度約種子2-3倍，澆透水。");
+        }
+        if (dateStr === currentData.computed.thin) {
+            actions.push("間拔"); details.push("拔除弱小幼苗。");
+        }
+        if (dateStr === currentData.computed.transplant) {
+            actions.push("定植"); details.push("帶土團移植。");
+        }
+        if (dateStr === currentData.computed.support) {
+            actions.push("支架"); details.push("架設支架支撐植物。");
+        }
+        if (currentData.computed.fertilizer.includes(dateStr)) {
+            actions.push("追肥"); details.push("施於盆緣。");
+        }
+        if (dateStr === currentData.computed.harvest) {
+            actions.push("採收"); details.push("紀錄成果。");
+        }
+        if (dateStr === currentData.computed.flower) {
+            actions.push("開花"); details.push("觀察花色、花瓣數量與構造。");
+        }
+        if (dateStr === currentData.computed.fruit) {
+            actions.push("結果/結籽"); details.push("觀察果實或種莢的形成。");
+        }
+        if (currentData.computed.watering.includes(dateStr)) {
+            actions.push("注意澆水"); details.push("檢查濕度，若遇假日前請澆透。");
+        }
+
+        dateSpan.innerText = dateStr;
+        if (actions.length > 0) {
+            title.innerText = actions.join(" & ");
+            content.innerHTML = `<ul>${details.map(d => `<li>${d}</li>`).join('')}</ul>`;
+        } else {
+            title.innerText = "日常觀察";
+            content.innerHTML = `<ul>${details.length ? '<li>'+details[0]+'</li>' : ''}<li>本日無特殊排程，請觀察生長狀況。</li></ul>`;
+        }
+    }
+
+    function safeGetVal(id) {
+        const el = document.getElementById(id);
+        if (el) return el.value;
+        return "";
+    }
+
+    function saveInputsToMemory() {
+        currentData.meta.selectedVeg = safeGetVal('vegSelect');
+        currentData.meta.class = safeGetVal('inputClass');
+        currentData.meta.group = safeGetVal('inputGroup');
+        
+        const checks = document.querySelectorAll('#classDayChecks input:checked');
+        currentData.meta.classDays = Array.from(checks).map(cb => cb.value);
+        
+        const strictEl = document.getElementById('strictClassMode');
+        currentData.meta.strictClassMode = strictEl ? strictEl.checked : false;
+
+        currentData.specialDates.anniversary = safeGetVal('schoolAnniversary');
+        currentData.specialDates.makeup = safeGetVal('makeupHoliday');
+        
+        currentData.inputs.plantDate = safeGetVal('datePlant');
+        currentData.inputs.daysSprout = safeGetVal('daysSprout');
+        currentData.inputs.daysTransplant = safeGetVal('daysTransplant');
+        currentData.inputs.daysSupport = safeGetVal('daysSupport');
+        currentData.inputs.daysFertilizer = safeGetVal('daysFertilizer');
+        currentData.inputs.daysFlower = safeGetVal('daysFlower');
+        currentData.inputs.daysFruit = safeGetVal('daysFruit');
+        currentData.inputs.daysHarvest = safeGetVal('daysHarvest');
+    }
+
+    function saveToStorage() { localStorage.setItem('plantProjectV7_3', JSON.stringify(currentData)); }
+    
+    function loadFromStorage() {
+        let str = localStorage.getItem('plantProjectV7_3');
+        if (str) {
+            try { let temp = JSON.parse(str); if (temp.inputs) currentData = temp; } catch(e) {}
+            
+            if(document.getElementById('vegSelect')) document.getElementById('vegSelect').value = currentData.meta.selectedVeg || "";
+            if(document.getElementById('inputClass')) document.getElementById('inputClass').value = currentData.meta.class || "";
+            if(document.getElementById('inputGroup')) document.getElementById('inputGroup').value = currentData.meta.group || "";
+            if(document.getElementById('strictClassMode')) document.getElementById('strictClassMode').checked = currentData.meta.strictClassMode || false;
+            
+            const days = currentData.meta.classDays || [];
+            document.querySelectorAll('#classDayChecks input').forEach(cb => {
+                cb.checked = days.includes(cb.value);
+            });
+
+            if(document.getElementById('schoolAnniversary')) document.getElementById('schoolAnniversary').value = currentData.specialDates.anniversary || "";
+            if(document.getElementById('makeupHoliday')) document.getElementById('makeupHoliday').value = currentData.specialDates.makeup || "";
+            renderDateList('anniv', currentData.specialDates.anniversary ? currentData.specialDates.anniversary.split(',').map(s=>s.trim()) : []);
+            renderDateList('makeup', currentData.specialDates.makeup ? currentData.specialDates.makeup.split(',').map(s=>s.trim()) : []);
+
+            if(document.getElementById('datePlant')) document.getElementById('datePlant').value = currentData.inputs.plantDate || "";
+            if(document.getElementById('daysSprout')) document.getElementById('daysSprout').value = currentData.inputs.daysSprout || "";
+            if(document.getElementById('daysTransplant')) document.getElementById('daysTransplant').value = currentData.inputs.daysTransplant || "";
+            if(document.getElementById('daysSupport')) document.getElementById('daysSupport').value = currentData.inputs.daysSupport || "";
+            if(document.getElementById('daysFertilizer')) document.getElementById('daysFertilizer').value = currentData.inputs.daysFertilizer || "";
+            if(document.getElementById('daysFlower')) document.getElementById('daysFlower').value = currentData.inputs.daysFlower || "";
+            if(document.getElementById('daysFruit')) document.getElementById('daysFruit').value = currentData.inputs.daysFruit || "";
+            if(document.getElementById('daysHarvest')) document.getElementById('daysHarvest').value = currentData.inputs.daysHarvest || "";
+        }
+    }
+
+    function applyPreset() {
+        const name = safeGetVal('vegSelect');
+        const btnInfo = document.querySelector('.btn-info');
+        
+        if (!name) {
+            if(btnInfo) btnInfo.classList.remove('warning');
+            return;
+        }
+        
+        const data = vegPresets[name];
+        
+        // Change 1 Logic: Harvest > 120 days
+        if (data.harvest > 120) {
+            if(btnInfo) btnInfo.classList.add('warning');
+        } else {
+            if(btnInfo) btnInfo.classList.remove('warning');
+        }
+
+        const setVal = (id, val) => {
+            const el = document.getElementById(id);
+            if(el) el.value = (val === 0) ? "" : val;
+        };
+        setVal('daysSprout', data.sprout);
+        setVal('daysTransplant', data.transplant);
+        setVal('daysSupport', data.support);
+        setVal('daysFertilizer', data.fert);
+        setVal('daysFlower', data.flower);
+        setVal('daysFruit', data.fruit);
+        setVal('daysHarvest', data.harvest);
+        
+        if (safeGetVal('datePlant')) calculateSchedule();
+    }
+
+    // Modal & Utils
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    function showVegInfo() {
+        const name = safeGetVal('vegSelect');
+        const title = document.getElementById('vegModalTitle');
+        const content = document.getElementById('vegModalContent');
+        if (!name) { title.innerText = "請先選擇作物"; content.innerText = "請先選擇左側作物。"; }
+        else {
+            const data = vegPresets[name];
+            title.innerText = `蔬菜資訊：${name}`;
+            content.innerHTML = `<p><b>適合種植：</b>${formatMonths(data.season)}</p><p>${data.desc}</p>`;
+        }
+        openModal('vegModal');
+    }
+    function addDate(type) {
+        const pickerId = type === 'anniv' ? 'datePickerAnniv' : 'datePickerMakeup';
+        const hiddenId = type === 'anniv' ? 'schoolAnniversary' : 'makeupHoliday';
+        const dateVal = safeGetVal(pickerId);
+        if (!dateVal) return;
+        const hiddenInput = document.getElementById(hiddenId);
+        let currentArr = hiddenInput.value ? hiddenInput.value.split(',').map(s=>s.trim()) : [];
+        if (!currentArr.includes(dateVal)) {
+            currentArr.push(dateVal); currentArr.sort();
+            hiddenInput.value = currentArr.join(', ');
+            renderDateList(type, currentArr);
+        }
+        document.getElementById(pickerId).value = "";
+    }
+    function removeDate(type, dateStr) {
+        const hiddenId = type === 'anniv' ? 'schoolAnniversary' : 'makeupHoliday';
+        const hiddenInput = document.getElementById(hiddenId);
+        let currentArr = hiddenInput.value ? hiddenInput.value.split(',').map(s=>s.trim()) : [];
+        currentArr = currentArr.filter(d => d !== dateStr);
+        hiddenInput.value = currentArr.join(', ');
+        renderDateList(type, currentArr);
+    }
+    function renderDateList(type, arr) {
+        const listId = type === 'anniv' ? 'listAnniv' : 'listMakeup';
+        const container = document.getElementById(listId);
+        container.innerHTML = '';
+        arr.forEach(d => {
+            let tag = document.createElement('div'); tag.className = 'date-tag';
+            tag.innerHTML = `${d} <span onclick="removeDate('${type}', '${d}')">×</span>`;
+            container.appendChild(tag);
+        });
+    }
+    function checkSeasonality() {} 
+    function formatMonths(arr) { return arr.map(m => m + "月").join("、"); }
+    function clearData() { if(confirm("確定重置？")) { localStorage.removeItem('plantProjectV7_3'); location.reload(); } }
+    function importData(input) {
+        const r = new FileReader();
+        r.onload = e => { currentData = JSON.parse(e.target.result); saveToStorage(); location.reload(); };
+        r.readAsText(input.files[0]);
+    }
+
+    // --- Export Functions ---
+    function exportAllPDF() {
+        window.print();
+    }
+
+    function exportMonthPNG(offsetMonth) {
+        const pDate = currentData.inputs.plantDate;
+        if (!pDate) { alert("請先設定行程"); return; }
+        
+        const today = new Date();
+        const targetD = new Date(today.getFullYear(), today.getMonth() + offsetMonth, 1);
+        const targetStr = `${targetD.getFullYear()}-${String(targetD.getMonth()+1).padStart(2,'0')}`;
+        
+        const hiddenArea = document.getElementById('exportHiddenArea');
+        hiddenArea.innerHTML = ''; 
+        
+        const container = document.createElement('div');
+        container.style.width = "800px";
+        container.style.padding = "20px";
+        container.style.background = "white";
+        
+        const title = document.createElement('h3');
+        title.innerText = `${currentData.meta.class || '班級'} ${currentData.meta.group || '組別'} - ${currentData.meta.selectedVeg || '植物'}觀察表 (${targetStr})`;
+        container.appendChild(title);
+
+        let firstPrep = currentData.computed.prep[0];
+        let startD = new Date(firstPrep || currentData.inputs.plantDate);
+        let endD = currentData.computed.harvest ? new Date(currentData.computed.harvest) : new Date(currentData.inputs.plantDate);
+        endD.setDate(endD.getDate() + 90); 
+
+        renderMonthGrid(container, startD, endD, targetStr);
+        
+        hiddenArea.appendChild(container);
+        
+        setTimeout(() => {
+            html2canvas(container).then(canvas => {
+                const a = document.createElement('a');
+                a.download = `plant_chart_${targetStr}.png`;
+                a.href = canvas.toDataURL();
+                a.click();
+                hiddenArea.innerHTML = ''; 
+            });
+        }, 100);
+    }
+</script>
+
+</body>
+</html>
