@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>國小自然：種植蔬菜規劃網頁APP V7.4</title>
+    <title>國小自然：種植蔬菜規劃網頁APP V8.0</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -77,12 +77,7 @@
             font-size: 1.2rem;
             transition: all 0.3s ease;
         }
-        /* Long Cycle Warning State */
-        .btn-info.warning {
-            background: #d32f2f;
-            color: white;
-            border-color: #d32f2f;
-        }
+        .btn-info.warning { background: #d32f2f; color: white; border-color: #d32f2f; }
 
         /* Special Date Adder */
         .date-adder { display: flex; gap: 5px; margin-bottom: 5px; }
@@ -94,7 +89,10 @@
         /* Buttons */
         .btn-main { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 5px; font-size: 1.1rem; cursor: pointer; margin-top: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
         .btn-main:hover { background: #1B5E20; transform: translateY(-1px); }
-        .btn-row { display: flex; gap: 8px; margin-top: 15px; }
+        
+        /* Bottom Data Management Area */
+        .data-management { margin-top: 20px; padding-top: 15px; border-top: 2px dashed #ddd; }
+        .btn-row { display: flex; gap: 8px; margin-top: 10px; }
         .btn-small { flex: 1; padding: 10px; font-size: 0.9rem; cursor: pointer; border: 1px solid var(--primary); background: white; color: var(--primary); border-radius: 4px; text-align: center; }
         .btn-small:hover { background: var(--primary-light); }
         .btn-danger { color: #c62828; border-color: #ef9a9a; }
@@ -117,7 +115,7 @@
         .view-horizontal .day-col { min-width: 80px; max-width: 90px; height: 100%; }
         
         .view-month .calendar-wrapper { display: flex; flex-direction: column; gap: 20px; padding-bottom: 50px; }
-        .month-block { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); page-break-inside: avoid; }
+        .month-block { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .month-title { font-size: 1.2rem; font-weight: bold; color: var(--primary); margin-bottom: 10px; border-bottom: 2px solid #eee; padding-bottom: 5px; }
         .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
         .grid-header { text-align: center; font-weight: bold; font-size: 0.9rem; color: #777; padding-bottom: 5px; }
@@ -169,23 +167,39 @@
         /* Hidden export container */
         #exportHiddenArea { position: absolute; top: -9999px; left: -9999px; width: 1000px; }
 
+        /* PRINT STYLES - Forced Pagination */
         @media print {
-            .left-panel, header, .viz-controls, .btn-row, .help-area, .btn-info { display: none !important; }
-            .right-panel { width: 100%; height: auto; overflow: visible; display: block; }
-            .viz-container { height: auto; overflow: visible; display: block; border: none; }
-            .viz-scroll-area { overflow: visible; display: block; }
-            .calendar-wrapper { display: block; }
-            .view-horizontal .calendar-wrapper { display: block; } 
-            .view-horizontal .day-col { display: inline-block; width: 13%; margin: 0.5%; vertical-align: top; }
-            .notes-container { height: auto; border: 1px solid #ccc; page-break-before: always; }
-            .month-block { break-inside: avoid; page-break-inside: avoid; margin-bottom: 20px; }
+            body, html, .main-container, .right-panel, .viz-container, .viz-scroll-area {
+                height: auto !important;
+                overflow: visible !important;
+                display: block !important;
+            }
+            .left-panel, header, .viz-controls, .btn-row, .help-area, .btn-info, .notes-container, .modal-overlay {
+                display: none !important;
+            }
+            .calendar-wrapper { display: block !important; }
+            /* Force horizontal view to look like blocks if printed, but best to print from Month View */
+            .view-horizontal .calendar-wrapper { display: block !important; } 
+            
+            /* Month Block Pagination Logic */
+            .month-block { 
+                break-after: page; 
+                page-break-after: always; 
+                break-inside: avoid; 
+                page-break-inside: avoid;
+                margin-bottom: 0;
+                border: none;
+                box-shadow: none;
+            }
+            /* Remove last break */
+            .month-block:last-child { break-after: auto; page-break-after: auto; }
         }
     </style>
 </head>
 <body>
 
 <header>
-    <h1><span>🌱</span> 國小自然：種植蔬菜規劃網頁APP <span style="font-size:0.7em; opacity:0.8; font-weight:normal;">(V7.4)</span></h1>
+    <h1><span>🌱</span> 國小自然：種植蔬菜規劃網頁APP <span style="font-size:0.7em; opacity:0.8; font-weight:normal;">(V8.0)</span></h1>
     <div style="font-size: 0.9rem;">自動儲存中</div>
 </header>
 
@@ -231,7 +245,6 @@
                 <label style="color:var(--primary)">❷ 種植日期 (第 0 天)</label>
                 <input type="date" id="datePlant" onchange="checkSeasonality()">
             </div>
-            
             <div class="form-group"><label>發芽需時 (天)</label><input type="number" id="daysSprout"></div>
             <div class="form-group"><label>定植 (天後)</label><input type="number" id="daysTransplant"></div>
             <div class="form-group"><label>支架 (天後)</label><input type="number" id="daysSupport"></div>
@@ -240,6 +253,20 @@
             <div class="form-group"><label>結果 (天後)</label><input type="number" id="daysFruit"></div>
             <div class="form-group"><label>採收 (天後)</label><input type="number" id="daysHarvest"></div>
 
+            <button class="btn-main" onclick="calculateSchedule()">
+                <span>↻</span> 更新行程與圖表
+            </button>
+
+            <!-- 基本資料 (移到這裡，連動匯出) -->
+            <div class="section-title">班級資料 (匯出用)</div>
+            <div class="form-group">
+                <label>班級</label><input type="text" id="inputClass" placeholder="例如：五年三班" onchange="saveInputsToMemory()">
+            </div>
+            <div class="form-group">
+                <label>組別</label><input type="text" id="inputGroup" placeholder="例如：第三組" onchange="saveInputsToMemory()">
+            </div>
+
+            <!-- 特殊日期 (移到下方) -->
             <div class="section-title">特殊日期</div>
             <div class="form-group">
                 <label>學校校慶 (上班日)</label>
@@ -260,14 +287,17 @@
                 <input type="hidden" id="makeupHoliday">
             </div>
 
-            <button class="btn-main" onclick="calculateSchedule()">
-                <span>↻</span> 更新行程與圖表
-            </button>
-
-            <div class="btn-row">
-                <button class="btn-small" onclick="document.getElementById('fileInput').click()">匯入</button>
-                <input type="file" id="fileInput" style="display:none" onchange="importData(this)">
-                <button class="btn-small btn-danger" onclick="clearData()">重置</button>
+            <!-- 資料管理區 -->
+            <div class="data-management">
+                <label style="font-size:0.9rem; font-weight:bold; color:#555;">資料管理 (切換班級用)</label>
+                <div class="btn-row">
+                    <button class="btn-small" onclick="exportData()">💾 匯出設定檔</button>
+                    <button class="btn-small" onclick="document.getElementById('fileInput').click()">📂 匯入設定檔</button>
+                    <input type="file" id="fileInput" style="display:none" onchange="importData(this)">
+                </div>
+                <div class="btn-row">
+                    <button class="btn-small btn-danger" onclick="clearData()">🗑️ 重置所有資料</button>
+                </div>
             </div>
         </div>
     </div>
@@ -314,13 +344,13 @@
 <div id="helpModal" class="modal-overlay" onclick="if(event.target===this) closeModal('helpModal')">
     <div class="modal-box">
         <button class="modal-close" onclick="closeModal('helpModal')">×</button>
-        <div class="modal-title">📖 V7.3 操作說明</div>
+        <div class="modal-title">📖 V8.0 操作說明</div>
         <div class="modal-body">
             <ol>
                 <li><b>自然課排程：</b>設定每週自然課時間，可選擇自動順延種植活動。</li>
-                <li><b>作物提示：</b>若左上角的「i」按鈕變為紅色，代表該作物採收期超過4個月。</li>
                 <li><b>完整生命史：</b>系統已內建所有作物的開花與結果時間（包含葉菜類）。</li>
-                <li><b>匯出功能：</b>可針對當月或下個月匯出圖片。</li>
+                <li><b>資料管理：</b>左下角可「匯出/匯入」設定檔，方便老師切換不同班級的紀錄。</li>
+                <li><b>PDF 匯出：</b>點擊右上方「匯出全部 PDF」，系統會將觀察表排版為<b>一月一頁</b>的格式，方便列印。</li>
             </ol>
         </div>
     </div>
@@ -336,42 +366,31 @@
 </div>
 
 <script>
-    // --- 1. 資料庫 (Strict Life Cycle Data) ---
+    // --- 1. 資料庫 ---
     const vegPresets = {
-        // 茄科
         "小番茄": { sprout: 7, transplant: 25, support: 25, fert: "20, 40, 60", flower: 45, fruit: 55, harvest: 75, season: [9, 10, 11, 12, 1, 2], desc: "適合秋冬，需整枝修剪側芽。" },
         "茄子": { sprout: 8, transplant: 30, support: 30, fert: "30, 60, 90", flower: 50, fruit: 60, harvest: 70, season: [1, 2, 3, 7, 8, 9], desc: "喜高溫多濕，需持續追肥。" },
         "辣椒": { sprout: 8, transplant: 30, support: 30, fert: "30, 60", flower: 50, fruit: 60, harvest: 80, season: [2, 3, 4, 8, 9, 10], desc: "忌淹水，光照需充足。" },
         "青椒/甜椒": { sprout: 8, transplant: 30, support: 30, fert: "25, 50", flower: 45, fruit: 55, harvest: 70, season: [8, 9, 10, 11, 1, 2], desc: "果實轉色期需控水。" },
         "龍葵": { sprout: 7, transplant: 0, support: 0, fert: "20", flower: 35, fruit: 45, harvest: 50, season: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], desc: "野生適應力強，俗稱黑甜菜，觀察果實由綠轉黑。" },
-
-        // 十字花科 (葉菜)
         "小白菜": { sprout: 3, transplant: 20, support: 0, fert: "15", flower: 45, fruit: 60, harvest: 30, season: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], desc: "全年可種，生長期短。若不採收，約45天開黃花，可觀察結角果。" },
         "高麗菜": { sprout: 5, transplant: 25, support: 0, fert: "20, 40", flower: 100, fruit: 120, harvest: 70, season: [9, 10, 11, 12, 1, 2], desc: "平地難開花(需低溫)，若觀察到開花需極長時間。" },
         "大白菜": { sprout: 4, transplant: 20, support: 0, fert: "20, 40", flower: 90, fruit: 110, harvest: 75, season: [10, 11, 12, 1], desc: "喜冷涼，結球後期需綁葉。春化後開黃花。" },
         "青花菜": { sprout: 5, transplant: 25, support: 0, fert: "20, 40", flower: 75, fruit: 95, harvest: 65, season: [9, 10, 11, 12, 1, 2], desc: "食用部位即為花蕾。若不採收會開黃花、結籽。" },
         "芥藍菜": { sprout: 4, transplant: 20, support: 0, fert: "20", flower: 55, fruit: 75, harvest: 50, season: [9, 10, 11, 12, 1, 2], desc: "花薹為主食。開花為白色或黃色。" },
-
-        // 十字花科 (根莖)
         "白蘿蔔": { sprout: 4, transplant: 0, support: 0, fert: "20, 40", flower: 80, fruit: 110, harvest: 60, season: [9, 10, 11, 12, 1], desc: "根深忌移植。留種需長時間，花白色或淡紫。" },
         "櫻桃蘿蔔": { sprout: 3, transplant: 0, support: 0, fert: "15", flower: 45, fruit: 60, harvest: 25, season: [9, 10, 11, 12, 1, 2, 3], desc: "速成作物。觀察生命史的最佳選擇之一。" },
-
-        // 葫蘆科
         "小黃瓜": { sprout: 4, transplant: 15, support: 20, fert: "20, 35, 50", flower: 30, fruit: 35, harvest: 50, season: [3, 4, 5, 8, 9, 10, 11], desc: "需架支架，須頻繁採收。" },
         "小西瓜": { sprout: 7, transplant: 20, support: 0, fert: "30, 50", flower: 45, fruit: 55, harvest: 80, season: [3, 4, 5, 6, 7, 8, 9], desc: "喜高溫乾燥，需人工授粉。" },
         "櫛瓜": { sprout: 5, transplant: 20, support: 0, fert: "25, 40", flower: 35, fruit: 40, harvest: 50, season: [9, 10, 11, 12, 1, 2, 3], desc: "需人工授粉以提高著果率。" },
         "燈籠南瓜": { sprout: 7, transplant: 20, support: 25, fert: "30, 60", flower: 50, fruit: 60, harvest: 90, season: [9, 10, 11, 12, 1, 2], desc: "生長期長，需大空間。" },
         "苦瓜": { sprout: 8, transplant: 25, support: 30, fert: "30, 50, 70", flower: 45, fruit: 60, harvest: 75, season: [3, 4, 5, 6, 7, 8], desc: "極耐熱，需網狀棚架。" },
         "絲瓜": { sprout: 8, transplant: 25, support: 30, fert: "30, 60", flower: 50, fruit: 60, harvest: 80, season: [2, 3, 4, 5, 6, 7, 8], desc: "喜高溫，台灣夏季常見作物。" },
-
-        // 豆科
         "四季豆": { sprout: 5, transplant: 0, support: 20, fert: "20, 40", flower: 35, fruit: 45, harvest: 60, season: [2, 3, 4, 9, 10, 11], desc: "忌高溫多濕，觀察蝶形花。" },
         "綠豆": { sprout: 4, transplant: 0, support: 0, fert: "30", flower: 40, fruit: 50, harvest: 65, season: [2, 3, 4, 5, 6, 7, 8, 9], desc: "生長快速，適合觀察發芽與豆莢。" },
         "花豆": { sprout: 5, transplant: 0, support: 20, fert: "30", flower: 45, fruit: 55, harvest: 70, season: [9, 10, 11, 12, 1], desc: "喜冷涼，花色鮮豔。" },
         "黃豆": { sprout: 5, transplant: 0, support: 0, fert: "30", flower: 45, fruit: 60, harvest: 80, season: [2, 3, 6, 7, 8], desc: "根瘤菌共生觀察。" },
         "毛豆": { sprout: 5, transplant: 0, support: 0, fert: "20", flower: 35, fruit: 50, harvest: 70, season: [2, 3, 6, 7, 8], desc: "黃豆的未成熟期。" },
-
-        // 其他
         "空心菜": { sprout: 4, transplant: 0, support: 0, fert: "10, 20", flower: 70, fruit: 90, harvest: 25, season: [3, 4, 5, 6, 7, 8, 9, 10], desc: "喜高溫，開白色或淡紫漏斗狀花(似牽牛花)。" },
         "菠菜": { sprout: 6, transplant: 0, support: 0, fert: "20", flower: 55, fruit: 75, harvest: 40, season: [10, 11, 12, 1, 2], desc: "雌雄異株，可觀察不同花型。" },
         "地瓜葉": { sprout: 7, transplant: 0, support: 0, fert: "15, 30", flower: 80, fruit: 100, harvest: 25, season: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], desc: "短日照開花，花似牽牛花。" },
@@ -619,7 +638,7 @@
         startD.setDate(startD.getDate() - 2); 
         let lastEvent = [currentData.computed.fruit, currentData.computed.flower, currentData.computed.harvest].filter(d=>d).sort().pop();
         let endD = lastEvent ? new Date(lastEvent) : new Date(currentData.inputs.plantDate);
-        endD.setDate(endD.getDate() + 7); // Extended to 7 days after the last event
+        endD.setDate(endD.getDate() + 7); 
 
         if (isNaN(startD.getTime())) return;
 
@@ -853,10 +872,10 @@
         currentData.inputs.daysHarvest = safeGetVal('daysHarvest');
     }
 
-    function saveToStorage() { localStorage.setItem('plantProjectV7_3', JSON.stringify(currentData)); }
+    function saveToStorage() { localStorage.setItem('plantProjectV8', JSON.stringify(currentData)); }
     
     function loadFromStorage() {
-        let str = localStorage.getItem('plantProjectV7_3');
+        let str = localStorage.getItem('plantProjectV8');
         if (str) {
             try { let temp = JSON.parse(str); if (temp.inputs) currentData = temp; } catch(e) {}
             
@@ -897,7 +916,6 @@
         
         const data = vegPresets[name];
         
-        // Change 1 Logic: Harvest > 120 days
         if (data.harvest > 120) {
             if(btnInfo) btnInfo.classList.add('warning');
         } else {
@@ -968,7 +986,13 @@
     }
     function checkSeasonality() {} 
     function formatMonths(arr) { return arr.map(m => m + "月").join("、"); }
-    function clearData() { if(confirm("確定重置？")) { localStorage.removeItem('plantProjectV7_3'); location.reload(); } }
+    function clearData() { if(confirm("確定重置？")) { localStorage.removeItem('plantProjectV8'); location.reload(); } }
+    function exportData() {
+        const blob = new Blob([JSON.stringify(currentData,null,2)], {type: "application/json"});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = `plant_data_${currentData.meta.class || 'backup'}.json`;
+        a.click();
+    }
     function importData(input) {
         const r = new FileReader();
         r.onload = e => { currentData = JSON.parse(e.target.result); saveToStorage(); location.reload(); };
@@ -976,8 +1000,21 @@
     }
 
     // --- Export Functions ---
+    // 匯出全部 PDF (強制轉為年曆模式，並觸發列印)
     function exportAllPDF() {
-        window.print();
+        // Switch to Month view specifically for print
+        const originalView = document.querySelector('input[name="viewType"]:checked').value;
+        const monthRadio = document.querySelector('input[name="viewType"][value="month"]');
+        if(monthRadio) monthRadio.checked = true;
+        changeView(); // Re-render in month view
+        
+        // Wait for render, then print
+        setTimeout(() => {
+            window.print();
+            
+            // Optional: Switch back after print? Usually confusing, leave as is or prompt.
+            // if(originalView === 'horizontal') { ... }
+        }, 500);
     }
 
     function exportMonthPNG(offsetMonth) {
