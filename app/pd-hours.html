@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教師研習時數動態檢核系統</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; padding: 0; }
+            .print-container { box-shadow: none; border: none; width: 100%; max-width: 100%; margin: 0; padding: 0;}
+            .page-break { page-break-inside: avoid; }
+        }
+        
+        /* 自訂複選框顏色 */
+        .custom-checkbox { accent-color: #2563EB; width: 1.25rem; height: 1.25rem; cursor: pointer; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans leading-relaxed">
+
+<div id="app" class="min-h-screen py-6 px-4 md:px-8">
+    
+    <div class="print-container max-w-6xl mx-auto bg-white shadow-xl rounded-xl p-6 md:p-10 border-t-8 border-blue-600">
+        
+        <!-- 標題 -->
+        <div class="mb-8 border-b border-gray-200 pb-6 flex justify-between items-end">
+            <div>
+                <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">教師研習時數動態檢核系統</h1>
+                <p class="text-slate-500 mt-2">根據法規與地方政府規定，自動計算您的研習需求</p>
+            </div>
+            <div class="no-print hidden md:block text-sm bg-blue-50 text-blue-700 px-4 py-2 rounded-lg border border-blue-100">
+                <strong>💡 提示：</strong>滑鼠游標停留在 <span class="font-bold text-lg">*</span> 符號上可查看該研習的法規來源。
+            </div>
+        </div>
+
+        <!-- 列印時顯示的狀態摘要 -->
+        <div class="hidden print:block mb-8 text-center pb-4 border-b">
+            <h2 class="text-2xl font-bold">個人研習時數檢核表</h2>
+            <p class="text-gray-600 mt-2 text-lg">
+                縣市：{{ getCityName(settings.city) }} / 階段：{{ getSchoolTypeName(settings.schoolType) }}
+            </p>
+            <p class="text-gray-600 mt-1">
+                職務身分：{{ activeRolesText || '專科老師' }}
+            </p>
+        </div>
+
+        <!-- 設定區塊 (列印時隱藏) -->
+        <div class="no-print grid grid-cols-1 lg:grid-cols-4 gap-6 mb-10 bg-slate-50 p-6 rounded-xl border border-slate-200">
+            
+            <!-- 基礎設定 -->
+            <div class="space-y-4">
+                <h3 class="text-lg font-bold text-slate-700 flex items-center border-b pb-2"><span class="text-blue-600 mr-2">1.</span> 基礎設定</h3>
+                
+                <div>
+                    <label class="block text-sm font-semibold mb-1 text-slate-600">所在縣市</label>
+                    <select v-model="settings.city" class="w-full border-gray-300 rounded-lg shadow-sm p-2 border bg-white focus:ring-blue-500 focus:border-blue-500">
+                        <option value="Taipei">臺北市</option>
+                        <option value="NewTaipei">新北市</option>
+                        <option value="Taoyuan">桃園市</option>
+                        <option value="Taichung">臺中市</option>
+                        <option value="Tainan">臺南市</option>
+                        <option value="Kaohsiung">高雄市</option>
+                        <option value="ChiayiCounty">嘉義縣</option>
+                        <option value="Other">其他縣市</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold mb-1 text-slate-600">任教階段</label>
+                    <select v-model="settings.schoolType" class="w-full border-gray-300 rounded-lg shadow-sm p-2 border bg-white focus:ring-blue-500 focus:border-blue-500">
+                        <option value="kindergarten">幼兒園</option>
+                        <option value="elementary">國民小學</option>
+                        <option value="juniorHigh">國民中學</option>
+                        <option value="seniorHigh">高級中學/職校</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 已修畢研習狀態 -->
+            <div class="space-y-4">
+                <h3 class="text-lg font-bold text-slate-700 flex items-center border-b pb-2"><span class="text-blue-600 mr-2">2.</span> 一次性/週期性研習狀態</h3>
+                
+                <div>
+                    <label class="block text-sm font-semibold mb-2 text-slate-600">數位精進研習 (已完成請打勾)</label>
+                    <div class="flex flex-wrap gap-3">
+                        <label class="flex items-center space-x-2 p-1 hover:bg-slate-100 rounded">
+                            <input type="checkbox" v-model="settings.hasA1" class="custom-checkbox text-blue-600">
+                            <span class="text-slate-700 font-medium">A1</span>
+                        </label>
+                        <label class="flex items-center space-x-2 p-1 hover:bg-slate-100 rounded">
+                            <input type="checkbox" v-model="settings.hasA2" class="custom-checkbox text-blue-600">
+                            <span class="text-slate-700 font-medium">A2</span>
+                        </label>
+                        <label class="flex items-center space-x-2 p-1 hover:bg-slate-100 rounded">
+                            <input type="checkbox" v-model="settings.hasA3" class="custom-checkbox text-blue-600">
+                            <span class="text-slate-700 font-medium">A3</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="flex items-start space-x-2 p-1 hover:bg-slate-100 rounded cursor-pointer">
+                        <input type="checkbox" v-model="settings.hasDefenseTraining" class="custom-checkbox mt-0.5 text-emerald-600">
+                        <span class="text-slate-700 font-medium text-sm leading-tight">4年內已參加「學校防護團訓練」</span>
+                    </label>
+                </div>
+
+                <div>
+                    <label class="flex items-start space-x-2 p-1 hover:bg-slate-100 rounded cursor-pointer">
+                        <input type="checkbox" v-model="settings.hasSafetyTraining" class="custom-checkbox mt-0.5 text-emerald-600">
+                        <span class="text-slate-700 font-medium text-sm leading-tight">3年內已參加「安全衛生」研習</span>
+                    </label>
+                </div>
+
+                <div>
+                    <label class="flex items-start space-x-2 p-1 hover:bg-slate-100 rounded cursor-pointer">
+                        <input type="checkbox" v-model="settings.hasHealthTraining" class="custom-checkbox mt-0.5 text-emerald-600">
+                        <span class="text-slate-700 font-medium text-sm leading-tight">2年內已參加「學校衛生相關研習」</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 職務與身分 -->
+            <div class="space-y-3">
+                <h3 class="text-lg font-bold text-slate-700 flex items-center border-b pb-2"><span class="text-blue-600 mr-2">3.</span> 主要職務 (互斥單選)</h3>
+                
+                <div class="flex flex-col gap-1.5">
+                    <label class="flex items-center space-x-2 p-1.5 hover:bg-slate-100 rounded cursor-pointer border border-transparent" :class="{'bg-blue-50 border-blue-200': settings.primaryRole === 'homeroom'}">
+                        <input type="radio" v-model="settings.primaryRole" value="homeroom" class="custom-checkbox">
+                        <span class="text-slate-700 font-medium">班級導師</span>
+                    </label>
+                    <label class="flex items-center space-x-2 p-1.5 hover:bg-slate-100 rounded cursor-pointer border border-transparent" :class="{'bg-blue-50 border-blue-200': settings.primaryRole === 'general'}">
+                        <input type="radio" v-model="settings.primaryRole" value="general" class="custom-checkbox">
+                        <span class="text-slate-700 font-medium">專科老師</span>
+                    </label>
+                    <label class="flex items-center space-x-2 p-1.5 hover:bg-slate-100 rounded cursor-pointer border border-transparent" :class="{'bg-blue-50 border-blue-200': settings.primaryRole === 'specialEd'}">
+                        <input type="radio" v-model="settings.primaryRole" value="specialEd" class="custom-checkbox">
+                        <span class="text-slate-700 font-medium">特教老師 / 特教組</span>
+                    </label>
+                    <label class="flex items-center space-x-2 p-1.5 hover:bg-slate-100 rounded cursor-pointer border border-transparent" :class="{'bg-blue-50 border-blue-200': settings.primaryRole === 'counselor'}">
+                        <input type="radio" v-model="settings.primaryRole" value="counselor" class="custom-checkbox">
+                        <span class="text-slate-700 font-medium">專輔教師 / 輔導主任</span>
+                    </label>
+                </div>
+
+                <div class="mt-2 pt-2 border-t border-slate-200">
+                    <label class="flex items-center space-x-2 p-1 hover:bg-slate-100 rounded cursor-pointer">
+                        <input type="checkbox" v-model="settings.isHealth" class="custom-checkbox">
+                        <span class="text-slate-700 font-medium text-sm">兼任健康領域教師</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 特殊條件 -->
+            <div class="space-y-3">
+                <h3 class="text-lg font-bold text-slate-700 flex items-center border-b pb-2"><span class="text-blue-600 mr-2">4.</span> 其他條件與需求</h3>
+                
+                <label class="flex items-center space-x-3 p-1 hover:bg-slate-100 rounded cursor-pointer" v-if="settings.primaryRole === 'homeroom'">
+                    <input type="checkbox" v-model="settings.hasSpedStudent" class="custom-checkbox text-purple-600">
+                    <span class="text-slate-700 font-medium">班上有特教生</span>
+                </label>
+
+                <label class="flex items-center space-x-3 p-1 hover:bg-slate-100 rounded cursor-pointer">
+                    <input type="checkbox" v-model="settings.sizeOver100" class="custom-checkbox">
+                    <span class="text-slate-700 font-medium">學校教職員工生超過100人</span>
+                </label>
+
+                <label class="flex items-center space-x-3 p-1 hover:bg-slate-100 rounded cursor-pointer">
+                    <input type="checkbox" v-model="settings.isFireSquad" class="custom-checkbox text-red-500">
+                    <span class="text-slate-700 font-medium">屬於自衛消防編組</span>
+                </label>
+
+                <label class="flex items-center space-x-3 p-1 bg-yellow-50 hover:bg-yellow-100 rounded mt-2 border border-yellow-200 cursor-pointer">
+                    <input type="checkbox" v-model="settings.isTransfer" class="custom-checkbox text-yellow-600">
+                    <span class="text-yellow-800 font-bold">未來有「介聘」需求</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- 研習項目列表 -->
+        <div class="mb-10">
+            <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center">
+                <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                您的專屬研習需求清單
+            </h2>
+            
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[600px]">
+                    <thead>
+                        <tr class="bg-slate-100 border-b border-slate-200 text-slate-700">
+                            <th class="p-4 font-bold w-auto">研習項目</th>
+                            <th class="p-4 font-bold text-center w-32">規定下限</th>
+                            <th class="p-4 font-bold text-center w-40">已修時數</th>
+                            <th class="p-4 font-bold text-center w-32">狀態</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr v-for="cat in dynamicCategories" :key="cat.id" class="hover:bg-blue-50 transition-colors">
+                            <td class="p-4">
+                                <div class="flex items-center flex-wrap gap-2">
+                                    <span class="font-bold text-slate-800 text-lg">{{ cat.name }}</span>
+                                    <span class="text-blue-500 cursor-help font-black text-xl leading-none" :title="cat.note">*</span>
+                                    <span v-if="cat.period" class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-full font-medium whitespace-nowrap">{{ cat.period }}</span>
+                                </div>
+                            </td>
+                            <td class="p-4 text-center font-medium text-slate-600 text-lg">
+                                {{ cat.req > 0 ? cat.req + ' hr' : '-' }}
+                            </td>
+                            <td class="p-4 text-center">
+                                <div class="flex items-center justify-center">
+                                    <input type="number" step="0.5" min="0" v-model.number="manualInputs[cat.id]" class="w-24 text-center border-slate-300 rounded-lg shadow-inner p-2 border focus:ring-blue-500 font-bold text-lg">
+                                </div>
+                            </td>
+                            <td class="p-4 text-center">
+                                <span v-if="cat.req > 0 && (manualInputs[cat.id] || 0) >= cat.req" class="text-green-600 font-bold flex items-center justify-center bg-green-100 py-1.5 px-3 rounded-lg">
+                                    ✓ 達標
+                                </span>
+                                <span v-else-if="cat.req > 0" class="text-orange-600 font-bold flex items-center justify-center bg-orange-100 py-1.5 px-3 rounded-lg">
+                                    缺 {{ Math.max(0, cat.req - (manualInputs[cat.id] || 0)) }}
+                                </span>
+                                <span v-else class="text-slate-400 font-medium">-</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 總結與提示區 -->
+        <div class="page-break bg-slate-800 rounded-2xl p-8 text-white shadow-lg relative overflow-hidden">
+            <!-- 裝飾背景 -->
+            <svg class="absolute right-0 top-0 opacity-10 w-64 h-64 transform translate-x-10 -translate-y-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2zm0 4.5l7.5 13.5h-15L12 6.5z"/></svg>
+
+            <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                <div>
+                    <h2 class="text-3xl font-extrabold mb-2">本學年總研習時數</h2>
+                    <p class="text-slate-300 mb-4">綜合所有法規、縣市要求與身分加成的總時數</p>
+                    
+                    <div class="space-y-2 mb-4">
+                        <div class="flex justify-between text-sm bg-slate-700/50 p-2 rounded px-4">
+                            <span class="text-slate-300">各單項法規加總要求</span>
+                            <span class="font-bold text-white">{{ baseTotalRequired }} 小時</span>
+                        </div>
+                        <div class="flex justify-between text-sm bg-slate-700/50 p-2 rounded px-4" v-if="cityMinimum > 0">
+                            <span class="text-slate-300">{{ getCityName(settings.city) }} 規定總下限</span>
+                            <span class="font-bold text-yellow-400">{{ cityMinimum }} 小時</span>
+                        </div>
+                        <div class="flex justify-between text-sm bg-slate-700/50 p-2 rounded px-4" v-if="settings.isTransfer">
+                            <span class="text-slate-300">介聘安全建議值</span>
+                            <span class="font-bold text-pink-400">70 小時</span>
+                        </div>
+                    </div>
+
+                    <div class="text-sm text-slate-400">
+                        ⚠️ 最終採計標準為上述條件之 <strong class="text-white">最大值</strong>。
+                    </div>
+                    <div class="text-sm text-yellow-300 mt-2" v-if="settings.city === 'NewTaipei'">
+                        📌 備註：新北市教育局強烈建議全校平均需達 54 小時。
+                    </div>
+                </div>
+
+                <div class="text-center md:text-right">
+                    <div class="inline-block bg-slate-900 rounded-3xl p-6 border border-slate-700">
+                        <div class="text-sm text-slate-400 font-bold mb-1">目標下限</div>
+                        <div class="text-4xl font-black text-white mb-4">{{ finalRequiredTotal }} <span class="text-lg font-normal text-slate-500">hr</span></div>
+                        
+                        <div class="text-sm text-slate-400 font-bold mb-1">目前累計</div>
+                        <div class="text-6xl font-black" :class="totalHours >= finalRequiredTotal ? 'text-green-400' : 'text-blue-400'">
+                            {{ parseFloat(totalHours.toFixed(1)) }}
+                        </div>
+                        
+                        <div class="mt-4">
+                            <span v-if="totalHours >= finalRequiredTotal" class="bg-green-500/20 text-green-300 px-3 py-1 rounded-full text-sm font-bold flex items-center justify-center">
+                                🎉 已達總體要求
+                            </span>
+                            <span v-else class="bg-orange-500/20 text-orange-300 px-3 py-1 rounded-full text-sm font-bold flex items-center justify-center">
+                                尚缺 {{ parseFloat((finalRequiredTotal - totalHours).toFixed(1)) }} 小時
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部功能按鈕區 (列印時隱藏) -->
+        <div class="no-print mt-10 border-t pt-6 flex flex-wrap gap-4 justify-between items-center">
+            <button @click="resetData" class="flex items-center text-red-600 hover:text-red-800 hover:bg-red-50 px-4 py-2 rounded-lg font-medium transition">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                清空重置
+            </button>
+            
+            <div class="flex flex-wrap gap-3">
+                <label class="cursor-pointer flex items-center bg-white border border-slate-300 text-slate-700 px-5 py-2.5 rounded-lg hover:bg-slate-50 font-medium transition shadow-sm">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    匯入設定 (.json)
+                    <input type="file" @change="importData" class="hidden" accept=".json">
+                </label>
+
+                <button @click="exportData" class="flex items-center bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 font-medium transition shadow-sm">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    匯出備份 (.json)
+                </button>
+
+                <button @click="printPage" class="flex items-center bg-slate-800 text-white px-5 py-2.5 rounded-lg hover:bg-slate-900 font-medium transition shadow-sm">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    列印 PDF
+                </button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const { createApp, ref, computed, watch, onMounted } = Vue;
+
+    createApp({
+        setup() {
+            // 1. 響應式設定狀態
+            const settings = ref({
+                city: 'Taipei',
+                schoolType: 'elementary',
+                primaryRole: 'general', // 'general', 'homeroom', 'specialEd', 'counselor'
+                isHealth: false,
+                hasSpedStudent: false,
+                sizeOver100: false,
+                isFireSquad: false,
+                isTransfer: false,
+                hasA1: false,
+                hasA2: false,
+                hasA3: false,
+                hasDefenseTraining: false,
+                hasSafetyTraining: false,
+                hasHealthTraining: false
+            });
+
+            // 紀錄使用者的手動輸入時數
+            const manualInputs = ref({});
+
+            // 輔助翻譯函數
+            const getCityName = (val) => {
+                const map = { 'Taipei':'臺北市', 'NewTaipei':'新北市', 'Taoyuan':'桃園市', 'Taichung':'臺中市', 'Tainan':'臺南市', 'Kaohsiung':'高雄市', 'ChiayiCounty':'嘉義縣', 'Other':'其他縣市' };
+                return map[val] || val;
+            };
+            const getSchoolTypeName = (val) => {
+                const map = { 'kindergarten':'幼兒園', 'elementary':'國民小學', 'juniorHigh':'國民中學', 'seniorHigh':'高中職' };
+                return map[val] || val;
+            };
+            
+            // 產生已勾選的身分字串(列印用)
+            const activeRolesText = computed(() => {
+                let roles = [];
+                if(settings.value.primaryRole === 'homeroom') roles.push('班級導師');
+                if(settings.value.primaryRole === 'specialEd') roles.push('特教老師/組長');
+                if(settings.value.primaryRole === 'counselor') roles.push('專輔/輔導主任');
+                if(settings.value.isHealth) roles.push('健康領域');
+                if(settings.value.primaryRole === 'homeroom' && settings.value.hasSpedStudent) roles.push('班有特教生');
+                if(settings.value.isFireSquad) roles.push('自衛消防編組');
+                if(settings.value.sizeOver100) roles.push('百人以上學校');
+                if(settings.value.isTransfer) roles.push('有介聘需求');
+                return roles.length > 0 ? roles.join('、 ') : '專科老師';
+            });
+
+            // 2. 核心邏輯：動態生成研習類別與需求
+            const dynamicCategories = computed(() => {
+                let cats = [];
+
+                // --- A. 基礎法定研習 (全體教師) ---
+                cats.push({ id: 'gender', name: '性別平等教育', req: 2, note: '性別平等教育法第17條' });
+                cats.push({ id: 'env', name: '環境教育', req: 4, note: '環境教育法第19條第1項' });
+                
+                // 輔導研習：專輔/主任要求18，一般要求3
+                if (settings.value.primaryRole === 'counselor') {
+                    cats.push({ id: 'counsel', name: '輔導研習', req: 18, note: '專輔教師/輔導主任規定' });
+                } else {
+                    cats.push({ id: 'counsel', name: '輔導研習', req: 3, note: '學生輔導法第14條第4項' });
+                }
+
+                cats.push({ id: 'family', name: '家庭教育', req: 4, note: '家庭教育法第9條第3項' });
+                cats.push({ id: 'crc', name: '兒童權利公約 (CRC)', req: 4, note: '地方政府績效考核' });
+                cats.push({ id: 'firstaid', name: '急救教育', req: 4, note: '緊急傷病處理準則第5條' });
+                
+                if (!settings.value.hasSafetyTraining) {
+                    cats.push({ id: 'safety', name: '安全衛生', req: 3, note: '職業安全衛生法第32條', period: '每3年' });
+                }
+                
+                cats.push({ id: 'infosec', name: '資通安全', req: 3, note: '資通安全責任等級分級辦法' });
+                cats.push({ id: 'traffic', name: '交通安全', req: 4, note: '交通部院頒方案' });
+                cats.push({ id: 'life', name: '生命教育', req: 2, note: '各地方政府視導' });
+
+                // --- B. 依身分與學校條件附加研習 ---
+                
+                // 健康教師或國小導師 (且尚未參加2年內衛生研習)
+                if ((settings.value.isHealth || (settings.value.primaryRole === 'homeroom' && settings.value.schoolType === 'elementary')) && !settings.value.hasHealthTraining) {
+                    cats.push({ id: 'health_pro', name: '學校衛生相關研習', req: 18, note: '學校衛生法第17條', period: '每2年' });
+                }
+
+                // 導師且班上有特教生
+                if (settings.value.primaryRole === 'homeroom' && settings.value.hasSpedStudent) {
+                    cats.push({ id: 'sped_base', name: '特教知能研習 (班有特教生)', req: 2, note: '特殊教育法第15條' });
+                }
+
+                // 特教老師/組長
+                if (settings.value.primaryRole === 'specialEd') {
+                    cats.push({ id: 'sped_pro', name: '特教專業研習', req: 18, note: '特教老師/特教組規定' });
+                }
+
+                // 學校大於100人 (且尚未參加4年內防護團訓練)
+                if (settings.value.sizeOver100 && !settings.value.hasDefenseTraining) {
+                    cats.push({ id: 'defense', name: '學校防護團訓練', req: 8, note: '每4年1次', period: '每4年' });
+                }
+
+                // 幼稚園
+                if (settings.value.schoolType === 'kindergarten') {
+                    cats.push({ id: 'kg_pro', name: '教保專業知能', req: 18, note: '幼兒園規定' });
+                }
+
+                // 自衛消防編組 (每半年4小時，一年8小時)
+                if (settings.value.isFireSquad) {
+                    cats.push({ id: 'fire', name: '滅火、通報及避難訓練', req: 8, note: '消防法第13條 (每半年4小時)', period: '每年8hr' });
+                }
+
+                // --- C. 數位精進 ---
+                if (!settings.value.hasA1) cats.push({ id: 'a1', name: 'A1 數位精進研習', req: 3, note: '教育部要求' });
+                if (!settings.value.hasA2) cats.push({ id: 'a2', name: 'A2 數位精進研習', req: 3, note: '教育部要求' });
+                if (!settings.value.hasA3) {
+                    if (settings.value.city === 'NewTaipei') {
+                        cats.push({ id: 'a3', name: 'A3 數位精進研習', req: 3, note: '新北教研資字第1130296908號函' });
+                    } else {
+                        cats.push({ id: 'a3_opt', name: 'A3 數位精進研習 (建議)', req: 0, note: '教育部鼓勵達成，非強制', period: '建議 3hr' });
+                    }
+                }
+
+                // --- D. 縣市特殊規定 ---
+                if (settings.value.city === 'Kaohsiung') {
+                    cats.push({ id: 'kh_carbon', name: '低碳環境教育', req: 2, note: '高市環境維護自治條例' });
+                    cats.push({ id: 'kh_edu', name: '教育局與輔導團舉辦研習', req: 8, note: '高雄市強化教師進修計畫' });
+                    cats.push({ id: 'kh_other', name: '除法定外的額外研習', req: 20, note: '高雄市強化教師進修計畫' });
+                } else if (settings.value.city === 'NewTaipei') {
+                    cats.push({ id: 'ntpc_other', name: '新北市一般進修研習', req: 18, note: '新北市教師進修研習實施要點' });
+                }
+
+                // 統整「其他未分類研習」供計算總時數用
+                cats.push({ id: 'general_other', name: '其他一般研習', req: 0, note: '非上述指定項目之一般研習，用於衝刺總時數' });
+
+                // 整合計算目前分數
+                return cats.map(cat => {
+                    const mTotal = Number(manualInputs.value[cat.id]) || 0;
+                    return {
+                        ...cat,
+                        currentTotal: mTotal
+                    };
+                });
+            });
+
+            // 3. 總計與條件判斷
+            
+            // 所有明確有 req > 0 的加總
+            const baseTotalRequired = computed(() => {
+                return dynamicCategories.value.reduce((sum, cat) => sum + (cat.req || 0), 0);
+            });
+
+            // 縣市總體下限要求
+            const cityMinimum = computed(() => {
+                if (settings.value.city === 'ChiayiCounty') {
+                    if (settings.value.schoolType === 'elementary') return 80;
+                    if (settings.value.schoolType === 'juniorHigh') return 30;
+                }
+                return 0; // 高雄市已透過 kh_other 分散至 baseTotal 中
+            });
+
+            // 最終需要達成的總時數 (取各項最大值)
+            const finalRequiredTotal = computed(() => {
+                let required = Math.max(baseTotalRequired.value, cityMinimum.value);
+                if (settings.value.isTransfer) {
+                    required = Math.max(required, 70); // 介聘建議 70 小時
+                }
+                return required;
+            });
+
+            // 目前總共累積時數
+            const totalHours = computed(() => {
+                return dynamicCategories.value.reduce((sum, cat) => sum + cat.currentTotal, 0);
+            });
+
+
+            // 4. 資料存取與匯出入
+
+            const saveData = () => {
+                const data = { settings: settings.value, manualInputs: manualInputs.value };
+                localStorage.setItem('TeacherPD_HoursData', JSON.stringify(data));
+            };
+
+            watch([settings, manualInputs], () => saveData(), { deep: true });
+
+            onMounted(() => {
+                const saved = localStorage.getItem('TeacherPD_HoursData');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        
+                        // 處理舊版資料升級 (如果舊版有勾選導師等，轉換為新的 primaryRole)
+                        if (parsed.settings) {
+                            if (parsed.settings.isCounselor) parsed.settings.primaryRole = 'counselor';
+                            else if (parsed.settings.isSpecialEdTeacher) parsed.settings.primaryRole = 'specialEd';
+                            else if (parsed.settings.isHomeroom) parsed.settings.primaryRole = 'homeroom';
+                        }
+                        
+                        settings.value = { ...settings.value, ...parsed.settings };
+                        
+                        // 若舊版有 gridState，自動加總轉移至 manualInputs
+                        if (parsed.gridState) {
+                            Object.keys(parsed.gridState).forEach(catId => {
+                                let total = 0;
+                                Object.values(parsed.gridState[catId]).forEach(val => total += val);
+                                if (!parsed.manualInputs) parsed.manualInputs = {};
+                                parsed.manualInputs[catId] = (parsed.manualInputs[catId] || 0) + total;
+                            });
+                        }
+                        
+                        manualInputs.value = parsed.manualInputs || {};
+                    } catch (e) { console.error('讀取存檔失敗', e); }
+                }
+            });
+
+            const resetData = () => {
+                if(confirm('警告：確定要清空所有填寫的時數紀錄嗎？\n(設定檔會保留)')) {
+                    manualInputs.value = {};
+                    saveData();
+                }
+            };
+
+            const exportData = () => {
+                const data = JSON.stringify({ settings: settings.value, manualInputs: manualInputs.value });
+                const blob = new Blob([data], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `教師研習設定檔_${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+            };
+
+            const importData = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const parsed = JSON.parse(e.target.result);
+                        settings.value = { ...settings.value, ...parsed.settings };
+                        manualInputs.value = parsed.manualInputs || {};
+                        alert('✅ 設定與進度匯入成功！');
+                    } catch (err) {
+                        alert('❌ 檔案格式錯誤，請確保是本系統匯出的 .json 檔案');
+                    }
+                    event.target.value = ''; // Reset input
+                };
+                reader.readAsText(file);
+            };
+
+            const printPage = () => {
+                window.print();
+            };
+
+            return {
+                settings,
+                dynamicCategories,
+                baseTotalRequired,
+                cityMinimum,
+                finalRequiredTotal,
+                totalHours,
+                activeRolesText,
+                getCityName,
+                getSchoolTypeName,
+                manualInputs,
+                resetData,
+                exportData,
+                importData,
+                printPage
+            };
+        }
+    }).mount('#app');
+</script>
+
+</body>
+</html>
