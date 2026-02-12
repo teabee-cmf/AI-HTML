@@ -437,13 +437,14 @@
                 if (settings.value.city === 'Kaohsiung') {
                     cats.push({ id: 'kh_carbon', name: '低碳環境教育', req: 2, note: '高市環境維護自治條例' });
                     cats.push({ id: 'kh_edu', name: '教育局與輔導團舉辦研習', req: 8, note: '高雄市強化教師進修計畫' });
-                    cats.push({ id: 'kh_other', name: '除法定外的額外研習', req: 20, note: '高雄市強化教師進修計畫' });
-                } else if (settings.value.city === 'NewTaipei') {
-                    cats.push({ id: 'ntpc_other', name: '新北市一般進修研習', req: 18, note: '新北市教師進修研習實施要點' });
                 }
 
-                // 統整「其他未分類研習」供計算總時數用
-                cats.push({ id: 'general_other', name: '其他一般研習', req: 0, note: '非上述指定項目之一般研習，用於衝刺總時數' });
+                // 統整「其他未分類研習」供計算總時數用 (含高雄市特殊要求併入)
+                if (settings.value.city === 'Kaohsiung') {
+                    cats.push({ id: 'general_other', name: '其他一般研習 (含除法定外額外研習)', req: 20, note: '高雄市強化教師進修計畫：除法定外的額外研習' });
+                } else {
+                    cats.push({ id: 'general_other', name: '其他一般研習', req: 0, note: '非上述指定項目之一般研習，用於衝刺總時數' });
+                }
 
                 // 整合計算目前分數
                 return cats.map(cat => {
@@ -520,6 +521,12 @@
                             });
                         }
                         
+                        // 高雄市舊版 kh_other 轉移至 general_other
+                        if (parsed.manualInputs && parsed.manualInputs['kh_other']) {
+                            parsed.manualInputs['general_other'] = (parsed.manualInputs['general_other'] || 0) + parsed.manualInputs['kh_other'];
+                            delete parsed.manualInputs['kh_other'];
+                        }
+
                         manualInputs.value = parsed.manualInputs || {};
                     } catch (e) { console.error('讀取存檔失敗', e); }
                 }
