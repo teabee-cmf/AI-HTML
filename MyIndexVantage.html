@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的專屬股市理財工具</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+    <style>
+        /* 自訂滾動條 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e1e1e; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #888; }
+    </style>
+</head>
+<body class="p-4 md:p-8 bg-[#121212] text-white font-sans min-h-screen">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- 核心：抓取真實資料 (高強度備援：雙 Endpoint + 三重 Proxy) ---
+        const fetchYahooData = async (asset) => {
+            // Yahoo Finance 提供兩個備用伺服器節點
+            const endpoints = [
+                `https://query1.finance.yahoo.com/v8/finance/chart/${asset.symbol}?range=1mo&interval=1d`,
+                `https://query2.finance.yahoo.com/v8/finance/chart/${asset.symbol}?range=1mo&interval=1d`
+            ];
+
+            for (const endpoint of endpoints) {
+                // 擴充至 3 個不同伺服器位置的代理 (總計 6 條備援路線)
+                const proxies = [
+                    `https://api.allorigins.win/raw?url=${encodeURIComponent(endpoint)}`,
+                    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(endpoint)}`,
+                    `https://corsproxy.io/?${encodeURIComponent(endpoint)}`
+                ];
+
+                for (const proxyUrl of proxies) {
+                    try {
+                        const response = await fetch(proxyUrl, { cache: 'no-store' });
+                        if (!response.ok) continue;
+                        
+                        const yfData = await response.json();
+                        if (!yfData.chart.result) continue;
+
+                        const result = yfData.chart.result[0];
+                        const timestamps = result.timestamp;
+                        const closePrices = result.indicators.quote[0].close;
+
+                        let history = {};
+                        let dates = [];
+                        for (let i = 0; i < closePrices.length; i++) {
+                            if (closePrices[i] !== null) {
+                                const d = new Date(timestamps[i] * 1000);
+                                const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+                                history[dateStr] = Number(closePrices[i].toFixed(2));
+                                dates.push(dateStr);
+                            }
+                        }
+                        if (dates.length > 0) return { name: asset.name, history, dates };
+                    } catch (error) {
+                        console.warn(`[Proxy 測試失敗] ${proxyUrl}`);
+                    }
+                }
+            }
+            return null;
+        };
+
+        // --- 獨立卡片元件 ---
+        const StockCard = ({ title, config }) => {
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+            const [isExpanded, setIsExpanded] = useState(config.defaultExpanded || false);
+            const [datasets, setDatasets] = useState([]);
+            const [dates, setDates] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [mainAssetStats, setMainAssetStats] = useState({ price: 0, change: 0, changePct: 0 });
+            const [secondaryAssetStats, setSecondaryAssetStats] = useState(null);
+            const [borderColorClass, setBorderColorClass] = useState('border-gray-700');
+            const [hasError, setHasError] = useState(false);
+
+            useEffect(() => {
+                let isMounted = true;
+                
+                const loadData = async () => {
+                    setLoading(true);
+                    setHasError(false);
+                    
+                    const fetchedData = await Promise.all(config.assets.map(async (asset) => {
+                        return await fetchYahooData(asset);
+                    }));
+
+                    if (!isMounted) return;
+
+                    // 1. 取得主標的日期作為 X 軸基準
+                    const mainAssetName = config.mainStatsName || config.assets[0].name;
+                    const mainAssetData = fetchedData.find(a => a && a.name === mainAssetName);
+
+                    // 防呆檢查：只有當「主標的」完全抓不到時才顯示錯誤。副標的抓不到則忽略，確保卡片繼續運作
+                    if (!mainAssetData) {
+                        setHasError(true);
+                        setLoading(false);
+                        return;
+                    }
+
+                    const xDates = mainAssetData.dates;
+                    setDates(xDates);
+
+                    // 2. 將所有資料對齊 X 軸 (補齊缺失日期，向前繼承)
+                    const processedDatasets = config.assets.map(assetConfig => {
+                        const rawData = fetchedData.find(a => a && a.name === assetConfig.name);
+                        let alignedData = [];
+                        let lastValidPrice = null;
+                        
+                        xDates.forEach(date => {
+                            if (rawData && rawData.history[date] !== undefined) {
+                                lastValidPrice = rawData.history[date];
+                            }
+                            alignedData.push(lastValidPrice);
+                        });
+                        return { ...assetConfig, rawAligned: alignedData };
+                    }).filter(ds => ds.rawAligned.some(val => val !== null)); // 局部容錯：過濾掉完全沒資料的副標的
+
+                    // 3. 第一天對齊演算法 (Normalization)
+                    const finalDatasets = processedDatasets.map(ds => {
+                        let finalData = [...ds.rawAligned];
+                        
+                        // 若設定需要對齊某個 ETF
+                        if (ds.alignTo) {
+                            const baseAsset = processedDatasets.find(a => a.name === ds.alignTo);
+                            if (baseAsset && baseAsset.rawAligned[0] !== null && ds.rawAligned[0] !== null) {
+                                const baseDay1 = baseAsset.rawAligned[0];
+                                const myDay1 = ds.rawAligned[0];
+                                // 指數畫圖位置 = (目前指數/第一天指數) * ETF第一天價格
+                                finalData = ds.rawAligned.map(val => val === null ? null : (val / myDay1) * baseDay1);
+                            }
+                        } 
+                        // 若為匯率組，全數對齊第一天為 100
+                        else if (config.normalizeTo100) {
+                            const myDay1 = ds.rawAligned[0];
+                            if (myDay1 !== null) {
+                                finalData = ds.rawAligned.map(val => val === null ? null : (val / myDay1) * 100);
+                            }
+                        }
+                        return { ...ds, data: finalData };
+                    });
+
+                    setDatasets(finalDatasets);
+
+                    // 4. 計算面板數字顯示
+                    const mainAsset = finalDatasets.find(a => a.name === mainAssetName);
+                    const currentPrice = mainAsset.rawAligned[mainAsset.rawAligned.length - 1];
+                    const yesterdayPrice = mainAsset.rawAligned[mainAsset.rawAligned.length - 2];
+                    const change = currentPrice - yesterdayPrice;
+                    const changePct = (change / yesterdayPrice) * 100;
+
+                    setMainAssetStats({
+                        name: mainAsset.name,
+                        price: currentPrice.toFixed(2),
+                        change: change.toFixed(2),
+                        changePct: changePct.toFixed(2)
+                    });
+
+                    if (config.showSecondaryStats && config.secondaryStatsName) {
+                        const secAsset = finalDatasets.find(a => a.name === config.secondaryStatsName);
+                        if (secAsset) {
+                            const secCurrent = secAsset.rawAligned[secAsset.rawAligned.length - 1];
+                            const secYesterday = secAsset.rawAligned[secAsset.rawAligned.length - 2];
+                            setSecondaryAssetStats({
+                                name: secAsset.name,
+                                price: secCurrent.toFixed(2),
+                                change: (secCurrent - secYesterday).toFixed(2),
+                                changePct: (((secCurrent - secYesterday) / secYesterday) * 100).toFixed(2)
+                            });
+                        }
+                    }
+
+                    // 5. 動態框線邏輯 (基於真實數據)
+                    const monthHigh = Math.max(...mainAsset.rawAligned.filter(v => v !== null));
+                    const monthLow = Math.min(...mainAsset.rawAligned.filter(v => v !== null));
+                    const fiveDayLow = Math.min(...mainAsset.rawAligned.slice(-5).filter(v => v !== null));
+                    const tolerance = 0.005; 
+                    
+                    if (currentPrice <= fiveDayLow * (1 + tolerance)) {
+                        setBorderColorClass('border-[#00FF00] shadow-[0_0_20px_rgba(0,255,0,0.4)]');
+                    } else if (currentPrice >= monthHigh * (1 - tolerance)) {
+                        setBorderColorClass('border-[#FF0000] shadow-[0_0_20px_rgba(255,0,0,0.4)]');
+                    } else if (currentPrice <= monthLow * (1 + tolerance)) {
+                        setBorderColorClass('border-[#FFFF00] shadow-[0_0_20px_rgba(255,255,0,0.4)]');
+                    } else {
+                        setBorderColorClass('border-gray-700');
+                    }
+                    
+                    setLoading(false);
+                };
+
+                loadData();
+                return () => { isMounted = false; };
+            }, [config]);
+
+            // 繪製 Chart.js
+            useEffect(() => {
+                if (loading || hasError || datasets.length === 0 || !chartRef.current || !isExpanded) return;
+
+                if (chartInstance.current) {
+                    chartInstance.current.destroy();
+                }
+
+                // 計算 Y 軸上下限
+                let yMin, yMax;
+                if (config.id === 1) {
+                    // 第一組特殊規則：上限=006208最高+5%，下限=00713最低-5%
+                    const a6208 = datasets.find(a => a.name === "006208");
+                    const a713 = datasets.find(a => a.name === "00713");
+                    const max6208 = a6208 ? Math.max(...a6208.data.filter(v => v !== null)) : Number.MAX_VALUE;
+                    const min713 = a713 ? Math.min(...a713.data.filter(v => v !== null)) : 0;
+                    
+                    // 如果極值計算有效才套用
+                    if (max6208 !== Number.MAX_VALUE && min713 !== 0) {
+                        yMax = max6208 * 1.05;
+                        yMin = min713 * 0.95;
+                    } else {
+                        // 備援方案：若其中一個抓取失敗，回退到有效標的之+-20%
+                        const mainMax = Math.max(...(a6208?.data || a713?.data || []).filter(v => v !== null));
+                        const mainMin = Math.min(...(a6208?.data || a713?.data || []).filter(v => v !== null));
+                        yMax = mainMax * 1.2;
+                        yMin = mainMin * 0.8;
+                    }
+                } else if (config.normalizeTo100) {
+                    // 第六組：自動適應
+                    let allVals = [];
+                    datasets.forEach(ds => allVals.push(...ds.data.filter(v => v !== null)));
+                    yMax = Math.max(...allVals) * 1.05;
+                    yMin = Math.min(...allVals) * 0.95;
+                } else {
+                    // 標準規則：以主 ETF 數值的 +- 20% 為區間
+                    const mainAsset = datasets.find(a => a.name === (config.mainStatsName || config.assets[0].name));
+                    const mainMax = Math.max(...(mainAsset?.data || []).filter(v => v !== null));
+                    const mainMin = Math.min(...(mainAsset?.data || []).filter(v => v !== null));
+                    yMax = mainMax * 1.2;
+                    yMin = mainMin * 0.8;
+                }
+
+                const ctx = chartRef.current.getContext('2d');
+                const chartData = {
+                    labels: dates,
+                    datasets: datasets.map(asset => ({
+                        label: asset.name,
+                        data: asset.data,
+                        borderColor: asset.color,
+                        borderWidth: asset.isThick ? 4 : 2,
+                        pointRadius: 0,
+                        tension: 0.3
+                    }))
+                };
+
+                const chartOptions = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#ccc', usePointStyle: true, boxWidth: 8 } },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.85)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            // 客製化 Tooltip，即使畫面上對齊，也能顯示原始真實價格與漲幅
+                            callbacks: {
+                                label: function(context) {
+                                    const ds = datasets[context.datasetIndex];
+                                    const realValue = ds.rawAligned[context.dataIndex];
+                                    if (ds.alignTo || config.normalizeTo100) {
+                                        const day1 = ds.rawAligned[0];
+                                        const pct = (((realValue - day1) / day1) * 100).toFixed(2);
+                                        return `${ds.name}: ${realValue.toFixed(2)} (${pct >= 0 ? '+' : ''}${pct}%)`;
+                                    }
+                                    return `${ds.name}: ${realValue?.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888', maxTicksLimit: 6 } },
+                        y: { 
+                            min: yMin, 
+                            max: yMax, 
+                            grid: { color: 'rgba(255,255,255,0.05)' }, 
+                            ticks: { color: '#888' } 
+                        }
+                    }
+                };
+
+                chartInstance.current = new Chart(ctx, { type: 'line', data: chartData, options: chartOptions });
+
+                return () => {
+                    if (chartInstance.current) chartInstance.current.destroy();
+                };
+            }, [datasets, loading, hasError, dates, isExpanded]);
+
+            if (loading) {
+                return (
+                    <div className="bg-gray-800 rounded-2xl p-5 border-4 border-gray-700 flex flex-col items-center justify-center min-h-[150px] transition-all duration-500">
+                        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                        <div className="text-gray-400">正在同步 {title} 的數據...</div>
+                    </div>
+                );
+            }
+
+            if (hasError) {
+                return (
+                    <div className="bg-gray-800 rounded-2xl p-5 border-4 border-red-900 flex flex-col items-center justify-center min-h-[150px] transition-all duration-500">
+                        <div className="text-red-400 font-bold mb-2">⚠️ 部分數據抓取失敗</div>
+                        <div className="text-gray-400 text-sm mb-4">因 API 防護機制阻擋，請手動重新整理</div>
+                        <button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                            重新整理頁面
+                        </button>
+                    </div>
+                );
+            }
+
+            return (
+                <div className={`bg-gray-800 rounded-2xl p-5 border-4 transition-all duration-500 flex flex-col ${borderColorClass}`}>
+                    <div 
+                        className={`flex justify-between items-center ${!config.hideStats ? 'cursor-pointer group select-none' : ''}`}
+                        onClick={() => !config.hideStats && setIsExpanded(!isExpanded)}
+                    >
+                        <h2 className={`text-xl font-bold text-white tracking-wide ${!config.hideStats ? 'group-hover:text-blue-400 transition-colors' : ''}`}>{title}</h2>
+                        {!config.hideStats && (
+                            <button className="text-gray-400 group-hover:text-white transition-colors flex items-center gap-1 text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded-full">
+                                {isExpanded ? '▲ 收起圖表' : '▼ 展開圖表'}
+                            </button>
+                        )}
+                    </div>
+                    
+                    {!config.hideStats && (
+                        <div className="grid grid-cols-2 gap-4 mt-5 bg-gray-900/60 p-4 rounded-xl">
+                            <div className="flex flex-col">
+                                <span className="text-sm text-gray-400 mb-1">{mainAssetStats.name}</span>
+                                <span className="text-3xl font-bold text-white tracking-tight">{mainAssetStats.price}</span>
+                                <span className={`font-mono font-bold mt-1 text-lg ${mainAssetStats.change >= 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                    {mainAssetStats.change >= 0 ? '▲' : '▼'} {Math.abs(mainAssetStats.change)} ({Math.abs(mainAssetStats.changePct)}%)
+                                </span>
+                            </div>
+                            
+                            {secondaryAssetStats && (
+                                <div className="flex flex-col border-l border-gray-700 pl-4">
+                                    <span className="text-sm text-gray-400 mb-1">{secondaryAssetStats.name}</span>
+                                    <span className="text-3xl font-bold text-white tracking-tight">{secondaryAssetStats.price}</span>
+                                    <span className={`font-mono font-bold mt-1 text-lg ${secondaryAssetStats.change >= 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                        {secondaryAssetStats.change >= 0 ? '▲' : '▼'} {Math.abs(secondaryAssetStats.change)} ({Math.abs(secondaryAssetStats.changePct)}%)
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    
+                    <div className={`relative w-full transition-all duration-500 ease-in-out overflow-hidden ${isExpanded ? 'h-[250px] mt-4 opacity-100' : 'h-0 mt-0 opacity-0'}`}>
+                        {isExpanded && <canvas ref={chartRef}></canvas>}
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const widgetConfigs = [
+                {
+                    id: 1,
+                    title: "第一組：台股雙雄與大盤",
+                    mainStatsName: "006208", 
+                    showSecondaryStats: true,
+                    secondaryStatsName: "00713",
+                    assets: [
+                        { name: "006208", symbol: "006208.TW", color: '#ff4757', isThick: true },
+                        { name: "00713", symbol: "00713.TW", color: '#2ed573', isThick: true },
+                        // 第一天強制對齊 006208
+                        { name: "台灣大盤", symbol: "^TWII", alignTo: "006208", color: '#747d8c', isThick: false } 
+                    ]
+                },
+                {
+                    id: 2,
+                    title: "第二組：美國市場",
+                    mainStatsName: "00646",
+                    showSecondaryStats: false,
+                    assets: [
+                        { name: "00646", symbol: "00646.TW", color: '#1e90ff', isThick: true },
+                        // 第一天強制對齊 00646
+                        { name: "S&P 500", symbol: "^GSPC", alignTo: "00646", color: '#a4b0be', isThick: false } 
+                    ]
+                },
+                {
+                    id: 3,
+                    title: "第三組：日本市場",
+                    mainStatsName: "00645",
+                    showSecondaryStats: false,
+                    assets: [
+                        { name: "00645", symbol: "00645.TW", color: '#ffa502', isThick: true }, 
+                        // 第一天強制對齊 00645
+                        { name: "日本東證", symbol: "^TOPX", alignTo: "00645", color: '#a4b0be', isThick: false } 
+                    ]
+                },
+                {
+                    id: 4,
+                    title: "第四組：歐洲市場",
+                    mainStatsName: "00709",
+                    showSecondaryStats: false,
+                    assets: [
+                        { name: "00709", symbol: "00709.TW", color: '#ff6b81', isThick: true }, 
+                        // 第一天強制對齊 00709
+                        { name: "道瓊歐洲", symbol: "^STOXX50E", alignTo: "00709", color: '#a4b0be', isThick: false }
+                    ]
+                },
+                {
+                    id: 5,
+                    title: "第五組：債券與殖利率",
+                    mainStatsName: "00697B", 
+                    showSecondaryStats: true,
+                    secondaryStatsName: "00957B",
+                    assets: [
+                        { name: "00697B", symbol: "00697B.TWO", color: '#00d2d3', isThick: true }, 
+                        // 第一天強制對齊 00697B
+                        { name: "IEF", symbol: "IEF", alignTo: "00697B", color: '#00d2d3', isThick: false },   
+                        { name: "00957B", symbol: "00957B.TWO", color: '#e056fd', isThick: true }, 
+                        // 第一天強制對齊 00957B
+                        { name: "TLT", symbol: "TLT", alignTo: "00957B", color: '#e056fd', isThick: false }    
+                    ]
+                },
+                {
+                    id: 6,
+                    title: "第六組：國際匯率走勢 (換美金)",
+                    mainStatsName: "台幣(USD/TWD)", 
+                    hideStats: true,       
+                    defaultExpanded: true, 
+                    normalizeTo100: true, // 全部統一基準為100以便於圖表對齊顯示
+                    assets: [
+                        { name: "台幣(USD/TWD)", symbol: "TWD=X", color: '#ff9ff3', isThick: true }, 
+                        { name: "日幣(USD/JPY)", symbol: "JPY=X", color: '#feca57', isThick: true },   
+                        { name: "歐元(EUR/USD)", symbol: "EURUSD=X", color: '#48dbfb', isThick: true }    
+                    ]
+                }
+            ];
+
+            return (
+                <div className="max-w-7xl mx-auto">
+                    <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end border-b border-gray-700 pb-4">
+                        <div>
+                            <h1 className="text-3xl font-extrabold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent pb-1">
+                                專屬股市理財工具
+                            </h1>
+                            <p className="text-gray-400 mt-2 text-sm">
+                                即時動態看盤儀表板 | 數據來源：Yahoo Finance API 
+                            </p>
+                        </div>
+                        <div className="flex gap-4 text-xs mt-4 md:mt-0 font-bold bg-gray-800 p-2 rounded-lg border border-gray-700">
+                            <div className="flex items-center gap-2 text-[#00FF00]"><div className="w-3 h-3 rounded-full bg-[#00FF00] shadow-[0_0_8px_#00FF00]"></div>近5日低點</div>
+                            <div className="flex items-center gap-2 text-[#FF0000]"><div className="w-3 h-3 rounded-full bg-[#FF0000] shadow-[0_0_8px_#FF0000]"></div>近1月高點</div>
+                            <div className="flex items-center gap-2 text-[#FFFF00]"><div className="w-3 h-3 rounded-full bg-[#FFFF00] shadow-[0_0_8px_#FFFF00]"></div>近1月低點</div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {widgetConfigs.map(config => (
+                            <StockCard key={config.id} title={config.title} config={config} />
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
