@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>作業檢核器 Pro - 多科目儲存版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .cell-none { background-color: #ffffff; }
+        .cell-done { background-color: #22c55e; color: white; } /* 綠色: 全對 */
+        .cell-pending { background-color: #f97316; color: white; } /* 橘色: 沒訂正 */
+        
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            background-color: #f8fafc;
+            z-index: 10;
+            border-right: 2px solid #e2e8f0;
+        }
+        
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background-color: #f1f5f9;
+        }
+
+        .no-select {
+            user-select: none;
+        }
+
+        .table-container {
+            max-height: 55vh;
+            overflow: auto;
+        }
+
+        .subject-tab-active {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        th { min-width: 70px; font-size: 0.7rem; white-space: nowrap; }
+        
+        /* 壓縮後的儲存格高度 */
+        .row-height { height: 16px; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen font-sans">
+
+    <!-- 閒置密碼鎖定防護罩 -->
+    <div id="lockScreen" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex-col items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-80 text-center">
+            <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            </div>
+            <h2 class="text-xl font-bold text-slate-800 mb-2">系統閒置已鎖定</h2>
+            <p class="text-xs text-slate-500 mb-6">防止學生誤觸，請解除鎖定以繼續</p>
+            
+            <button id="showPwdInputBtn" onclick="showPasswordArea()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg transition mb-2 shadow-md">
+                解除鎖定
+            </button>
+            
+            <div id="pwdArea" class="hidden">
+                <input type="password" id="passwordInput" class="w-full border border-slate-300 rounded-lg px-4 py-2 mb-4 text-center tracking-widest focus:ring-2 focus:ring-blue-500 outline-none" placeholder="輸入密碼 (bee)" onkeypress="if(event.key === 'Enter') checkPassword()">
+                <button onclick="checkPassword()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition">確認解鎖</button>
+                <p id="pwdError" class="text-xs text-rose-500 mt-2 hidden">密碼錯誤，請重試</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col h-screen">
+        <!-- 頂部控制列 -->
+        <header class="bg-white shadow-sm p-3 z-30">
+            <div class="max-w-full mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="bg-blue-600 p-2 rounded-lg">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <h1 class="text-lg font-bold text-slate-800">作業檢核 Pro</h1>
+                            <div class="flex gap-2 text-[10px] text-slate-500 border-l border-slate-300 pl-3 items-center">
+                                <span class="font-bold text-slate-700">作業：</span>
+                                <div class="flex items-center gap-1"><div class="w-2.5 h-2.5 bg-green-500 rounded-sm"></div>左鍵:全對</div>
+                                <div class="flex items-center gap-1"><div class="w-2.5 h-2.5 bg-orange-500 rounded-sm"></div>右鍵:沒訂正</div>
+                                <div class="flex items-center gap-1"><div class="w-2.5 h-2.5 bg-white border border-slate-300 rounded-sm"></div>再點:取消</div>
+                                <div class="w-px h-3 bg-slate-300 mx-1"></div>
+                                <span class="font-bold text-slate-700">聯絡簿：</span>
+                                <div class="flex items-center gap-1"><div class="w-2.5 h-2.5 bg-green-500 rounded-full"></div>左鍵:已交</div>
+                                <div class="flex items-center gap-1"><div class="w-2.5 h-2.5 bg-rose-500 rounded-full"></div>右鍵:沒來(紅)</div>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-0.5" id="saveStatus">資料自動儲存於瀏覽器</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button id="viewToggleBtn" onclick="toggleView()" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-md text-sm transition shadow-sm whitespace-nowrap">
+                        查看未交總覽
+                    </button>
+                    
+                    <div class="h-6 w-px bg-slate-200 mx-1"></div>
+                    
+                    <button onclick="exportData()" class="text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-md text-sm transition border border-slate-200 whitespace-nowrap">
+                        匯出
+                    </button>
+                    <button onclick="triggerImport()" class="text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-md text-sm transition border border-slate-200 cursor-pointer whitespace-nowrap">
+                        匯入
+                    </button>
+                    <input type="file" id="importInput" class="hidden" accept=".json" onchange="importData(event)">
+
+                    <div class="h-6 w-px bg-slate-200 mx-1"></div>
+
+                    <button id="manualSyncBtn" class="hidden bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1.5 rounded-md text-sm transition border border-blue-200 flex items-center gap-1 font-bold whitespace-nowrap">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        手動更新
+                    </button>
+                    <button id="syncDirBtn" onclick="setupSyncDirectory()" class="bg-slate-100 text-slate-600 hover:bg-slate-200 px-3 py-1.5 rounded-md text-sm transition border border-slate-200 flex items-center gap-1 font-bold whitespace-nowrap">
+                        <span id="syncDirIndicator" class="w-2 h-2 rounded-full bg-rose-500"></span>
+                        <span id="syncDirText">設定目錄</span>
+                    </button>
+
+                    <button id="protectionBtn" onclick="toggleProtection()" class="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-md text-sm transition flex items-center gap-1 shadow-sm font-bold whitespace-nowrap">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        <span id="protectionText">啟動防護</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 獨立的聯絡簿區塊 -->
+        <div class="bg-white px-4 py-3 border-b border-slate-200 shadow-sm z-20">
+            <div class="max-w-full mx-auto flex flex-col md:flex-row md:items-center gap-3">
+                <div class="flex items-center gap-2 whitespace-nowrap">
+                    <h2 class="text-sm font-bold text-slate-700">聯絡簿檢查</h2>
+                    <span class="text-[10px] text-slate-400 hidden md:inline pl-2 border-l border-slate-200">左鍵:已交(綠) / 右鍵:沒來(紅)</span>
+                    <button onclick="openStudentsModal()" class="text-[10px] text-blue-600 hover:bg-blue-50 px-2 py-0.5 rounded transition border border-blue-200 ml-2">編輯座號</button>
+                    <button onclick="resetContactBook()" class="text-[10px] text-rose-500 hover:bg-rose-50 px-2 py-0.5 rounded transition border border-rose-100">清空本日紀錄</button>
+                </div>
+                <div class="flex flex-wrap gap-1.5 flex-1" id="contactBookContainer">
+                    <!-- 聯絡簿按鈕動態生成 -->
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-1 overflow-hidden">
+            <!-- 左側科目選擇 -->
+            <aside class="w-48 bg-white border-r border-slate-200 flex flex-col overflow-hidden">
+                <div class="p-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                    <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">科目清單</span>
+                    <button onclick="openNewSubjectModal()" class="text-[10px] font-bold text-blue-500 hover:underline flex items-center gap-0.5">
+                        ＋新增科目
+                    </button>
+                </div>
+                <nav class="flex-1 overflow-y-auto p-2 space-y-1" id="subjectList">
+                    <!-- 科目按鈕 -->
+                </nav>
+            </aside>
+
+            <!-- 主要內容區 -->
+            <main class="flex-1 p-4 overflow-auto bg-slate-50">
+                
+                <!-- 視圖 1: 編輯與表格視圖 -->
+                <div id="tableView">
+                    <div class="bg-white p-3 rounded-xl shadow-sm mb-4 border border-slate-200 flex items-center justify-between">
+                        <label class="text-sm font-bold text-slate-700 w-1/4 flex items-center gap-2">
+                            正在檢核：<span id="currentSubjectTitle" class="text-blue-600 truncate">--</span>
+                            <button onclick="resetCurrentSubject()" title="重置為預設範圍" class="text-[12px] text-slate-400 hover:text-blue-500 transition">🔄</button>
+                            <button onclick="deleteCurrentSubject()" title="刪除此科目" class="text-[12px] text-slate-400 hover:text-rose-500 transition">🗑️</button>
+                        </label>
+                        <textarea id="itemsInput" oninput="updateItems()" class="w-3/4 border border-slate-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none text-xs font-mono" rows="1" placeholder="使用「/」分隔檢核項目..."></textarea>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-md overflow-hidden border border-slate-200">
+                        <div class="table-container no-select">
+                            <table class="w-full border-collapse" id="mainTable">
+                                <thead id="tableHead" class="sticky-header"></thead>
+                                <tbody id="tableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 視圖 2: 未交總覽視圖 -->
+                <div id="summaryView" class="hidden">
+                    <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200 max-w-4xl mx-auto">
+                        <h2 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">未交作業統計清單</h2>
+                        <div id="summaryContent" class="space-y-6">
+                            <!-- 統計內容動態插入 -->
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- 自定義日期輸入彈窗 -->
+    <div id="dateModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-80">
+            <h3 class="font-bold mb-2">設定檢核日期</h3>
+            <p id="modalItemName" class="text-sm text-slate-500 mb-4"></p>
+            <input type="date" id="dateInput" class="w-full border border-slate-300 rounded px-3 py-2 mb-4 outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="flex justify-end gap-2">
+                <button onclick="closeDateModal()" class="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded hover:bg-slate-50">取消</button>
+                <button onclick="confirmDate()" class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded">確定儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 編輯座號彈窗 -->
+    <div id="studentsModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-96">
+            <h3 class="font-bold mb-2">設定班級座號</h3>
+            <p class="text-xs text-slate-500 mb-4">請輸入需要檢核的學生座號，以「逗號」分隔。<br>不在名單內的號碼將會被自動隱藏。</p>
+            <textarea id="studentsInput" rows="3" class="w-full border border-slate-300 rounded px-3 py-2 mb-4 outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"></textarea>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeStudentsModal()" class="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded hover:bg-slate-50">取消</button>
+                <button onclick="saveStudents()" class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded">套用並儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增科目彈窗 -->
+    <div id="newSubjectModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-80">
+            <h3 class="font-bold mb-2">新增檢核科目</h3>
+            <p class="text-xs text-slate-500 mb-4">請輸入新科目的名稱：</p>
+            <input type="text" id="newSubjectInput" class="w-full border border-slate-300 rounded px-3 py-2 mb-4 outline-none focus:ring-2 focus:ring-blue-500" placeholder="例如：英文習作">
+            <div class="flex justify-end gap-2">
+                <button onclick="closeNewSubjectModal()" class="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded hover:bg-slate-50">取消</button>
+                <button onclick="confirmAddSubject()" class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded">新增</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'hw_pro_state_v7';
+        const SYNC_FILENAME = 'hw_checker_data.json';
+
+        // 預設科目清單
+        const defaultSubjectsList = [
+            "國語甲本", "國語乙本", "國語習作", "小日記", "作文", 
+            "數學習作", "數學練習本", "自然習作", "社會習作", 
+            "開學回條１", "期中回條２", "國語圈詞考", 
+            "國語小考", "數學小考", "自然小考", "社會小考"
+        ];
+
+        // 取得科目的預設範圍
+        function getDefaultItems(sub) {
+            const map = {
+                "國語甲本": "一/三/五/七/九/十一/十三",
+                "國語乙本": "二/四/六/八/十/十二/十四",
+                "國語習作": "一/二/三/四/五/六/七/八/九/十/十一/十二/十三/十四",
+                "作文": "第一篇/第二篇/第三篇/第四篇/寒假一/寒假二",
+                "數學習作": "1-1/1-2/1綜合/2-1/2-2/2-3/2-4/2綜合/3-1/3-2/3-3/3綜合/4-1/4-2/4綜合/5-1/5-2/5綜合/上學期總綜合/6-1/6-2/6-3/7-1/7-2/7-3/7-4/8-1/8-2/8-3/9-1/9-2/9-3/下學期總綜合",
+                "自然習作": "一/二/三/四",
+                "社會習作": "一/二/三/四"
+            };
+            return map[sub] || "";
+        }
+
+        // 預設產生 1~30 號的陣列
+        function generateDefaultStudents() {
+            return Array.from({length: 30}, (_, i) => i + 1);
+        }
+
+        let state = {
+            currentSubject: "數學習作",
+            currentView: "table",
+            subjects: [...defaultSubjectsList], // 自訂義科目清單
+            activeStudents: generateDefaultStudents(), // 自訂義座號清單
+            contactBook: {}, 
+            data: {}
+        };
+
+        let activeDateItem = null;
+        let syncDirectoryHandle = null;
+
+        // ================= 閒置防護變數 =================
+        let isProtectionOn = false;
+        let idleTimer = null;
+        const IDLE_TIME_MS = 10 * 60 * 1000;
+
+        window.onload = async function() {
+            await initSyncAndData();
+            renderSubjectList();
+            renderContactBook();
+            renderTable();
+            document.addEventListener('contextmenu', e => {
+                if(e.target.closest('#mainTable')) e.preventDefault();
+            });
+        };
+
+        // 確保讀取資料時，每個科目在 data 裡都有專屬的獨立空間，並做向下相容
+        function migrateAndEnsureState() {
+            // 向下相容：如果舊備份沒有 subjects 或 activeStudents，則補齊
+            if (!state.subjects) state.subjects = [...defaultSubjectsList];
+            if (!state.activeStudents) state.activeStudents = generateDefaultStudents();
+
+            state.subjects.forEach(sub => {
+                if (!state.data[sub]) {
+                    state.data[sub] = {
+                        items: getDefaultItems(sub),
+                        dates: {},
+                        records: {}
+                    };
+                }
+            });
+        }
+
+        // ================= 目錄同步與手動更新邏輯 =================
+        async function initSyncAndData() {
+            try {
+                const db = await openDatabase();
+                const savedHandle = await getDirectoryHandle(db);
+                
+                if (savedHandle) {
+                    syncDirectoryHandle = savedHandle;
+                    const permission = await savedHandle.queryPermission({ mode: 'readwrite' });
+                    if (permission === 'granted') {
+                        updateSyncUI(true);
+                        const loaded = await loadFromSyncDirectory();
+                        if (!loaded) {
+                            loadFromLocalStorage();
+                            await writeToSyncDirectory();
+                        }
+                        return;
+                    } else {
+                        updateSyncUI(false, true);
+                    }
+                }
+            } catch (error) { console.error(error); }
+            loadFromLocalStorage();
+        }
+
+        async function setupSyncDirectory() {
+            try {
+                const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                syncDirectoryHandle = dirHandle;
+                const db = await openDatabase();
+                await saveDirectoryHandle(db, dirHandle);
+                updateSyncUI(true);
+                const loaded = await loadFromSyncDirectory();
+                if(!loaded){ await writeToSyncDirectory(); }
+                renderAll();
+                alert("目錄設定成功！\n資料將會自動寫入，您也可以隨時點擊「手動更新」讀取雲端最新紀錄。");
+            } catch (error) { console.error(error); }
+        }
+
+        function updateSyncUI(isConnected, needsPermission = false) {
+            const dirBtn = document.getElementById('syncDirBtn');
+            const manualBtn = document.getElementById('manualSyncBtn');
+            const status = document.getElementById('saveStatus');
+            
+            if (isConnected) {
+                document.getElementById('syncDirIndicator').className = 'w-2 h-2 rounded-full bg-green-500';
+                document.getElementById('syncDirText').innerText = '重新設定目錄';
+                manualBtn.classList.remove('hidden');
+                manualBtn.classList.replace('bg-amber-100', 'bg-blue-100');
+                manualBtn.classList.replace('text-amber-700', 'text-blue-700');
+                manualBtn.classList.replace('border-amber-200', 'border-blue-200');
+                manualBtn.classList.replace('hover:bg-amber-200', 'hover:bg-blue-200');
+                manualBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>手動更新`;
+                manualBtn.onclick = manualSyncUpdate;
+                status.innerText = "資料自動寫入指定目錄";
+            } else if (needsPermission) {
+                document.getElementById('syncDirIndicator').className = 'w-2 h-2 rounded-full bg-amber-500';
+                document.getElementById('syncDirText').innerText = '重新設定目錄';
+                manualBtn.classList.remove('hidden');
+                manualBtn.classList.replace('bg-blue-100', 'bg-amber-100');
+                manualBtn.classList.replace('text-blue-700', 'text-amber-700');
+                manualBtn.classList.replace('border-blue-200', 'border-amber-200');
+                manualBtn.classList.replace('hover:bg-blue-200', 'hover:bg-amber-200');
+                manualBtn.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500"></span>點擊恢復連線`;
+                manualBtn.onclick = async () => {
+                    try {
+                        const perm = await syncDirectoryHandle.requestPermission({ mode: 'readwrite' });
+                        if (perm === 'granted') {
+                            updateSyncUI(true);
+                            const loaded = await loadFromSyncDirectory();
+                            if (!loaded) await writeToSyncDirectory();
+                            renderAll();
+                        }
+                    } catch(e) { console.error(e); }
+                };
+                status.innerText = "等待恢復目錄連線...";
+            } else {
+                document.getElementById('syncDirIndicator').className = 'w-2 h-2 rounded-full bg-rose-500';
+                document.getElementById('syncDirText').innerText = '設定同步目錄';
+                manualBtn.classList.add('hidden');
+                status.innerText = "資料自動儲存於瀏覽器";
+            }
+        }
+
+        async function manualSyncUpdate() {
+            if (!syncDirectoryHandle) return;
+            const success = await loadFromSyncDirectory();
+            if (success) {
+                renderAll();
+                alert("手動更新成功！已載入雲端最新資料。");
+            } else {
+                alert("找不到同步檔案，請確認目錄內容。");
+            }
+        }
+
+        async function loadFromSyncDirectory() {
+            if (!syncDirectoryHandle) return false;
+            try {
+                const fileHandle = await syncDirectoryHandle.getFileHandle(SYNC_FILENAME);
+                const file = await fileHandle.getFile();
+                const text = await file.text();
+                if (text) {
+                    const imported = JSON.parse(text);
+                    if (imported.data) {
+                        state = imported;
+                        migrateAndEnsureState(); 
+                        return true;
+                    }
+                }
+            } catch (error) { console.error(error); }
+            return false;
+        }
+
+        async function writeToSyncDirectory() {
+            if (!syncDirectoryHandle) return;
+            try {
+                const fileHandle = await syncDirectoryHandle.getFileHandle(SYNC_FILENAME, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(JSON.stringify(state));
+                await writable.close();
+                document.getElementById('saveStatus').innerText = "已同步 " + new Date().toLocaleTimeString();
+            } catch (error) { console.error(error); }
+        }
+
+        // IndexedDB
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('HWCheckerDB', 1);
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings');
+                };
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        function saveDirectoryHandle(db, handle) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['settings'], 'readwrite');
+                const store = transaction.objectStore('settings');
+                const request = store.put(handle, 'syncDirectoryHandle');
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+        function getDirectoryHandle(db) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['settings'], 'readonly');
+                const store = transaction.objectStore('settings');
+                const request = store.get('syncDirectoryHandle');
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => resolve(null);
+            });
+        }
+
+        // ================= 防護機制邏輯 =================
+        function toggleProtection() {
+            if (!isProtectionOn) {
+                isProtectionOn = true;
+                const btn = document.getElementById('protectionBtn');
+                btn.classList.replace('bg-slate-800', 'bg-green-600');
+                btn.classList.replace('hover:bg-slate-900', 'hover:bg-green-700');
+                document.getElementById('protectionText').innerText = "防護中 (點擊立即鎖定)";
+                ['mousemove', 'mousedown', 'keypress', 'touchstart', 'scroll'].forEach(evt => {
+                    document.addEventListener(evt, resetIdleTimer, true);
+                });
+                resetIdleTimer();
+            } else {
+                showLockScreen();
+            }
+        }
+        function resetIdleTimer() {
+            if (!isProtectionOn) return;
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(() => showLockScreen(), IDLE_TIME_MS);
+        }
+        function showLockScreen() {
+            const ls = document.getElementById('lockScreen');
+            ls.classList.remove('hidden');
+            ls.classList.add('flex');
+            document.getElementById('showPwdInputBtn').classList.remove('hidden');
+            document.getElementById('pwdArea').classList.add('hidden');
+            document.getElementById('passwordInput').value = '';
+            document.getElementById('pwdError').classList.add('hidden');
+            clearTimeout(idleTimer);
+        }
+        function showPasswordArea() {
+            document.getElementById('showPwdInputBtn').classList.add('hidden');
+            document.getElementById('pwdArea').classList.remove('hidden');
+            setTimeout(() => document.getElementById('passwordInput').focus(), 50);
+        }
+        function checkPassword() {
+            const pwd = document.getElementById('passwordInput').value;
+            if (pwd === 'bee') {
+                document.getElementById('lockScreen').classList.replace('flex', 'hidden');
+                document.getElementById('pwdError').classList.add('hidden');
+                if (isProtectionOn) resetIdleTimer(); 
+            } else {
+                document.getElementById('pwdError').classList.remove('hidden');
+            }
+        }
+
+        // ================= 檔案匯入匯出 =================
+        async function exportData() {
+            const dataStr = JSON.stringify(state, null, 2);
+            const fileName = `作業備份_${new Date().toLocaleDateString().replace(/\//g, '')}.json`;
+
+            if (syncDirectoryHandle) {
+                try {
+                    const fileHandle = await syncDirectoryHandle.getFileHandle(fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(dataStr);
+                    await writable.close();
+                    alert(`已成功匯出至同步目錄：\n${fileName}`);
+                    return;
+                } catch (e) { console.error("寫入同步目錄失敗，將改用一般下載", e); }
+            }
+            
+            const blob = new Blob([dataStr], { type: "text/json;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        async function triggerImport() {
+            if (syncDirectoryHandle && window.showOpenFilePicker) {
+                try {
+                    const [fileHandle] = await window.showOpenFilePicker({
+                        startIn: syncDirectoryHandle,
+                        types: [{ description: 'JSON 備份檔', accept: { 'application/json': ['.json'] } }]
+                    });
+                    const file = await fileHandle.getFile();
+                    const text = await file.text();
+                    await processImportText(text);
+                    return;
+                } catch (e) {
+                    if (e.name !== 'AbortError') document.getElementById('importInput').click();
+                }
+            } else {
+                document.getElementById('importInput').click();
+            }
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) { await processImportText(e.target.result); };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        async function processImportText(text) {
+            try {
+                const imported = JSON.parse(text);
+                if (imported.data) {
+                    state = imported;
+                    migrateAndEnsureState(); 
+                    await saveState();
+                    location.reload();
+                } else alert("檔案格式不正確");
+            } catch (err) { alert("讀取失敗：" + err); }
+        }
+
+        // ================= 讀寫與渲染 =================
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                state = JSON.parse(saved);
+                if (!state.contactBook) state.contactBook = {}; 
+                migrateAndEnsureState();
+            } else {
+                migrateAndEnsureState(); // 初始化全新資料
+            }
+            // 防呆：確保 currentSubject 存在於清單中
+            if (!state.subjects.includes(state.currentSubject)) state.currentSubject = state.subjects[0] || "數學習作";
+            state.currentView = "table";
+            
+            document.getElementById('itemsInput').value = state.data[state.currentSubject]?.items || "";
+            document.getElementById('currentSubjectTitle').innerText = state.currentSubject;
+        }
+
+        async function saveState() {
+            if (syncDirectoryHandle) await writeToSyncDirectory();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            if (!syncDirectoryHandle) {
+                document.getElementById('saveStatus').innerText = "已本機儲存 " + new Date().toLocaleTimeString();
+            }
+        }
+
+        function renderAll() {
+            renderSubjectList();
+            renderContactBook();
+            if (state.currentView === "summary") renderSummary();
+            else renderTable();
+            
+            if(document.getElementById('itemsInput')) {
+                document.getElementById('itemsInput').value = state.data[state.currentSubject]?.items || "";
+                document.getElementById('currentSubjectTitle').innerText = state.currentSubject;
+            }
+        }
+
+        // ================= 座號設定邏輯 =================
+        function openStudentsModal() {
+            document.getElementById('studentsInput').value = state.activeStudents.join(', ');
+            document.getElementById('studentsModal').classList.remove('hidden');
+        }
+        function closeStudentsModal() {
+            document.getElementById('studentsModal').classList.add('hidden');
+        }
+        function saveStudents() {
+            const val = document.getElementById('studentsInput').value;
+            // 解析字串為數字陣列
+            const arr = val.split(/[,、]/).map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+            if (arr.length > 0) {
+                // 排序以保持介面美觀
+                state.activeStudents = arr.sort((a, b) => a - b);
+                saveState();
+                renderAll();
+                closeStudentsModal();
+            } else {
+                alert("請至少輸入一個有效的座號！");
+            }
+        }
+
+        // ================= 新增/刪除科目邏輯 =================
+        function openNewSubjectModal() {
+            document.getElementById('newSubjectInput').value = "";
+            document.getElementById('newSubjectModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('newSubjectInput').focus(), 100);
+        }
+        function closeNewSubjectModal() {
+            document.getElementById('newSubjectModal').classList.add('hidden');
+        }
+        function confirmAddSubject() {
+            const val = document.getElementById('newSubjectInput').value.trim();
+            if (val) {
+                if (state.subjects.includes(val)) {
+                    alert("此科目已經存在了！");
+                    return;
+                }
+                state.subjects.push(val);
+                state.data[val] = { items: getDefaultItems(val), dates: {}, records: {} };
+                switchSubject(val);
+                closeNewSubjectModal();
+            }
+        }
+        function deleteCurrentSubject() {
+            if (state.subjects.length <= 1) {
+                alert("請至少保留一個科目！");
+                return;
+            }
+            if (confirm(`確定要將「${state.currentSubject}」徹底刪除嗎？\n(此動作將會清除該科目的所有紀錄)`)) {
+                state.subjects = state.subjects.filter(s => s !== state.currentSubject);
+                delete state.data[state.currentSubject]; // 清除資料釋放空間
+                switchSubject(state.subjects[0]); // 切換到第一個科目
+            }
+        }
+
+        // ================= 聯絡簿邏輯 =================
+        function renderContactBook() {
+            const container = document.getElementById('contactBookContainer');
+            let html = '';
+            
+            // 根據自訂義的座號陣列進行迴圈
+            state.activeStudents.forEach(i => {
+                const status = state.contactBook[i] || 0;
+                let btnClass = 'bg-slate-100 text-slate-600 hover:bg-slate-200 border-slate-200';
+                if (status === 1) btnClass = 'bg-green-500 text-white shadow-inner border-green-600';
+                else if (status === 2) btnClass = 'bg-rose-500 text-white shadow-inner border-rose-600';
+                
+                html += `
+                    <div onclick="toggleContactBook(${i})" 
+                         oncontextmenu="toggleContactBookAbsent(event, ${i})"
+                         class="w-[32px] h-[32px] rounded-full border flex items-center justify-center text-xs font-bold cursor-pointer transition-all select-none ${btnClass}">
+                        ${i}
+                    </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function toggleContactBook(no) {
+            if (state.contactBook[no] === 1) state.contactBook[no] = 0;
+            else state.contactBook[no] = 1;
+            saveState();
+            renderContactBook();
+            if (state.currentView === "summary") renderSummary();
+        }
+
+        function toggleContactBookAbsent(event, no) {
+            event.preventDefault(); 
+            if (state.contactBook[no] === 2) state.contactBook[no] = 0;
+            else state.contactBook[no] = 2;
+            saveState();
+            renderContactBook();
+            if (state.currentView === "summary") renderSummary();
+        }
+
+        function resetContactBook() {
+            if (confirm('確定要清空今天的「聯絡簿」檢查紀錄嗎？')) {
+                state.contactBook = {};
+                saveState();
+                renderContactBook();
+                if (state.currentView === "summary") renderSummary();
+            }
+        }
+
+        // ================= 表格渲染與切換邏輯 =================
+        function renderSubjectList() {
+            const list = document.getElementById('subjectList');
+            list.innerHTML = "";
+            state.subjects.forEach(sub => {
+                const active = sub === state.currentSubject ? 'subject-tab-active shadow-sm' : 'text-slate-600 hover:bg-slate-50';
+                list.innerHTML += `
+                    <button onclick="switchSubject('${sub}')" class="w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors border border-transparent ${active}">
+                        ${sub}
+                    </button>
+                `;
+            });
+        }
+
+        function switchSubject(name) {
+            state.currentSubject = name;
+            document.getElementById('itemsInput').value = state.data[name]?.items || "";
+            document.getElementById('currentSubjectTitle').innerText = name;
+            renderSubjectList();
+            if (state.currentView === "summary") renderSummary();
+            else renderTable();
+            saveState();
+        }
+
+        function updateItems() {
+            const val = document.getElementById('itemsInput').value;
+            state.data[state.currentSubject].items = val;
+            renderTable();
+            saveState();
+        }
+
+        function toggleView() {
+            const tv = document.getElementById('tableView');
+            const sv = document.getElementById('summaryView');
+            const btn = document.getElementById('viewToggleBtn');
+
+            if (state.currentView === "table") {
+                state.currentView = "summary";
+                tv.classList.add('hidden');
+                sv.classList.remove('hidden');
+                btn.innerText = "回到檢核表";
+                renderSummary();
+            } else {
+                state.currentView = "table";
+                tv.classList.remove('hidden');
+                sv.classList.add('hidden');
+                btn.innerText = "查看未交總覽";
+                renderTable();
+            }
+        }
+
+        function formatDisplayDate(dateStr) {
+            if (!dateStr) return "";
+            const parts = dateStr.split('-');
+            if (parts.length === 3) return `${parts[1]}/${parts[2]}`;
+            return dateStr;
+        }
+
+        function renderTable() {
+            const currentSubData = state.data[state.currentSubject];
+            if(!currentSubData) return;
+            const items = currentSubData.items.split('/').filter(i => i.trim() !== "");
+            const dates = currentSubData.dates || {};
+            
+            const thead = document.getElementById('tableHead');
+            const tbody = document.getElementById('tableBody');
+            
+            let headHtml = `<tr><th class="sticky-col p-2 border-b border-slate-200 bg-slate-100 w-12 text-slate-600 font-bold">座號</th>`;
+            items.forEach(item => {
+                const displayDate = formatDisplayDate(dates[item]);
+                const dateText = dates[item] ? `<div class="text-[10px] text-blue-500 font-normal mt-0.5">${displayDate}</div>` : '<div class="text-[9px] text-slate-400 font-normal mt-0.5">設日期</div>';
+                headHtml += `
+                    <th class="p-2 border-b border-slate-200 bg-slate-100 cursor-pointer hover:bg-slate-200 transition" onclick="openDateModal('${item}')">
+                        <div class="text-slate-700 font-bold">${item}</div>
+                        ${dateText}
+                    </th>`;
+            });
+            headHtml += `</tr>`;
+            thead.innerHTML = headHtml;
+
+            let bodyHtml = "";
+            // 根據自訂義的座號陣列進行迴圈
+            state.activeStudents.forEach(i => {
+                bodyHtml += `<tr class="row-height"><td class="sticky-col text-center font-bold border-b border-slate-200 bg-slate-50 text-slate-500 text-[10px]">${i}</td>`;
+                items.forEach(item => {
+                    const key = `${i}_${item}`;
+                    const status = currentSubData.records[key] || 0;
+                    let statusClass = "cell-none";
+                    if (status === 1) statusClass = "cell-done";
+                    if (status === 2) statusClass = "cell-pending";
+                    
+                    bodyHtml += `
+                        <td class="p-0 border-b border-slate-200 border-r border-slate-200 h-[16px]">
+                            <div 
+                                class="w-full h-full cursor-pointer transition-colors duration-75 ${statusClass}"
+                                onclick="handleLeftClick('${i}', '${item}')"
+                                oncontextmenu="handleRightClick(event, '${i}', '${item}')"
+                            ></div>
+                        </td>`;
+                });
+                bodyHtml += `</tr>`;
+            });
+            tbody.innerHTML = bodyHtml;
+        }
+
+        function handleLeftClick(no, item) {
+            const currentSubData = state.data[state.currentSubject];
+            const key = `${no}_${item}`;
+            const currentStatus = currentSubData.records[key] || 0;
+
+            if (currentStatus === 1) currentSubData.records[key] = 0;
+            else currentSubData.records[key] = 1;
+            
+            renderTable();
+            saveState();
+        }
+
+        function handleRightClick(event, no, item) {
+            event.preventDefault(); 
+            const currentSubData = state.data[state.currentSubject];
+            const key = `${no}_${item}`;
+            const currentStatus = currentSubData.records[key] || 0;
+
+            if (currentStatus === 2) currentSubData.records[key] = 0;
+            else currentSubData.records[key] = 2;
+            
+            renderTable();
+            saveState();
+        }
+
+        function renderSummary() {
+            const summaryContent = document.getElementById('summaryContent');
+            let hasAnyData = false;
+            let html = "";
+
+            state.subjects.forEach(subjectName => {
+                const subjectData = state.data[subjectName];
+                if (!subjectData) return;
+
+                const items = subjectData.items.split('/').filter(i => i.trim() !== "");
+                const dates = subjectData.dates || {};
+                const datedItems = items.filter(item => dates[item]);
+
+                if (datedItems.length > 0) {
+                    hasAnyData = true;
+                    html += `
+                        <div class="mb-6">
+                            <h3 class="text-xl font-bold text-slate-800 border-b-2 border-blue-500 pb-1 mb-4">${subjectName}</h3>
+                            <div class="space-y-4">
+                    `;
+
+                    datedItems.forEach(item => {
+                        const missing = [];
+                        const pending = [];
+                        // 根據自訂義的座號陣列進行迴圈
+                        state.activeStudents.forEach(i => {
+                            if (state.contactBook[i] === 2) return; // 排除請假沒來
+                            const status = subjectData.records[`${i}_${item}`] || 0;
+                            if (status === 0) missing.push(i);
+                            if (status === 2) pending.push(i);
+                        });
+
+                        html += `
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <div class="flex justify-between items-end mb-3">
+                                    <h4 class="text-lg font-bold text-slate-700">${subjectName} - ${item}</h4>
+                                    <span class="text-sm bg-blue-100 text-blue-700 px-2 py-0.5 rounded">檢核日期：${dates[item]}</span>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <h5 class="text-xs font-bold text-rose-500 mb-1 uppercase tracking-tight">尚未交 (${missing.length}人)</h5>
+                                        <div class="text-slate-800 font-mono tracking-wider break-all bg-white p-2 rounded border border-rose-100 min-h-[40px]">
+                                            ${missing.length > 0 ? missing.join(', ') : '<span class="text-slate-300 italic">全數繳交</span>'}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h5 class="text-xs font-bold text-orange-500 mb-1 uppercase tracking-tight">未訂正 (${pending.length}人)</h5>
+                                        <div class="text-slate-800 font-mono tracking-wider break-all bg-white p-2 rounded border border-orange-100 min-h-[40px]">
+                                            ${pending.length > 0 ? pending.join(', ') : '<span class="text-slate-300 italic">無</span>'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += `</div></div>`;
+                }
+            });
+
+            if (!hasAnyData) {
+                summaryContent.innerHTML = `<div class="text-slate-400 text-center py-10">請先在「檢核表」中點擊表頭項目設定「檢核日期」，<br>系統才能依此產生統計清單。</div>`;
+            } else {
+                summaryContent.innerHTML = html;
+            }
+        }
+
+        function openDateModal(item) {
+            activeDateItem = item;
+            document.getElementById('modalItemName').innerText = `檢核項目：${item}`;
+            
+            let currentDate = state.data[state.currentSubject].dates[item];
+            if (!currentDate) {
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                currentDate = `${yyyy}-${mm}-${dd}`;
+            }
+            
+            document.getElementById('dateInput').value = currentDate;
+            document.getElementById('dateModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('dateInput').focus(), 100);
+        }
+
+        function closeDateModal() {
+            document.getElementById('dateModal').classList.add('hidden');
+            activeDateItem = null;
+        }
+
+        function confirmDate() {
+            if (activeDateItem) {
+                const val = document.getElementById('dateInput').value;
+                if (!state.data[state.currentSubject].dates) state.data[state.currentSubject].dates = {};
+                if (val === "") delete state.data[state.currentSubject].dates[activeDateItem];
+                else state.data[state.currentSubject].dates[activeDateItem] = val;
+                saveState();
+                renderTable();
+            }
+            closeDateModal();
+        }
+
+        function resetCurrentSubject() {
+            if (confirm(`確定要清除「${state.currentSubject}」的所有紀錄、項目與日期嗎？`)) {
+                state.data[state.currentSubject] = { items: getDefaultItems(state.currentSubject), dates: {}, records: {} };
+                document.getElementById('itemsInput').value = state.data[state.currentSubject].items;
+                saveState();
+                renderTable();
+            }
+        }
+    </script>
+</body>
+</html>
