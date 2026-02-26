@@ -3,105 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>台灣地址拼拼樂 - 深度挑戰版</title>
+    <title>地名階層學生練習 - 台灣地址拼圖</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 加入觸控螢幕的拖曳支援 (Polyfill) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
+    <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
-        
-        body {
-            font-family: 'Noto Sans TC', sans-serif;
-            background-color: #f8fafc;
-            touch-action: manipulation;
-        }
-
-        .draggable-item {
-            cursor: grab;
-            transition: all 0.2s ease;
-            user-select: none;
-        }
-
-        .draggable-item:active {
-            cursor: grabbing;
-            transform: scale(1.05);
-            z-index: 50;
-        }
-
-        .dragging {
-            opacity: 0.4;
-            background-color: #dbeafe;
-            border: 2px dashed #3b82f6;
-        }
-
-        .drop-zone {
-            min-height: 140px;
-        }
-
-        .confetti {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            pointer-events: none;
-            z-index: 100;
-        }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f1f5f9; touch-action: manipulation; }
+        /* 加上 touch-action: none; 防止拖曳方塊時觸發頁面滾動 */
+        .draggable-item { cursor: grab; transition: all 0.2s ease; user-select: none; touch-action: none; }
+        .draggable-item:active { cursor: grabbing; transform: scale(1.05); z-index: 50; }
+        .dragging { opacity: 0.4; background-color: #e2e8f0; border: 2px dashed #3b82f6; }
+        .drop-zone { min-height: 140px; }
+        .confetti { position: absolute; width: 8px; height: 8px; pointer-events: none; z-index: 100; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4">
 
     <div class="max-w-5xl w-full bg-white rounded-3xl shadow-2xl p-6 md:p-10 text-center relative overflow-hidden border border-gray-100">
-        <!-- Decoration Bar -->
-        <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-teal-400 to-indigo-500"></div>
+        <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
 
         <div class="mb-6">
-            <h1 class="text-3xl font-bold text-slate-800 mb-2">🏘️ 台灣地址拼拼樂</h1>
-            <p class="text-slate-500">挑戰極致長地址排序，答對了就能在地圖上找到它！</p>
+            <h1 class="text-3xl font-bold text-slate-800 mb-2">🏘️ 地名階層學生練習</h1>
+            <p class="text-slate-500 italic">依序排列台灣地址組件，答對後可開啟實境地圖觀看。</p>
         </div>
 
-        <!-- Info Tags -->
         <div class="flex justify-center items-center mb-6">
-            <span id="address-type-tag" class="px-4 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-sm font-bold border border-indigo-100 shadow-sm">
-                加載中...
+            <span id="address-type-tag" class="px-4 py-1.5 bg-slate-100 text-slate-700 rounded-full text-sm font-bold border border-slate-200 shadow-sm">
+                題庫加載中...
             </span>
         </div>
 
-        <!-- Game Area -->
         <div id="game-container">
             <div id="address-slots" class="drop-zone flex flex-wrap justify-center items-center gap-3 p-8 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 mb-8 transition-colors">
-                <!-- Address components rendered here -->
+                <!-- 地址組塊 -->
             </div>
 
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <button id="check-btn" class="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl transition-all shadow-lg hover:shadow-indigo-200 active:transform active:scale-95">
+                <button id="check-btn" class="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl transition-all shadow-lg active:transform active:scale-95">
                     檢查順序 ✅
                 </button>
-                <button id="next-btn" class="px-10 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-all active:transform active:scale-95">
-                    跳過此題 ⏭️
+                <button id="next-btn" class="px-10 py-4 bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold rounded-2xl transition-all active:transform active:scale-95">
+                    換下一題 ⏭️
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Feedback Modal -->
+    <!-- 答對彈窗 -->
     <div id="feedback-modal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 backdrop-blur-sm">
         <div class="bg-white p-8 rounded-3xl shadow-2xl scale-0 transition-transform duration-300 transform text-center max-w-sm w-full mx-4" id="modal-content">
             <div id="status-icon" class="text-7xl mb-4">🎉</div>
             <h2 id="status-title" class="text-2xl font-bold mb-2">完全正確！</h2>
-            <p id="status-msg" class="text-slate-600 mb-8">太棒了！拼圖成功。現在可以點擊下方按鈕去地圖看看實景喔！</p>
+            <p id="status-msg" class="text-slate-600 mb-8">太棒了！順序完全正確。快來看看這是在哪裡吧！</p>
             
             <div class="space-y-3">
-                <button id="modal-map-btn" class="w-full py-4 bg-rose-500 text-white rounded-2xl font-bold hover:bg-rose-600 transition-colors shadow-lg shadow-rose-200 flex items-center justify-center gap-2">
+                <button id="modal-map-btn" class="w-full py-4 bg-rose-500 text-white rounded-2xl font-bold hover:bg-rose-600 transition-all shadow-lg shadow-rose-200 flex items-center justify-center gap-2">
                     📍 看看我在哪裡？
                 </button>
                 <button onclick="closeModal()" class="w-full py-3 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-900 transition-colors">
-                    挑戰下一題
+                    關閉並下一題
                 </button>
             </div>
         </div>
     </div>
 
     <script>
-        /**
-         * Address Database
-         */
         const addressData = [
             // ================= 1. 新北市三峽區 (30筆) =================
             { full: ["新北市", "三峽區", "三峽里", "1鄰", "民權街", "84號"], type: "新北三峽" },
@@ -180,154 +150,154 @@
             { full: ["新北市", "八里區", "博物館路", "200號"], display: "十三行博物館", type: "新北地標" },
 
             // ================= 4. 其他縣市題庫 (21縣市 x 5筆 = 105筆) =================
-            // 基隆市 (5)
-            { full: ["基隆市", "中正區", "義一路", "1號"], type: "其他縣市(基隆)" },
-            { full: ["基隆市", "仁愛區", "孝二路", "39號"], type: "其他縣市(基隆)" },
-            { full: ["基隆市", "信義區", "信二路", "301號"], type: "其他縣市(基隆)" },
-            { full: ["基隆市", "七堵區", "光明路", "21號"], type: "其他縣市(基隆)" },
-            { full: ["基隆市", "安樂區", "麥金路", "482號"], type: "其他縣市(基隆)" },
-            // 台北市 (5)
-            { full: ["台北市", "信義區", "市府路", "1號"], type: "其他縣市(台北)" },
-            { full: ["台北市", "中正區", "重慶南路一段", "122號"], type: "其他縣市(台北)" },
-            { full: ["台北市", "大安區", "羅斯福路四段", "1號"], type: "其他縣市(台北)" },
-            { full: ["台北市", "中山區", "中山北路二段", "48號"], type: "其他縣市(台北)" },
-            { full: ["台北市", "士林區", "中正路", "439號"], type: "其他縣市(台北)" },
-            // 桃園市 (5)
-            { full: ["桃園市", "桃園區", "縣府路", "1號"], type: "其他縣市(桃園)" },
-            { full: ["桃園市", "中壢區", "環北路", "380號"], type: "其他縣市(桃園)" },
-            { full: ["桃園市", "平鎮區", "振興路", "5號"], type: "其他縣市(桃園)" },
-            { full: ["桃園市", "八德區", "中山路", "47號"], type: "其他縣市(桃園)" },
-            { full: ["桃園市", "大溪區", "普濟路", "11號"], type: "其他縣市(桃園)" },
-            // 新竹縣 (5)
-            { full: ["新竹縣", "竹北市", "光明六路", "10號"], type: "其他縣市(新竹縣)" },
-            { full: ["新竹縣", "竹東鎮", "中正路", "205號"], type: "其他縣市(新竹縣)" },
-            { full: ["新竹縣", "關西鎮", "正義路", "51號"], type: "其他縣市(新竹縣)" },
-            { full: ["新竹縣", "新埔鎮", "中正路", "776號"], type: "其他縣市(新竹縣)" },
-            { full: ["新竹縣", "湖口鄉", "中央街", "2號"], type: "其他縣市(新竹縣)" },
-            // 新竹市 (5)
-            { full: ["新竹市", "北區", "中正路", "120號"], type: "其他縣市(新竹市)" },
-            { full: ["新竹市", "東區", "民族路", "40號"], type: "其他縣市(新竹市)" },
-            { full: ["新竹市", "香山區", "育德街", "188號"], type: "其他縣市(新竹市)" },
-            { full: ["新竹市", "東區", "光復路二段", "101號"], type: "其他縣市(新竹市)" },
-            { full: ["新竹市", "北區", "中山路", "43號"], type: "其他縣市(新竹市)" },
-            // 苗栗縣 (5)
-            { full: ["苗栗縣", "苗栗市", "縣府路", "100號"], type: "其他縣市(苗栗)" },
-            { full: ["苗栗縣", "頭份市", "中山路", "232號"], type: "其他縣市(苗栗)" },
-            { full: ["苗栗縣", "竹南鎮", "中正路", "112號"], type: "其他縣市(苗栗)" },
-            { full: ["苗栗縣", "苑裡鎮", "信義路", "1號"], type: "其他縣市(苗栗)" },
-            { full: ["苗栗縣", "通霄鎮", "中正路", "8號"], type: "其他縣市(苗栗)" },
-            // 台中市 (5)
-            { full: ["台中市", "西屯區", "台灣大道三段", "99號"], type: "其他縣市(台中)" },
-            { full: ["台中市", "北區", "三民路三段", "129號"], type: "其他縣市(台中)" },
-            { full: ["台中市", "中區", "台灣大道一段", "1號"], type: "其他縣市(台中)" },
-            { full: ["台中市", "南屯區", "向心南路", "811號"], type: "其他縣市(台中)" },
-            { full: ["台中市", "豐原區", "市政路", "2號"], type: "其他縣市(台中)" },
-            // 彰化縣 (5)
-            { full: ["彰化縣", "彰化市", "中山路二段", "416號"], type: "其他縣市(彰化)" },
-            { full: ["彰化縣", "員林市", "員林大道二段", "99號"], type: "其他縣市(彰化)" },
-            { full: ["彰化縣", "鹿港鎮", "民權路", "168號"], type: "其他縣市(彰化)" },
-            { full: ["彰化縣", "和美鎮", "鹿和路六段", "337號"], type: "其他縣市(彰化)" },
-            { full: ["彰化縣", "溪湖鎮", "和平街", "112號"], type: "其他縣市(彰化)" },
-            // 南投縣 (5)
-            { full: ["南投縣", "南投市", "中興路", "660號"], type: "其他縣市(南投)" },
-            { full: ["南投縣", "埔里鎮", "中山路二段", "239號"], type: "其他縣市(南投)" },
-            { full: ["南投縣", "草屯鎮", "草鞋墩一街", "8號"], type: "其他縣市(南投)" },
-            { full: ["南投縣", "竹山鎮", "集山路三段", "1220號"], type: "其他縣市(南投)" },
-            { full: ["南投縣", "集集鎮", "民生路", "61號"], type: "其他縣市(南投)" },
-            // 雲林縣 (5)
-            { full: ["雲林縣", "斗六市", "雲林路二段", "515號"], type: "其他縣市(雲林)" },
-            { full: ["雲林縣", "虎尾鎮", "行政路", "6號"], type: "其他縣市(雲林)" },
-            { full: ["雲林縣", "西螺鎮", "光復西路", "20號"], type: "其他縣市(雲林)" },
-            { full: ["雲林縣", "斗南鎮", "文昌路", "200號"], type: "其他縣市(雲林)" },
-            { full: ["雲林縣", "北港鎮", "中山路", "225號"], type: "其他縣市(雲林)" },
-            // 嘉義縣 (5)
-            { full: ["嘉義縣", "太保市", "祥和一路東段", "1號"], type: "其他縣市(嘉義縣)" },
-            { full: ["嘉義縣", "朴子市", "光復路", "34號"], type: "其他縣市(嘉義縣)" },
-            { full: ["嘉義縣", "民雄鄉", "建國路二段", "264號"], type: "其他縣市(嘉義縣)" },
-            { full: ["嘉義縣", "大林鎮", "中正路", "238號"], type: "其他縣市(嘉義縣)" },
-            { full: ["嘉義縣", "布袋鎮", "光復里", "10號"], type: "其他縣市(嘉義縣)" },
-            // 嘉義市 (5)
-            { full: ["嘉義市", "東區", "中山路", "199號"], type: "其他縣市(嘉義市)" },
-            { full: ["嘉義市", "西區", "垂楊路", "443號"], type: "其他縣市(嘉義市)" },
-            { full: ["嘉義市", "東區", "吳鳳北路", "184號"], type: "其他縣市(嘉義市)" },
-            { full: ["嘉義市", "西區", "中興路", "672號"], type: "其他縣市(嘉義市)" },
-            { full: ["嘉義市", "東區", "學府路", "300號"], type: "其他縣市(嘉義市)" },
-            // 台南市 (5)
-            { full: ["台南市", "安平區", "永華路二段", "6號"], type: "其他縣市(台南)" },
-            { full: ["台南市", "中西區", "中正路", "1號"], type: "其他縣市(台南)" },
-            { full: ["台南市", "東區", "大學路", "1號"], type: "其他縣市(台南)" },
-            { full: ["台南市", "北區", "公園北路", "78號"], type: "其他縣市(台南)" },
-            { full: ["台南市", "南區", "明興路", "2號"], type: "其他縣市(台南)" },
-            // 高雄市 (5)
-            { full: ["高雄市", "苓雅區", "四維三路", "2號"], type: "其他縣市(高雄)" },
-            { full: ["高雄市", "三民區", "哈爾濱街", "215號"], type: "其他縣市(高雄)" },
-            { full: ["高雄市", "新興區", "中正三路", "34號"], type: "其他縣市(高雄)" },
-            { full: ["高雄市", "鳳山區", "光復路二段", "120號"], type: "其他縣市(高雄)" },
-            { full: ["高雄市", "鹽埕區", "大仁路", "139號"], type: "其他縣市(高雄)" },
-            // 屏東縣 (5)
-            { full: ["屏東縣", "屏東市", "自由路", "527號"], type: "其他縣市(屏東)" },
-            { full: ["屏東縣", "潮州鎮", "中山路", "38號"], type: "其他縣市(屏東)" },
-            { full: ["屏東縣", "東港鎮", "新勝街", "1號"], type: "其他縣市(屏東)" },
-            { full: ["屏東縣", "恆春鎮", "天文路", "1號"], type: "其他縣市(屏東)" },
-            { full: ["屏東縣", "萬丹鄉", "和平西路", "155號"], type: "其他縣市(屏東)" },
-            // 宜蘭縣 (5)
-            { full: ["宜蘭縣", "宜蘭市", "縣政一街", "1號"], type: "其他縣市(宜蘭)" },
-            { full: ["宜蘭縣", "羅東鎮", "中興路", "3號"], type: "其他縣市(宜蘭)" },
-            { full: ["宜蘭縣", "蘇澳鎮", "蘇南路", "1號"], type: "其他縣市(宜蘭)" },
-            { full: ["宜蘭縣", "頭城鎮", "開蘭路", "1號"], type: "其他縣市(宜蘭)" },
-            { full: ["宜蘭縣", "礁溪鄉", "中山路二段", "3號"], type: "其他縣市(宜蘭)" },
-            // 花蓮縣 (5)
-            { full: ["花蓮縣", "花蓮市", "府前路", "17號"], type: "其他縣市(花蓮)" },
-            { full: ["花蓮縣", "吉安鄉", "吉安路二段", "116號"], type: "其他縣市(花蓮)" },
-            { full: ["花蓮縣", "玉里鎮", "中正路", "148號"], type: "其他縣市(花蓮)" },
-            { full: ["花蓮縣", "新城鄉", "光復路", "570號"], type: "其他縣市(花蓮)" },
-            { full: ["花蓮縣", "壽豐鄉", "壽山路", "26號"], type: "其他縣市(花蓮)" },
-            // 台東縣 (5)
-            { full: ["台東縣", "台東市", "中山路", "276號"], type: "其他縣市(台東)" },
-            { full: ["台東縣", "成功鎮", "中山東路", "53號"], type: "其他縣市(台東)" },
-            { full: ["台東縣", "關山鎮", "中山路", "54號"], type: "其他縣市(台東)" },
-            { full: ["台東縣", "卑南鄉", "太平路", "113號"], type: "其他縣市(台東)" },
-            { full: ["台東縣", "鹿野鄉", "瑞景路一段", "21號"], type: "其他縣市(台東)" },
-            // 澎湖縣 (5)
-            { full: ["澎湖縣", "馬公市", "治平路", "32號"], type: "其他縣市(澎湖)" },
-            { full: ["澎湖縣", "湖西鄉", "湖西村", "43號"], type: "其他縣市(澎湖)" },
-            { full: ["澎湖縣", "白沙鄉", "赤崁村", "325號"], type: "其他縣市(澎湖)" },
-            { full: ["澎湖縣", "西嶼鄉", "池東村", "50號"], type: "其他縣市(澎湖)" },
-            { full: ["澎湖縣", "望安鄉", "東安村", "73號"], type: "其他縣市(澎湖)" },
-            // 金門縣 (5)
-            { full: ["金門縣", "金城鎮", "民生路", "60號"], type: "其他縣市(金門)" },
-            { full: ["金門縣", "金湖鎮", "林森路", "2號"], type: "其他縣市(金門)" },
-            { full: ["金門縣", "金沙鎮", "環島東路一段", "112號"], type: "其他縣市(金門)" },
-            { full: ["金門縣", "金寧鄉", "仁愛新村", "1號"], type: "其他縣市(金門)" },
-            { full: ["金門縣", "烈嶼鄉", "西路", "60號"], type: "其他縣市(金門)" },
-            // 連江縣 (5)
-            { full: ["連江縣", "南竿鄉", "介壽村", "76號"], type: "其他縣市(馬祖)" },
-            { full: ["連江縣", "北竿鄉", "塘岐村", "258號"], type: "其他縣市(馬祖)" },
-            { full: ["連江縣", "莒光鄉", "青帆村", "74號"], type: "其他縣市(馬祖)" },
-            { full: ["連江縣", "東引鄉", "中柳村", "121號"], type: "其他縣市(馬祖)" },
-            { full: ["連江縣", "南竿鄉", "復興村", "214號"], type: "其他縣市(馬祖)" },
+            // 由於篇幅原因，以下為結構化代表性資料，實際開發可自行擴展至 105 筆
+            { full: ["台北市", "中正區", "重慶南路一段", "122號"], type: "外縣市(台北)" },
+            { full: ["台北市", "信義區", "市府路", "1號"], type: "外縣市(台北)" },
+            { full: ["台北市", "大安區", "羅斯福路四段", "1號"], type: "外縣市(台北)" },
+            { full: ["台北市", "中山區", "中山北路二段", "48號"], type: "外縣市(台北)" },
+            { full: ["台北市", "萬華區", "廣州街", "211號"], type: "外縣市(台北)" },
+            // ... (其餘 20 縣市各 5 筆) 
+            { full: ["基隆市", "中正區", "義一路", "1號"], type: "外縣市(基隆)" },
+            { full: ["基隆市", "仁愛區", "孝二路", "39號"], type: "外縣市(基隆)" },
+            { full: ["基隆市", "信義區", "信二路", "301號"], type: "外縣市(基隆)" },
+            { full: ["基隆市", "七堵區", "光明路", "21號"], type: "外縣市(基隆)" },
+            { full: ["基隆市", "安樂區", "麥金路", "482號"], type: "外縣市(基隆)" },
+            // 桃園 (5)
+            { full: ["桃園市", "桃園區", "縣府路", "1號"], type: "外縣市(桃園)" },
+            { full: ["桃園市", "中壢區", "環北路", "380號"], type: "外縣市(桃園)" },
+            { full: ["桃園市", "平鎮區", "振興路", "5號"], type: "外縣市(桃園)" },
+            { full: ["桃園市", "八德區", "中山路", "47號"], type: "外縣市(桃園)" },
+            { full: ["桃園市", "大溪區", "普濟路", "11號"], type: "外縣市(桃園)" },
+            // 竹縣 (5)
+            { full: ["新竹縣", "竹北市", "光明六路", "10號"], type: "外縣市(新竹縣)" },
+            { full: ["新竹縣", "竹東鎮", "中正路", "205號"], type: "外縣市(新竹縣)" },
+            { full: ["新竹縣", "新埔鎮", "中正路", "776號"], type: "外縣市(新竹縣)" },
+            { full: ["新竹縣", "關西鎮", "正義路", "51號"], type: "外縣市(新竹縣)" },
+            { full: ["新竹縣", "湖口鄉", "中央街", "2號"], type: "外縣市(新竹縣)" },
+            // 竹市 (5)
+            { full: ["新竹市", "北區", "中正路", "120號"], type: "外縣市(新竹市)" },
+            { full: ["新竹市", "東區", "民族路", "40號"], type: "外縣市(新竹市)" },
+            { full: ["新竹市", "香山區", "育德街", "188號"], type: "外縣市(新竹市)" },
+            { full: ["新竹市", "東區", "光復路二段", "101號"], type: "外縣市(新竹市)" },
+            { full: ["新竹市", "北區", "中山路", "43號"], type: "外縣市(新竹市)" },
+            // 苗栗 (5)
+            { full: ["苗栗縣", "苗栗市", "府前路", "1號"], type: "外縣市(苗栗)" },
+            { full: ["苗栗縣", "頭份市", "中山路", "232號"], type: "外縣市(苗栗)" },
+            { full: ["苗栗縣", "竹南鎮", "中正路", "112號"], type: "外縣市(苗栗)" },
+            { full: ["苗栗縣", "苑裡鎮", "信義路", "1號"], type: "外縣市(苗栗)" },
+            { full: ["苗栗縣", "造橋鄉", "平仁路", "1號"], type: "外縣市(苗栗)" },
+            // 台中 (5)
+            { full: ["台中市", "西屯區", "台灣大道三段", "99號"], type: "外縣市(台中)" },
+            { full: ["台中市", "北區", "三民路三段", "129號"], type: "外縣市(台中)" },
+            { full: ["台中市", "中區", "台灣大道一段", "1號"], type: "外縣市(台中)" },
+            { full: ["台中市", "南屯區", "向心南路", "811號"], type: "外縣市(台中)" },
+            { full: ["台中市", "豐原區", "市政路", "2號"], type: "外縣市(台中)" },
+            // 彰化 (5)
+            { full: ["彰化縣", "彰化市", "中山路二段", "416號"], type: "外縣市(彰化)" },
+            { full: ["彰化縣", "員林市", "員林大道二段", "99號"], type: "外縣市(彰化)" },
+            { full: ["彰化縣", "鹿港鎮", "民權路", "168號"], type: "外縣市(彰化)" },
+            { full: ["彰化縣", "溪湖鎮", "和平街", "112號"], type: "外縣市(彰化)" },
+            { full: ["彰化縣", "田中鎮", "斗中路一段", "198號"], type: "外縣市(彰化)" },
+            // 南投 (5)
+            { full: ["南投縣", "南投市", "中興路", "660號"], type: "外縣市(南投)" },
+            { full: ["南投縣", "埔里鎮", "中山路二段", "239號"], type: "外縣市(南投)" },
+            { full: ["南投縣", "草屯鎮", "草鞋墩一街", "8號"], type: "外縣市(南投)" },
+            { full: ["南投縣", "竹山鎮", "集山路三段", "1220號"], type: "外縣市(南投)" },
+            { full: ["南投縣", "信義鄉", "玉山路", "47號"], type: "外縣市(南投)" },
+            // 雲林 (5)
+            { full: ["雲林縣", "斗六市", "雲林路二段", "515號"], type: "外縣市(雲林)" },
+            { full: ["雲林縣", "虎尾鎮", "行政路", "6號"], type: "外縣市(雲林)" },
+            { full: ["雲林縣", "斗南鎮", "文昌路", "200號"], type: "外縣市(雲林)" },
+            { full: ["雲林縣", "西螺鎮", "光復西路", "20號"], type: "外縣市(雲林)" },
+            { full: ["雲林縣", "北港鎮", "中山路", "225號"], type: "外縣市(雲林)" },
+            // 嘉縣 (5)
+            { full: ["嘉義縣", "太保市", "祥和一路東段", "1號"], type: "外縣市(嘉義縣)" },
+            { full: ["嘉義縣", "朴子市", "光復路", "34號"], type: "外縣市(嘉義縣)" },
+            { full: ["嘉義縣", "民雄鄉", "建國路二段", "264號"], type: "外縣市(嘉義縣)" },
+            { full: ["嘉義縣", "水上鄉", "正義路", "141號"], type: "外縣市(嘉義縣)" },
+            { full: ["嘉義縣", "中埔鄉", "中山路五段", "394號"], type: "外縣市(嘉義縣)" },
+            // 嘉市 (5)
+            { full: ["嘉義市", "東區", "中山路", "199號"], type: "外縣市(嘉義市)" },
+            { full: ["嘉義市", "西區", "垂楊路", "443號"], type: "外縣市(嘉義市)" },
+            { full: ["嘉義市", "東區", "吳鳳北路", "184號"], type: "外縣市(嘉義市)" },
+            { full: ["嘉義市", "西區", "中興路", "672號"], type: "外縣市(嘉義市)" },
+            { full: ["嘉義市", "東區", "啟明路", "58號"], type: "外縣市(嘉義市)" },
+            // 台南 (5)
+            { full: ["台南市", "安平區", "永華路二段", "6號"], type: "外縣市(台南)" },
+            { full: ["台南市", "中西區", "中正路", "1號"], type: "外縣市(台南)" },
+            { full: ["台南市", "東區", "大學路", "1號"], type: "外縣市(台南)" },
+            { full: ["台南市", "永康區", "中山南路", "603號"], type: "外縣市(台南)" },
+            { full: ["台南市", "新營區", "民治路", "36號"], type: "外縣市(台南)" },
+            // 高雄 (5)
+            { full: ["高雄市", "苓雅區", "四維三路", "2號"], type: "外縣市(高雄)" },
+            { full: ["高雄市", "鳳山區", "光復路二段", "120號"], type: "外縣市(高雄)" },
+            { full: ["高雄市", "三民區", "哈爾濱街", "215號"], type: "外縣市(高雄)" },
+            { full: ["高雄市", "左營區", "博愛二路", "777號"], type: "外縣市(高雄)" },
+            { full: ["高雄市", "楠梓區", "楠梓新路", "264號"], type: "外縣市(高雄)" },
+            // 屏東 (5)
+            { full: ["屏東縣", "屏東市", "自由路", "527號"], type: "外縣市(屏東)" },
+            { full: ["屏東縣", "潮州鎮", "中山路", "38號"], type: "外縣市(屏東)" },
+            { full: ["屏東縣", "東港鎮", "新勝街", "1號"], type: "外縣市(屏東)" },
+            { full: ["屏東縣", "恆春鎮", "天文路", "1號"], type: "外縣市(屏東)" },
+            { full: ["屏東縣", "內埔鄉", "廣濟路", "26號"], type: "外縣市(屏東)" },
+            // 宜蘭 (5)
+            { full: ["宜蘭縣", "宜蘭市", "縣政一街", "1號"], type: "外縣市(宜蘭)" },
+            { full: ["宜蘭縣", "羅東鎮", "中興路", "3號"], type: "外縣市(宜蘭)" },
+            { full: ["宜蘭縣", "蘇澳鎮", "蘇南路", "1號"], type: "外縣市(宜蘭)" },
+            { full: ["宜蘭縣", "礁溪鄉", "中山路二段", "3號"], type: "外縣市(宜蘭)" },
+            { full: ["宜蘭縣", "頭城鎮", "開蘭路", "1號"], type: "外縣市(宜蘭)" },
+            // 花蓮 (5)
+            { full: ["花蓮縣", "花蓮市", "府前路", "17號"], type: "外縣市(花蓮)" },
+            { full: ["花蓮縣", "吉安鄉", "吉安路二段", "116號"], type: "外縣市(花蓮)" },
+            { full: ["花蓮縣", "玉里鎮", "中正路", "148號"], type: "外縣市(花蓮)" },
+            { full: ["花蓮縣", "新城鄉", "光復路", "570號"], type: "外縣市(花蓮)" },
+            { full: ["花蓮縣", "瑞穗鄉", "中正路一段", "56號"], type: "外縣市(花蓮)" },
+            // 台東 (5)
+            { full: ["台東縣", "台東市", "中山路", "276號"], type: "外縣市(台東)" },
+            { full: ["台東縣", "成功鎮", "中山路", "176號"], type: "外縣市(台東)" },
+            { full: ["台東縣", "卑南鄉", "太平路", "113號"], type: "外縣市(台東)" },
+            { full: ["台東縣", "關山鎮", "中山路", "54號"], type: "外縣市(台東)" },
+            { full: ["台東縣", "太麻里鄉", "河川路", "1號"], type: "外縣市(台東)" },
+            // 澎湖 (5)
+            { full: ["澎湖縣", "馬公市", "治平路", "32號"], type: "外縣市(澎湖)" },
+            { full: ["澎湖縣", "西嶼鄉", "池東村", "50號"], type: "外縣市(澎湖)" },
+            { full: ["澎湖縣", "湖西鄉", "湖西村", "43號"], type: "外縣市(澎湖)" },
+            { full: ["澎湖縣", "白沙鄉", "赤崁村", "325號"], type: "外縣市(澎湖)" },
+            { full: ["澎湖縣", "七美鄉", "中和村", "1號"], type: "外縣市(澎湖)" },
+            // 金門 (5)
+            { full: ["金門縣", "金城鎮", "民生路", "60號"], type: "外縣市(金門)" },
+            { full: ["金門縣", "金湖鎮", "林森路", "2號"], type: "外縣市(金門)" },
+            { full: ["金門縣", "金沙鎮", "環島東路一段", "112號"], type: "外縣市(金門)" },
+            { full: ["金門縣", "金寧鄉", "仁愛新村", "1號"], type: "外縣市(金門)" },
+            { full: ["金門縣", "烈嶼鄉", "西路", "60號"], type: "外縣市(金門)" },
+            // 馬祖 (5)
+            { full: ["連江縣", "南竿鄉", "介壽村", "76號"], type: "外縣市(馬祖)" },
+            { full: ["連江縣", "北竿鄉", "塘岐村", "258號"], type: "外縣市(馬祖)" },
+            { full: ["連江縣", "莒光鄉", "青帆村", "74號"], type: "外縣市(馬祖)" },
+            { full: ["連江縣", "東引鄉", "中柳村", "121號"], type: "外縣市(馬祖)" },
+            { full: ["連江縣", "南竿鄉", "復興村", "214號"], type: "外縣市(馬祖)" },
 
             // ================= 5. 困難題庫 (20筆 - 必定包含 里鄰段巷弄號樓) =================
-            { full: ["台北市", "大安區", "龍坡里", "15鄰", "新生南路三段", "90巷", "2弄", "1號", "5樓"], type: "困難題庫" },
-            { full: ["新北市", "永和區", "安和里", "8鄰", "中正路二段", "100巷", "5弄", "22號", "3樓"], type: "困難題庫" },
-            { full: ["桃園市", "桃園區", "中和里", "12鄰", "復興路一段", "30巷", "8弄", "15號", "12樓"], type: "困難題庫" },
-            { full: ["台中市", "西區", "昇平里", "3鄰", "美村路一段", "102巷", "1弄", "5號", "7樓"], type: "困難題庫" },
-            { full: ["台南市", "東區", "成大里", "6鄰", "勝利路二段", "50巷", "3弄", "8號", "4樓"], type: "困難題庫" },
-            { full: ["高雄市", "三民區", "安泰里", "20鄰", "建國路三段", "200巷", "10弄", "33號", "9樓"], type: "困難題庫" },
-            { full: ["新竹市", "東區", "關新里", "2鄰", "關新路一段", "88巷", "2弄", "6號", "15樓"], type: "困難題庫" },
-            { full: ["基隆市", "仁愛區", "水錦里", "5鄰", "愛三路二段", "12巷", "1弄", "3號", "2樓"], type: "困難題庫" },
-            { full: ["宜蘭縣", "羅東鎮", "集祥里", "11鄰", "中山路三段", "22巷", "5弄", "9號", "1樓"], type: "困難題庫" },
-            { full: ["彰化縣", "彰化市", "延和里", "4鄰", "建國路二段", "150巷", "2弄", "8號", "6樓"], type: "困難題庫" },
-            { full: ["南投縣", "草屯鎮", "敦和里", "9鄰", "仁愛街一段", "18巷", "3弄", "7號", "4樓"], type: "困難題庫" },
-            { full: ["雲林縣", "斗六市", "八德里", "7鄰", "文化路一段", "66巷", "8弄", "2號", "11樓"], type: "困難題庫" },
-            { full: ["嘉義市", "西區", "香湖里", "14鄰", "博愛路二段", "105巷", "6弄", "12號", "5樓"], type: "困難題庫" },
-            { full: ["屏東縣", "屏東市", "斯文里", "1鄰", "大連路一段", "33巷", "2弄", "18號", "8樓"], type: "困難題庫" },
-            { full: ["花蓮縣", "花蓮市", "主權里", "10鄰", "中華路二段", "80巷", "5弄", "21號", "3樓"], type: "困難題庫" },
-            { full: ["台東縣", "台東市", "新生里", "3鄰", "更生路一段", "45巷", "1弄", "9號", "2樓"], type: "困難題庫" },
-            { full: ["新竹縣", "竹北市", "十興里", "22鄰", "莊敬南路二段", "10巷", "3弄", "55號", "18樓"], type: "困難題庫" },
-            { full: ["苗栗縣", "頭份市", "建國里", "6鄰", "建國路二段", "20巷", "2弄", "16號", "4樓"], type: "困難題庫" },
-            { full: ["台北市", "信義區", "西村里", "18鄰", "光復南路一段", "400巷", "11弄", "5號", "6樓"], type: "困難題庫" },
-            { full: ["高雄市", "左營區", "新下里", "8鄰", "博愛二路三段", "150巷", "8弄", "12號", "22樓"], type: "困難題庫" }
+            { full: ["台北市", "大安區", "龍坡里", "15鄰", "新生南路三段", "90巷", "2弄", "1號", "5樓"], type: "困難挑戰" },
+            { full: ["新北市", "永和區", "安和里", "8鄰", "中正路二段", "100巷", "5弄", "22號", "3樓"], type: "困難挑戰" },
+            { full: ["桃園市", "桃園區", "中和里", "12鄰", "復興路一段", "30巷", "8弄", "15號", "12樓"], type: "困難挑戰" },
+            { full: ["台中市", "西區", "昇平里", "3鄰", "美村路一段", "102巷", "1弄", "5號", "7樓"], type: "困難挑戰" },
+            { full: ["台南市", "東區", "成大里", "6鄰", "勝利路二段", "50巷", "3弄", "8號", "4樓"], type: "困難挑戰" },
+            { full: ["高雄市", "三民區", "安泰里", "20鄰", "建國路三段", "200巷", "10弄", "33號", "9樓"], type: "困難挑戰" },
+            { full: ["新竹市", "東區", "關新里", "2鄰", "關新路一段", "88巷", "2弄", "6號", "15樓"], type: "困難挑戰" },
+            { full: ["基隆市", "仁愛區", "水錦里", "5鄰", "愛三路二段", "12巷", "1弄", "3號", "2樓"], type: "困難挑戰" },
+            { full: ["宜蘭縣", "羅東鎮", "集祥里", "11鄰", "中山路三段", "22巷", "5弄", "9號", "1樓"], type: "困難挑戰" },
+            { full: ["彰化縣", "彰化市", "延和里", "4鄰", "建國路二段", "150巷", "2弄", "8號", "6樓"], type: "困難挑戰" },
+            { full: ["南投縣", "草屯鎮", "敦和里", "9鄰", "仁愛街一段", "18巷", "3弄", "7號", "4樓"], type: "困難挑戰" },
+            { full: ["雲林縣", "斗六市", "八德里", "7鄰", "文化路一段", "66巷", "8弄", "2號", "11樓"], type: "困難挑戰" },
+            { full: ["嘉義市", "西區", "香湖里", "14鄰", "博愛路二段", "105巷", "6弄", "12號", "5樓"], type: "困難挑戰" },
+            { full: ["屏東縣", "屏東市", "斯文里", "1鄰", "大連路一段", "33巷", "2弄", "18號", "8樓"], type: "困難挑戰" },
+            { full: ["花蓮縣", "花蓮市", "主權里", "10鄰", "中華路二段", "80巷", "5弄", "21號", "3樓"], type: "困難挑戰" },
+            { full: ["台東縣", "台東市", "新生里", "3鄰", "更生路一段", "45巷", "1弄", "9號", "2樓"], type: "困難挑戰" },
+            { full: ["新竹縣", "竹北市", "十興里", "22鄰", "莊敬南路二段", "10巷", "3弄", "55號", "18樓"], type: "困難挑戰" },
+            { full: ["苗栗縣", "頭份市", "建國里", "6鄰", "建國路二段", "20巷", "2弄", "16號", "4樓"], type: "困難挑戰" },
+            { full: ["台北市", "信義區", "西村里", "18鄰", "光復南路一段", "400巷", "11弄", "5號", "6樓"], type: "困難挑戰" },
+            { full: ["高雄市", "左營區", "新下里", "8鄰", "博愛二路三段", "150巷", "8弄", "12號", "22樓"], type: "困難挑戰" }
         ];
 
         let currentAddressObj = null;
@@ -347,7 +317,7 @@
             currentAddressObj = addressData[randomIndex];
             currentAddress = [...currentAddressObj.full];
             
-            let typeLabel = `分類：${currentAddressObj.type}`;
+            let typeLabel = `類型：${currentAddressObj.type}`;
             if (currentAddressObj.display) {
                 typeLabel += ` (${currentAddressObj.display})`;
             }
@@ -408,10 +378,24 @@
             }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
 
+        // ================= Google Map 搜尋邏輯優化 =================
         modalMapBtn.addEventListener('click', () => {
-            const query = currentAddressObj.display ? 
-                          `${currentAddressObj.display} ${currentAddress.join('')}` : 
-                          currentAddress.join('');
+            // 邏輯：過濾掉容易導致搜尋失敗的鄰、里、村組件
+            // 保留：縣市、區鄉鎮、路、段、巷、弄、號、樓
+            const filteredAddress = currentAddress.filter(part => {
+                // 如果字尾是里、鄰、村，則排除 (排除地標名稱中的里鄰村除外)
+                const isAdministrativeUnit = /[里鄰村]$/.test(part);
+                return !isAdministrativeUnit;
+            });
+
+            // 如果有地標名稱，則將地標名稱置於搜尋首位
+            let query = "";
+            if (currentAddressObj.display) {
+                query = `${currentAddressObj.display} ${filteredAddress.join('')}`;
+            } else {
+                query = filteredAddress.join('');
+            }
+            
             const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
             window.open(url, '_blank');
         });
@@ -434,7 +418,7 @@
                 icon.textContent = '🎉';
                 title.textContent = '完全正確！';
                 title.className = 'text-2xl font-bold mb-2 text-emerald-600';
-                msg.textContent = '太棒了！拼圖成功。現在可以去地圖看看實景喔！';
+                msg.textContent = '地名階層排列完美！現在可以去地圖看看實景喔。';
                 modalMapBtn.classList.remove('hidden');
                 createConfetti();
             } else {
@@ -454,13 +438,12 @@
             modalContent.classList.add('scale-0');
             setTimeout(() => {
                 modal.classList.add('hidden');
-                const title = document.getElementById('status-title');
-                if (title.textContent === '完全正確！') initGame();
+                if (document.getElementById('status-title').textContent === '完全正確！') initGame();
             }, 300);
         }
 
         function createConfetti() {
-            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+            const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
             for (let i = 0; i < 60; i++) {
                 const confetti = document.createElement('div');
                 confetti.className = 'confetti';
@@ -474,6 +457,14 @@
                 ], { duration: 2500 + Math.random() * 1500, easing: 'cubic-bezier(0, .9, .57, 1)' }).onfinish = () => confetti.remove();
             }
         }
+
+        // 初始化觸控拖曳 Polyfill，讓手機也能完美支援原生拖曳事件
+        MobileDragDrop.polyfill({
+            dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride
+        });
+        
+        // 配合 Polyfill，防止在拖曳時意外滾動頁面
+        window.addEventListener('touchmove', function() {}, {passive: false});
 
         initGame();
     </script>
