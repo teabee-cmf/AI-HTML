@@ -7,7 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .cell-none { background-color: #ffffff; }
-        .cell-done { background-color: #22c55e; color: white; } /* 綠色: 全對 */
+        .cell-submitted { background-color: #fde047; } /* 黃色: 有交 */
+        .cell-done { background-color: #22c55e; color: white; } /* 綠色: 通過 */
         .cell-pending { background-color: #f97316; color: white; } /* 橘色: 沒訂正 */
         
         .sticky-col {
@@ -40,7 +41,7 @@
             border-color: #3b82f6;
         }
 
-        th { min-width: 70px; font-size: 0.7rem; white-space: nowrap; }
+        th { min-width: 75px; font-size: 0.7rem; white-space: nowrap; }
         
         /* 壓縮後的儲存格高度 */
         .row-height { height: 16px; }
@@ -82,13 +83,9 @@
                             <h1 class="text-lg font-bold text-slate-800">作業檢核 Pro</h1>
                             <div class="flex gap-2 text-[10px] text-slate-500 border-l border-slate-300 pl-3 items-center">
                                 <span class="font-bold text-slate-700">作業：</span>
-                                <div class="flex items-center gap-1"><div class="w-2.5 h-2.5 bg-green-500 rounded-sm"></div>左鍵:全對</div>
-                                <div class="flex items-center gap-1"><div class="w-2.5 h-2.5 bg-orange-500 rounded-sm"></div>右鍵:沒訂正</div>
-                                <div class="flex items-center gap-1"><div class="w-2.5 h-2.5 bg-white border border-slate-300 rounded-sm"></div>再點:取消</div>
-                                <div class="w-px h-3 bg-slate-300 mx-1"></div>
-                                <span class="font-bold text-slate-700">聯絡簿：</span>
-                                <div class="flex items-center gap-1"><div class="w-2.5 h-2.5 bg-green-500 rounded-full"></div>左鍵:已交</div>
-                                <div class="flex items-center gap-1"><div class="w-2.5 h-2.5 bg-rose-500 rounded-full"></div>右鍵:沒來(紅)</div>
+                                <div class="flex items-center gap-1"><div class="w-2.5 h-2.5 bg-yellow-300 rounded-sm"></div>左1:有交</div>
+                                <div class="flex items-center gap-1"><div class="w-2.5 h-2.5 bg-green-500 rounded-sm"></div>左2:通過</div>
+                                <div class="flex items-center gap-1"><div class="w-2.5 h-2.5 bg-orange-500 rounded-sm"></div>右:沒訂正</div>
                             </div>
                         </div>
                         <p class="text-[10px] text-slate-400 mt-0.5" id="saveStatus">資料自動儲存於瀏覽器</p>
@@ -129,16 +126,24 @@
             </div>
         </header>
 
-        <!-- 獨立的聯絡簿區塊 -->
+        <!-- 獨立的聯絡簿區塊 (新排版) -->
         <div class="bg-white px-4 py-3 border-b border-slate-200 shadow-sm z-20">
-            <div class="max-w-full mx-auto flex flex-col md:flex-row md:items-center gap-3">
-                <div class="flex items-center gap-2 whitespace-nowrap">
-                    <h2 class="text-sm font-bold text-slate-700">聯絡簿檢查</h2>
-                    <span class="text-[10px] text-slate-400 hidden md:inline pl-2 border-l border-slate-200">左鍵:已交(綠) / 右鍵:沒來(紅)</span>
-                    <button onclick="openStudentsModal()" class="text-[10px] text-blue-600 hover:bg-blue-50 px-2 py-0.5 rounded transition border border-blue-200 ml-2">編輯座號</button>
-                    <button onclick="resetContactBook()" class="text-[10px] text-rose-500 hover:bg-rose-50 px-2 py-0.5 rounded transition border border-rose-100">清空本日紀錄</button>
+            <div class="max-w-full mx-auto flex flex-col md:flex-row md:items-center gap-4">
+                
+                <!-- 說明與功能按鈕區 -->
+                <div class="flex items-center gap-3 pr-4 md:border-r border-slate-200 shrink-0">
+                    <div class="flex flex-col justify-center">
+                        <h2 class="text-sm font-bold text-slate-700 mb-1">今日聯絡簿檢查</h2>
+                        <span class="text-[10px] text-slate-400">左鍵:已交(綠) / 右鍵:沒來(紅)</span>
+                    </div>
+                    <div class="flex flex-col gap-1 border-l border-slate-200 pl-3">
+                        <button onclick="openStudentsModal()" class="text-[11px] font-bold text-blue-600 hover:bg-blue-50 px-2 py-0.5 rounded transition border border-blue-200 text-center leading-none">編輯</button>
+                        <button onclick="resetContactBook()" class="text-[11px] font-bold text-rose-500 hover:bg-rose-50 px-2 py-0.5 rounded transition border border-rose-100 text-center leading-none">清空</button>
+                    </div>
                 </div>
-                <div class="flex flex-wrap gap-1.5 flex-1" id="contactBookContainer">
+
+                <!-- 放大版號碼圓圈區 -->
+                <div class="flex flex-wrap gap-2 flex-1 items-center" id="contactBookContainer">
                     <!-- 聯絡簿按鈕動態生成 -->
                 </div>
             </div>
@@ -185,7 +190,7 @@
                 <!-- 視圖 2: 未交總覽視圖 -->
                 <div id="summaryView" class="hidden">
                     <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200 max-w-4xl mx-auto">
-                        <h2 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">未交作業統計清單</h2>
+                        <h2 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">未交作業統計清單 <span class="text-sm font-normal text-slate-500 ml-2">(僅顯示有打勾追蹤之項目)</span></h2>
                         <div id="summaryContent" class="space-y-6">
                             <!-- 統計內容動態插入 -->
                         </div>
@@ -196,12 +201,21 @@
         </div>
     </div>
 
-    <!-- 自定義日期輸入彈窗 -->
+    <!-- 自定義日期與追蹤輸入彈窗 -->
     <div id="dateModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
         <div class="bg-white p-6 rounded-xl shadow-xl w-80">
             <h3 class="font-bold mb-2">設定檢核日期</h3>
             <p id="modalItemName" class="text-sm text-slate-500 mb-4"></p>
             <input type="date" id="dateInput" class="w-full border border-slate-300 rounded px-3 py-2 mb-4 outline-none focus:ring-2 focus:ring-blue-500">
+            
+            <div class="mb-5 border-t border-slate-200 pt-3">
+                <label class="flex items-center gap-2 cursor-pointer group">
+                    <input type="checkbox" id="trackCheckbox" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer">
+                    <span class="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition">📌 追蹤此項目</span>
+                </label>
+                <p class="text-[10px] text-slate-400 mt-1 ml-6">打勾後，此項目才會計算並顯示在「未交總覽」中</p>
+            </div>
+
             <div class="flex justify-end gap-2">
                 <button onclick="closeDateModal()" class="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded hover:bg-slate-50">取消</button>
                 <button onclick="confirmDate()" class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded">確定儲存</button>
@@ -236,7 +250,7 @@
     </div>
 
     <script>
-        const STORAGE_KEY = 'hw_pro_state_v7';
+        const STORAGE_KEY = 'hw_pro_state_v8'; // 更新版號以確保資料相容
         const SYNC_FILENAME = 'hw_checker_data.json';
 
         // 預設科目清單
@@ -247,7 +261,6 @@
             "國語小考", "數學小考", "自然小考", "社會小考"
         ];
 
-        // 取得科目的預設範圍
         function getDefaultItems(sub) {
             const map = {
                 "國語甲本": "一/三/五/七/九/十一/十三",
@@ -261,7 +274,6 @@
             return map[sub] || "";
         }
 
-        // 預設產生 1~30 號的陣列
         function generateDefaultStudents() {
             return Array.from({length: 30}, (_, i) => i + 1);
         }
@@ -269,16 +281,16 @@
         let state = {
             currentSubject: "數學習作",
             currentView: "table",
-            subjects: [...defaultSubjectsList], // 自訂義科目清單
-            activeStudents: generateDefaultStudents(), // 自訂義座號清單
+            subjects: [...defaultSubjectsList],
+            activeStudents: generateDefaultStudents(), 
             contactBook: {}, 
             data: {}
         };
 
         let activeDateItem = null;
         let syncDirectoryHandle = null;
+        let isDraggingCol = false; // 判定是否正在拖曳
 
-        // ================= 閒置防護變數 =================
         let isProtectionOn = false;
         let idleTimer = null;
         const IDLE_TIME_MS = 10 * 60 * 1000;
@@ -293,9 +305,7 @@
             });
         };
 
-        // 確保讀取資料時，每個科目在 data 裡都有專屬的獨立空間，並做向下相容
         function migrateAndEnsureState() {
-            // 向下相容：如果舊備份沒有 subjects 或 activeStudents，則補齊
             if (!state.subjects) state.subjects = [...defaultSubjectsList];
             if (!state.activeStudents) state.activeStudents = generateDefaultStudents();
 
@@ -304,9 +314,11 @@
                     state.data[sub] = {
                         items: getDefaultItems(sub),
                         dates: {},
+                        tracked: {}, // 新增追蹤屬性
                         records: {}
                     };
                 }
+                if (!state.data[sub].tracked) state.data[sub].tracked = {}; // 相容舊資料
             });
         }
 
@@ -315,7 +327,6 @@
             try {
                 const db = await openDatabase();
                 const savedHandle = await getDirectoryHandle(db);
-                
                 if (savedHandle) {
                     syncDirectoryHandle = savedHandle;
                     const permission = await savedHandle.queryPermission({ mode: 'readwrite' });
@@ -434,7 +445,6 @@
             } catch (error) { console.error(error); }
         }
 
-        // IndexedDB
         function openDatabase() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open('HWCheckerDB', 1);
@@ -525,7 +535,7 @@
                     await writable.close();
                     alert(`已成功匯出至同步目錄：\n${fileName}`);
                     return;
-                } catch (e) { console.error("寫入同步目錄失敗，將改用一般下載", e); }
+                } catch (e) { console.error("寫入同步目錄失敗", e); }
             }
             
             const blob = new Blob([dataStr], { type: "text/json;charset=utf-8" });
@@ -587,9 +597,8 @@
                 if (!state.contactBook) state.contactBook = {}; 
                 migrateAndEnsureState();
             } else {
-                migrateAndEnsureState(); // 初始化全新資料
+                migrateAndEnsureState();
             }
-            // 防呆：確保 currentSubject 存在於清單中
             if (!state.subjects.includes(state.currentSubject)) state.currentSubject = state.subjects[0] || "數學習作";
             state.currentView = "table";
             
@@ -627,10 +636,8 @@
         }
         function saveStudents() {
             const val = document.getElementById('studentsInput').value;
-            // 解析字串為數字陣列
             const arr = val.split(/[,、]/).map(s => parseInt(s.trim())).filter(n => !isNaN(n));
             if (arr.length > 0) {
-                // 排序以保持介面美觀
                 state.activeStudents = arr.sort((a, b) => a - b);
                 saveState();
                 renderAll();
@@ -657,7 +664,7 @@
                     return;
                 }
                 state.subjects.push(val);
-                state.data[val] = { items: getDefaultItems(val), dates: {}, records: {} };
+                state.data[val] = { items: getDefaultItems(val), dates: {}, tracked: {}, records: {} };
                 switchSubject(val);
                 closeNewSubjectModal();
             }
@@ -669,27 +676,27 @@
             }
             if (confirm(`確定要將「${state.currentSubject}」徹底刪除嗎？\n(此動作將會清除該科目的所有紀錄)`)) {
                 state.subjects = state.subjects.filter(s => s !== state.currentSubject);
-                delete state.data[state.currentSubject]; // 清除資料釋放空間
-                switchSubject(state.subjects[0]); // 切換到第一個科目
+                delete state.data[state.currentSubject];
+                switchSubject(state.subjects[0]);
             }
         }
 
-        // ================= 聯絡簿邏輯 =================
+        // ================= 聯絡簿邏輯 (放大版) =================
         function renderContactBook() {
             const container = document.getElementById('contactBookContainer');
             let html = '';
             
-            // 根據自訂義的座號陣列進行迴圈
             state.activeStudents.forEach(i => {
                 const status = state.contactBook[i] || 0;
                 let btnClass = 'bg-slate-100 text-slate-600 hover:bg-slate-200 border-slate-200';
                 if (status === 1) btnClass = 'bg-green-500 text-white shadow-inner border-green-600';
                 else if (status === 2) btnClass = 'bg-rose-500 text-white shadow-inner border-rose-600';
                 
+                // 放大的寬高 (w-10, h-10) 與字級 (text-lg)
                 html += `
                     <div onclick="toggleContactBook(${i})" 
                          oncontextmenu="toggleContactBookAbsent(event, ${i})"
-                         class="w-[32px] h-[32px] rounded-full border flex items-center justify-center text-xs font-bold cursor-pointer transition-all select-none ${btnClass}">
+                         class="w-[42px] h-[42px] rounded-full border flex items-center justify-center text-lg font-black cursor-pointer transition-all select-none ${btnClass}">
                         ${i}
                     </div>`;
             });
@@ -720,6 +727,49 @@
                 renderContactBook();
                 if (state.currentView === "summary") renderSummary();
             }
+        }
+
+        // ================= 拖曳排序邏輯 =================
+        let draggedColIdx = null;
+
+        function handleDragStart(e, idx) {
+            isDraggingCol = true;
+            draggedColIdx = idx;
+            e.dataTransfer.effectAllowed = 'move';
+            e.target.classList.add('opacity-50', 'bg-blue-100');
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDrop(e, targetIdx) {
+            e.stopPropagation();
+            if (draggedColIdx !== null && draggedColIdx !== targetIdx) {
+                const currentSubData = state.data[state.currentSubject];
+                let itemsArr = currentSubData.items.split('/').filter(i => i.trim() !== "");
+                
+                // 交換順序
+                const movedItem = itemsArr.splice(draggedColIdx, 1)[0];
+                itemsArr.splice(targetIdx, 0, movedItem);
+                
+                // 更新字串並儲存
+                const newItemsStr = itemsArr.join('/');
+                document.getElementById('itemsInput').value = newItemsStr;
+                state.data[state.currentSubject].items = newItemsStr;
+                
+                saveState();
+                renderTable();
+            }
+            return false;
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('opacity-50', 'bg-blue-100');
+            draggedColIdx = null;
+            setTimeout(() => isDraggingCol = false, 50); // 延遲恢復，避免觸發點擊事件
         }
 
         // ================= 表格渲染與切換邏輯 =================
@@ -785,31 +835,45 @@
             if(!currentSubData) return;
             const items = currentSubData.items.split('/').filter(i => i.trim() !== "");
             const dates = currentSubData.dates || {};
+            const tracked = currentSubData.tracked || {};
             
             const thead = document.getElementById('tableHead');
             const tbody = document.getElementById('tableBody');
             
             let headHtml = `<tr><th class="sticky-col p-2 border-b border-slate-200 bg-slate-100 w-12 text-slate-600 font-bold">座號</th>`;
-            items.forEach(item => {
+            items.forEach((item, index) => {
                 const displayDate = formatDisplayDate(dates[item]);
+                const isTracked = tracked[item] === true;
+                const trackIcon = isTracked ? `<span class="text-rose-500 absolute top-1 right-1" title="追蹤中">📌</span>` : '';
                 const dateText = dates[item] ? `<div class="text-[10px] text-blue-500 font-normal mt-0.5">${displayDate}</div>` : '<div class="text-[9px] text-slate-400 font-normal mt-0.5">設日期</div>';
+                
                 headHtml += `
-                    <th class="p-2 border-b border-slate-200 bg-slate-100 cursor-pointer hover:bg-slate-200 transition" onclick="openDateModal('${item}')">
+                    <th draggable="true"
+                        ondragstart="handleDragStart(event, ${index})" 
+                        ondragover="handleDragOver(event)" 
+                        ondrop="handleDrop(event, ${index})" 
+                        ondragend="handleDragEnd(event)"
+                        class="p-2 border-b border-slate-200 bg-slate-100 cursor-move hover:bg-slate-200 transition relative group" 
+                        onclick="openDateModal('${item}')">
                         <div class="text-slate-700 font-bold">${item}</div>
                         ${dateText}
+                        ${trackIcon}
+                        <div class="absolute inset-0 border-2 border-blue-400 opacity-0 group-active:opacity-100 rounded pointer-events-none"></div>
                     </th>`;
             });
             headHtml += `</tr>`;
             thead.innerHTML = headHtml;
 
             let bodyHtml = "";
-            // 根據自訂義的座號陣列進行迴圈
             state.activeStudents.forEach(i => {
                 bodyHtml += `<tr class="row-height"><td class="sticky-col text-center font-bold border-b border-slate-200 bg-slate-50 text-slate-500 text-[10px]">${i}</td>`;
                 items.forEach(item => {
                     const key = `${i}_${item}`;
                     const status = currentSubData.records[key] || 0;
+                    
+                    // 狀態映射: 0(白), 3(黃/有交), 1(綠/通過), 2(橘/沒訂正)
                     let statusClass = "cell-none";
+                    if (status === 3) statusClass = "cell-submitted";
                     if (status === 1) statusClass = "cell-done";
                     if (status === 2) statusClass = "cell-pending";
                     
@@ -827,13 +891,20 @@
             tbody.innerHTML = bodyHtml;
         }
 
+        // ================= 點擊邏輯 (三段式左鍵) =================
         function handleLeftClick(no, item) {
             const currentSubData = state.data[state.currentSubject];
             const key = `${no}_${item}`;
             const currentStatus = currentSubData.records[key] || 0;
 
-            if (currentStatus === 1) currentSubData.records[key] = 0;
-            else currentSubData.records[key] = 1;
+            // 左鍵循環: 白(0)或橘(2) -> 黃(3) -> 綠(1) -> 白(0)
+            if (currentStatus === 0 || currentStatus === 2) {
+                currentSubData.records[key] = 3; // 標記為黃色(有交)
+            } else if (currentStatus === 3) {
+                currentSubData.records[key] = 1; // 標記為綠色(通過)
+            } else if (currentStatus === 1) {
+                currentSubData.records[key] = 0; // 恢復空白
+            }
             
             renderTable();
             saveState();
@@ -845,8 +916,12 @@
             const key = `${no}_${item}`;
             const currentStatus = currentSubData.records[key] || 0;
 
-            if (currentStatus === 2) currentSubData.records[key] = 0;
-            else currentSubData.records[key] = 2;
+            // 右鍵切換: 橘(2) <-> 白(0)
+            if (currentStatus === 2) {
+                currentSubData.records[key] = 0;
+            } else {
+                currentSubData.records[key] = 2;
+            }
             
             renderTable();
             saveState();
@@ -863,9 +938,12 @@
 
                 const items = subjectData.items.split('/').filter(i => i.trim() !== "");
                 const dates = subjectData.dates || {};
-                const datedItems = items.filter(item => dates[item]);
+                const tracked = subjectData.tracked || {};
+                
+                // 僅列出有設定日期「且」有打勾追蹤的項目
+                const trackedItems = items.filter(item => dates[item] && tracked[item] === true);
 
-                if (datedItems.length > 0) {
+                if (trackedItems.length > 0) {
                     hasAnyData = true;
                     html += `
                         <div class="mb-6">
@@ -873,24 +951,26 @@
                             <div class="space-y-4">
                     `;
 
-                    datedItems.forEach(item => {
-                        const missing = [];
-                        const pending = [];
-                        // 根據自訂義的座號陣列進行迴圈
+                    trackedItems.forEach(item => {
+                        const missing = []; // 白(0)
+                        const pending = []; // 橘(2)
+                        
                         state.activeStudents.forEach(i => {
                             if (state.contactBook[i] === 2) return; // 排除請假沒來
                             const status = subjectData.records[`${i}_${item}`] || 0;
                             if (status === 0) missing.push(i);
                             if (status === 2) pending.push(i);
+                            // 備註：黃色(3)視為已經繳交，故不列入未交名單
                         });
 
                         html += `
-                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                <div class="flex justify-between items-end mb-3">
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 relative overflow-hidden">
+                                <div class="absolute top-0 left-0 w-1 h-full bg-rose-400"></div>
+                                <div class="flex justify-between items-end mb-3 ml-2">
                                     <h4 class="text-lg font-bold text-slate-700">${subjectName} - ${item}</h4>
-                                    <span class="text-sm bg-blue-100 text-blue-700 px-2 py-0.5 rounded">檢核日期：${dates[item]}</span>
+                                    <span class="text-sm bg-blue-100 text-blue-700 px-2 py-0.5 rounded shadow-sm">檢核日期：${dates[item]}</span>
                                 </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 ml-2">
                                     <div>
                                         <h5 class="text-xs font-bold text-rose-500 mb-1 uppercase tracking-tight">尚未交 (${missing.length}人)</h5>
                                         <div class="text-slate-800 font-mono tracking-wider break-all bg-white p-2 rounded border border-rose-100 min-h-[40px]">
@@ -912,17 +992,22 @@
             });
 
             if (!hasAnyData) {
-                summaryContent.innerHTML = `<div class="text-slate-400 text-center py-10">請先在「檢核表」中點擊表頭項目設定「檢核日期」，<br>系統才能依此產生統計清單。</div>`;
+                summaryContent.innerHTML = `<div class="text-slate-400 text-center py-10">請先在「檢核表」點擊項目表頭，設定檢核日期並<br><span class="text-rose-500 font-bold">打勾「📌 追蹤此項目」</span>，系統才會產生統計。</div>`;
             } else {
                 summaryContent.innerHTML = html;
             }
         }
 
         function openDateModal(item) {
+            // 防呆：如果是拖曳行為觸發的 onclick，則忽略
+            if (isDraggingCol) return; 
+
             activeDateItem = item;
             document.getElementById('modalItemName').innerText = `檢核項目：${item}`;
             
-            let currentDate = state.data[state.currentSubject].dates[item];
+            const currentSubData = state.data[state.currentSubject];
+            let currentDate = currentSubData.dates[item];
+            
             if (!currentDate) {
                 const today = new Date();
                 const yyyy = today.getFullYear();
@@ -932,6 +1017,11 @@
             }
             
             document.getElementById('dateInput').value = currentDate;
+            
+            // 讀取追蹤狀態 (預設為 false)
+            const isTracked = currentSubData.tracked && currentSubData.tracked[item] === true;
+            document.getElementById('trackCheckbox').checked = isTracked;
+
             document.getElementById('dateModal').classList.remove('hidden');
             setTimeout(() => document.getElementById('dateInput').focus(), 100);
         }
@@ -944,9 +1034,21 @@
         function confirmDate() {
             if (activeDateItem) {
                 const val = document.getElementById('dateInput').value;
-                if (!state.data[state.currentSubject].dates) state.data[state.currentSubject].dates = {};
-                if (val === "") delete state.data[state.currentSubject].dates[activeDateItem];
-                else state.data[state.currentSubject].dates[activeDateItem] = val;
+                const isTracked = document.getElementById('trackCheckbox').checked;
+                const currentSubData = state.data[state.currentSubject];
+
+                if (!currentSubData.dates) currentSubData.dates = {};
+                if (!currentSubData.tracked) currentSubData.tracked = {};
+
+                // 儲存日期
+                if (val === "") {
+                    delete currentSubData.dates[activeDateItem];
+                    currentSubData.tracked[activeDateItem] = false; // 無日期自動取消追蹤
+                } else {
+                    currentSubData.dates[activeDateItem] = val;
+                    currentSubData.tracked[activeDateItem] = isTracked; // 儲存追蹤狀態
+                }
+                
                 saveState();
                 renderTable();
             }
@@ -955,7 +1057,7 @@
 
         function resetCurrentSubject() {
             if (confirm(`確定要清除「${state.currentSubject}」的所有紀錄、項目與日期嗎？`)) {
-                state.data[state.currentSubject] = { items: getDefaultItems(state.currentSubject), dates: {}, records: {} };
+                state.data[state.currentSubject] = { items: getDefaultItems(state.currentSubject), dates: {}, tracked: {}, records: {} };
                 document.getElementById('itemsInput').value = state.data[state.currentSubject].items;
                 saveState();
                 renderTable();
