@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教師動態出題排版系統</title>
+    <style>
+        :root {
+            --primary: #4A90E2;
+            --primary-hover: #357ABD;
+            --bg: #F5F7FA;
+            --card-bg: #FFFFFF;
+            --border: #E4E7EB;
+            --text: #333333;
+            --danger: #e74c3c;
+        }
+        body {
+            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        h1 {
+            color: #2C3E50;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 1.8rem;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        @media (min-width: 768px) {
+            .container {
+                flex-direction: row;
+                align-items: stretch;
+            }
+        }
+        .card {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            flex: 1;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+        .card h2 {
+            margin-top: 0;
+            color: #2C3E50;
+            font-size: 1.3rem;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .form-group { margin-bottom: 20px; }
+        label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-weight: 600; 
+            color: #444;
+        }
+        input[type="text"], select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+        input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        button:hover { background-color: var(--primary-hover); }
+        button:active { transform: scale(0.98); }
+        button.secondary { 
+            background-color: #f1f3f5; 
+            color: #495057; 
+            border: 1px solid #ced4da;
+        }
+        button.secondary:hover { background-color: #e2e6ea; }
+        button.danger { background-color: var(--danger); color: white; border: none; }
+        button.danger:hover { background-color: #c0392b; }
+        
+        /* 拖曳選項區域樣式 */
+        #options-container { margin-bottom: 15px; }
+        .option-item {
+            display: flex;
+            align-items: center;
+            background: #ffffff;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            cursor: grab;
+            transition: box-shadow 0.2s, transform 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .option-item:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+        }
+        .option-item:active { cursor: grabbing; }
+        .option-item.dragging { 
+            opacity: 0.6; 
+            background: #f8f9fa; 
+            border: 2px dashed var(--primary);
+            transform: scale(0.98);
+        }
+        .drag-handle { 
+            margin-right: 12px; 
+            color: #aaa; 
+            cursor: grab; 
+            font-size: 20px;
+            user-select: none;
+        }
+        .option-input { 
+            flex: 1; 
+            margin: 0 15px; 
+            padding: 8px !important;
+        }
+        .radio-correct { 
+            transform: scale(1.3); 
+            cursor: pointer; 
+            accent-color: var(--primary);
+        }
+        
+        textarea {
+            width: 100%;
+            flex-grow: 1;
+            min-height: 300px;
+            padding: 15px;
+            font-family: "Courier New", "Microsoft JhengHei", monospace;
+            font-size: 16px;
+            line-height: 1.6;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            resize: vertical;
+            white-space: pre-wrap;
+            background-color: #fafafa;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            background-color: #fff;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #eee;
+        }
+        .radio-group label {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: normal;
+            cursor: pointer;
+        }
+        .radio-group input[type="radio"] {
+            transform: scale(1.2);
+            accent-color: var(--primary);
+        }
+        
+        /* 新增：題目列表與拖曳相關樣式 */
+        .questions-list {
+            flex-grow: 1;
+            min-height: 300px;
+            background-color: #fafafa;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px;
+            overflow-y: auto;
+            max-height: 600px;
+        }
+        .q-item {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            padding: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .q-item.dragging {
+            opacity: 0.5;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+            transform: scale(0.98);
+            border: 2px dashed var(--primary);
+        }
+        .q-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+        }
+        .q-drag-handle {
+            cursor: grab;
+            font-size: 16px;
+            font-weight: bold;
+            color: #666;
+            padding: 0 10px;
+            user-select: none;
+        }
+        .q-drag-handle:active {
+            cursor: grabbing;
+        }
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 13px;
+        }
+        .q-content {
+            margin: 0;
+            font-family: "Courier New", "Microsoft JhengHei", monospace;
+            font-size: 15px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            color: var(--text);
+            padding: 5px 10px;
+        }
+        .empty-msg {
+            text-align: center;
+            color: #aaa;
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📝 教師動態出題排版系統</h1>
+    <div class="subtitle">自動處理全半形空白對齊，支援拖曳排序與解答套用</div>
+
+    <div class="container">
+        <!-- 左側：輸入區 -->
+        <div class="card">
+            <h2>1. 編輯題目</h2>
+            
+            <div class="form-group">
+                <label for="q-type">題型：</label>
+                <select id="q-type" onchange="toggleType()">
+                    <option value="mc">選擇題</option>
+                    <option value="tf">是非題</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="q-text">題目內容：</label>
+                <input type="text" id="q-text" placeholder="請輸入題目敘述...">
+            </div>
+
+            <!-- 選擇題選項編輯區 -->
+            <div id="mc-area" class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
+                    <label style="margin: 0;">選項清單 (按住 ≡ 拖曳，點選 〇 設解答)：</label>
+                    <select id="mc-label-type" style="width: auto; padding: 6px; font-size: 14px;">
+                        <option value="ABC">A, B, C...</option>
+                        <option value="123">1, 2, 3...</option>
+                    </select>
+                </div>
+                <div id="options-container">
+                    <!-- 動態產生的選項會放在這 -->
+                </div>
+                <button type="button" class="secondary" onclick="addOption()">+ 新增選項</button>
+            </div>
+
+            <!-- 是非題解答區 -->
+            <div id="tf-area" class="form-group" style="display: none;">
+                <label>正確解答：</label>
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="tf-ans" value="O"> O (圈)
+                    </label>
+                    <label>
+                        <input type="radio" name="tf-ans" value="X"> X (叉)
+                    </label>
+                    <label style="color: #888;">
+                        <input type="radio" name="tf-ans" value=" " checked> 不預設答案
+                    </label>
+                </div>
+            </div>
+
+            <div style="margin-top: auto; padding-top: 20px;">
+                <button onclick="generateQuestion()" style="width: 100%; font-size: 16px; padding: 15px;">加入並產出格式 ➡</button>
+            </div>
+        </div>
+
+        <!-- 右側：輸出區 -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin: 0; border: none; padding: 0;">2. 輸出結果</h2>
+                <button class="secondary" onclick="copyText()">📋 複製全部文字</button>
+            </div>
+            
+            <div id="questions-container" class="questions-list">
+                <div class="empty-msg" id="empty-msg">產出的排版題目會顯示在這裡...<br>(可上下拖曳題目排序)</div>
+            </div>
+            <!-- 隱藏的文字區域，用來幫助複製純文字 -->
+            <textarea id="hidden-clipboard" style="position: absolute; left: -9999px;"></textarea>
+
+            <div style="margin-top: 15px; text-align: right;">
+                <button class="danger" onclick="clearOutput()">🗑️ 清空所有內容</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let questionsList = []; // 改用陣列儲存所有題目資料，方便重新排序與計算題號
+
+        // 排版常數設定 (依照您的需求)
+        const FULL_SPACE = '　'; // 全形空格 (＊)
+        const HALF_SPACE = ' ';  // 半形空格 (*)
+
+        // 初始化先加入四個選項
+        window.onload = function() {
+            addOption("選項一");
+            addOption("選項二");
+            addOption("選項三");
+            addOption("選項四");
+        };
+
+        // 切換題型介面
+        function toggleType() {
+            const type = document.getElementById('q-type').value;
+            if (type === 'mc') {
+                document.getElementById('mc-area').style.display = 'block';
+                document.getElementById('tf-area').style.display = 'none';
+            } else {
+                document.getElementById('mc-area').style.display = 'none';
+                document.getElementById('tf-area').style.display = 'block';
+            }
+        }
+
+        // 新增一個選項並加入拖曳功能
+        function addOption(defaultText = "") {
+            const container = document.getElementById('options-container');
+            
+            const div = document.createElement('div');
+            div.className = 'option-item';
+            div.draggable = true;
+            div.innerHTML = `
+                <span class="drag-handle" title="按住拖曳排序">≡</span>
+                <input type="radio" name="mc-ans" class="radio-correct" title="設為正確答案">
+                <input type="text" class="option-input" placeholder="請輸入選項內容..." value="${defaultText}">
+                <button class="secondary" style="padding: 6px 12px;" onclick="this.parentElement.remove()" title="刪除選項">✕</button>
+            `;
+
+            // 拖曳事件綁定
+            div.addEventListener('dragstart', (e) => {
+                setTimeout(() => div.classList.add('dragging'), 0);
+            });
+            div.addEventListener('dragend', () => {
+                div.classList.remove('dragging');
+            });
+            
+            container.appendChild(div);
+        }
+
+        // 處理拖曳排序邏輯
+        const container = document.getElementById('options-container');
+        container.addEventListener('dragover', e => {
+            e.preventDefault();
+            const afterElement = getDragAfterElement(container, e.clientY);
+            const draggable = document.querySelector('.dragging');
+            if (draggable) {
+                if (afterElement == null) {
+                    container.appendChild(draggable);
+                } else {
+                    container.insertBefore(draggable, afterElement);
+                }
+            }
+        });
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.option-item:not(.dragging)')];
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        // --- 以下為新加入的：題目區塊拖曳排序邏輯 ---
+        const qContainer = document.getElementById('questions-container');
+        qContainer.addEventListener('dragover', e => {
+            e.preventDefault();
+            const afterElement = getDragAfterQElement(qContainer, e.clientY);
+            const draggable = document.querySelector('.q-item.dragging');
+            if (draggable) {
+                if (afterElement == null) {
+                    qContainer.appendChild(draggable);
+                } else {
+                    qContainer.insertBefore(draggable, afterElement);
+                }
+            }
+        });
+
+        qContainer.addEventListener('drop', e => {
+            // 當拖放結束時，重新同步陣列順序並重新渲染題號
+            syncQuestionsOrder();
+        });
+
+        function getDragAfterQElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.q-item:not(.dragging)')];
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        function syncQuestionsOrder() {
+            const items = document.querySelectorAll('.q-item');
+            const newOrder = [];
+            items.forEach(item => {
+                const id = parseInt(item.dataset.id);
+                const q = questionsList.find(q => q.id === id);
+                if (q) newOrder.push(q);
+            });
+            questionsList = newOrder;
+            renderQuestions();
+        }
+
+        function deleteQuestion(id) {
+            questionsList = questionsList.filter(q => q.id !== id);
+            renderQuestions();
+        }
+
+        // --- 核心：產生資料結構並觸發渲染 ---
+        function generateQuestion() {
+            const type = document.getElementById('q-type').value;
+            const qText = document.getElementById('q-text').value.trim();
+            
+            if (!qText) { 
+                alert('請輸入題目內容！'); 
+                document.getElementById('q-text').focus();
+                return; 
+            }
+
+            // 將新題目儲存為物件
+            const newQuestion = {
+                id: Date.now(),
+                type: type,
+                text: qText,
+                options: [],
+                answerIndex: -1,
+                answerTf: ' ',
+                mcLabelType: 'ABC'
+            };
+
+            if (type === 'tf') {
+                const ansObj = document.querySelector('input[name="tf-ans"]:checked');
+                if (ansObj && ansObj.value.trim() !== "") {
+                    newQuestion.answerTf = ansObj.value; // 'O' 或 'X'
+                }
+            } else if (type === 'mc') {
+                const optionItems = document.querySelectorAll('.option-item');
+                newQuestion.mcLabelType = document.getElementById('mc-label-type').value;
+
+                optionItems.forEach((item, index) => {
+                    const text = item.querySelector('.option-input').value.trim();
+                    const isCorrect = item.querySelector('.radio-correct').checked;
+                    if (isCorrect) newQuestion.answerIndex = index;
+                    newQuestion.options.push(text || "未命名選項");
+                });
+
+                if (newQuestion.options.length === 0) {
+                    alert('選擇題至少需要一個選項！');
+                    return;
+                }
+            }
+
+            questionsList.push(newQuestion);
+            renderQuestions(); // 重新渲染畫面
+            
+            // 捲動到底部
+            setTimeout(() => {
+                qContainer.scrollTop = qContainer.scrollHeight;
+            }, 50);
+
+            // 清空輸入框方便下一題
+            document.getElementById('q-text').value = '';
+            document.querySelectorAll('.radio-correct').forEach(r => r.checked = false);
+            document.querySelectorAll('input[name="tf-ans"][value=" "]').forEach(r => r.checked = true);
+            document.getElementById('q-text').focus();
+        }
+
+        // --- 將陣列渲染成畫面與格式化文字 ---
+        function renderQuestions() {
+            const container = document.getElementById('questions-container');
+            container.innerHTML = '';
+
+            if (questionsList.length === 0) {
+                container.innerHTML = '<div class="empty-msg" id="empty-msg">產出的排版題目會顯示在這裡...<br>(可上下拖曳題目排序)</div>';
+                return;
+            }
+
+            questionsList.forEach((q, index) => {
+                const qNumber = index + 1; // 根據目前順序自動產生題號
+                let resultString = "";
+                let finalAnswerStr = FULL_SPACE;
+
+                if (q.type === 'tf') {
+                    if (q.answerTf && q.answerTf.trim() !== "") {
+                        finalAnswerStr = q.answerTf;
+                    }
+                    resultString += `（${HALF_SPACE}${finalAnswerStr}${HALF_SPACE}）${qNumber}.${HALF_SPACE}${q.text}`;
+                } else if (q.type === 'mc') {
+                    // 根據選擇的標籤類型給予 ABC 還是 123
+                    const labels = q.mcLabelType === '123' ? ['1','2','3','4','5','6','7','8','9','10'] : ['A','B','C','D','E','F','G','H','I','J'];
+                    if (q.answerIndex !== -1) {
+                        finalAnswerStr = labels[q.answerIndex];
+                    }
+                    resultString += `（${HALF_SPACE}${finalAnswerStr}${HALF_SPACE}）${qNumber}.${HALF_SPACE}${q.text}\n`;
+                    
+                    q.options.forEach((optText, i) => {
+                        const label = labels[i];
+                        const indent = FULL_SPACE.repeat(4) + HALF_SPACE.repeat(2);
+                        resultString += `${indent}(${label})${HALF_SPACE}${optText}${FULL_SPACE}`;
+                        if (i < q.options.length - 1) resultString += '\n'; // 最後一個選項不換行
+                    });
+                }
+
+                const div = document.createElement('div');
+                div.className = 'q-item';
+                div.draggable = true;
+                div.dataset.id = q.id;
+                div.innerHTML = `
+                    <div class="q-header">
+                        <span class="q-drag-handle" title="按住拖曳排序題目">≡ 題號 ${qNumber}</span>
+                        <button class="secondary btn-sm danger" style="background:#fff; color:#e74c3c; border:1px solid #e74c3c;" onclick="deleteQuestion(${q.id})">刪除</button>
+                    </div>
+                    <pre class="q-content">${resultString}</pre>
+                `;
+
+                // 綁定題目區塊的拖曳事件
+                div.addEventListener('dragstart', (e) => {
+                    setTimeout(() => div.classList.add('dragging'), 0);
+                });
+                div.addEventListener('dragend', () => {
+                    div.classList.remove('dragging');
+                    syncQuestionsOrder(); // 確保放開時更新題號
+                });
+
+                container.appendChild(div);
+            });
+        }
+
+        function clearOutput() {
+            if(confirm('確定要清空所有產出的題目嗎？這將會重置題號。')) {
+                questionsList = [];
+                renderQuestions();
+            }
+        }
+
+        function copyText() {
+            if (questionsList.length === 0) {
+                alert('目前沒有內容可以複製！');
+                return;
+            }
+
+            // 收集所有題目的純文字，題與題之間多空一行
+            const allText = Array.from(document.querySelectorAll('.q-content'))
+                                .map(pre => pre.innerText)
+                                .join('\n\n');
+
+            const clipboardTextarea = document.getElementById('hidden-clipboard');
+            clipboardTextarea.value = allText;
+            clipboardTextarea.select();
+            document.execCommand('copy');
+            
+            // 視覺回饋
+            const btn = document.querySelector('button[onclick="copyText()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '✅ 已複製全部！';
+            btn.style.backgroundColor = '#28a745';
+            btn.style.color = 'white';
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.style.backgroundColor = '';
+                btn.style.color = '';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
