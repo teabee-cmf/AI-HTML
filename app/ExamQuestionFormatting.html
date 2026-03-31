@@ -13,6 +13,7 @@
             --border: #E4E7EB;
             --text: #333333;
             --danger: #e74c3c;
+            --success: #28a745;
         }
         body {
             font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
@@ -56,6 +57,7 @@
             border: 1px solid var(--border);
             display: flex;
             flex-direction: column;
+            max-width: 100%;
         }
         .card h2 {
             margin-top: 0;
@@ -64,6 +66,9 @@
             border-bottom: 2px solid var(--primary);
             padding-bottom: 10px;
             margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .form-group { margin-bottom: 20px; }
         label { 
@@ -107,6 +112,8 @@
         button.secondary:hover { background-color: #e2e6ea; }
         button.danger { background-color: var(--danger); color: white; border: none; }
         button.danger:hover { background-color: #c0392b; }
+        button.success { background-color: var(--success); color: white; border: none; }
+        button.success:hover { background-color: #218838; }
         
         /* 拖曳選項區域樣式 */
         #options-container { margin-bottom: 15px; }
@@ -150,26 +157,6 @@
             accent-color: var(--primary);
         }
         
-        textarea {
-            width: 100%;
-            flex-grow: 1;
-            min-height: 300px;
-            padding: 15px;
-            font-family: "Courier New", "Microsoft JhengHei", monospace;
-            font-size: 16px;
-            line-height: 1.6;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            resize: vertical;
-            white-space: pre-wrap;
-            background-color: #fafafa;
-        }
-        textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            background-color: #fff;
-        }
-
         .radio-group {
             display: flex;
             gap: 20px;
@@ -192,7 +179,7 @@
             accent-color: var(--primary);
         }
         
-        /* 新增：題目列表與拖曳相關樣式 */
+        /* 題目列表與拖曳相關樣式 */
         .questions-list {
             flex-grow: 1;
             min-height: 300px;
@@ -210,7 +197,12 @@
             margin-bottom: 10px;
             padding: 10px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+        }
+        .q-item.editing {
+            border: 2px solid var(--primary);
+            background-color: #f4f9ff;
+            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.15);
         }
         .q-item.dragging {
             opacity: 0.5;
@@ -233,6 +225,9 @@
             color: #666;
             padding: 0 10px;
             user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         .q-drag-handle:active {
             cursor: grabbing;
@@ -248,12 +243,49 @@
             line-height: 1.6;
             white-space: pre-wrap;
             color: var(--text);
-            padding: 5px 10px;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .q-content:hover {
+            background-color: #f1f3f5;
         }
         .empty-msg {
             text-align: center;
             color: #aaa;
             margin-top: 50px;
+            line-height: 1.8;
+        }
+        .status-badge {
+            font-size: 12px;
+            background: var(--primary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            display: none;
+        }
+        .q-item.editing .status-badge {
+            display: inline-block;
+        }
+        
+        /* 新增功能列樣式 */
+        .action-bar {
+            background: #f1f3f5;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            border: 1px solid #e0e4e8;
+        }
+        .action-bar .divider {
+            width: 1px;
+            height: 24px;
+            background-color: #ccc;
+            margin: 0 4px;
         }
     </style>
 </head>
@@ -265,7 +297,9 @@
     <div class="container">
         <!-- 左側：輸入區 -->
         <div class="card">
-            <h2>1. 編輯題目</h2>
+            <h2>
+                <span id="edit-title">1. 編輯題目</span>
+            </h2>
             
             <div class="form-group">
                 <label for="q-type">題型：</label>
@@ -282,11 +316,18 @@
 
             <!-- 選擇題選項編輯區 -->
             <div id="mc-area" class="form-group">
-                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
-                    <label style="margin: 0;">選項清單 (按住 ≡ 拖曳，點選 〇 設解答)：</label>
-                    <select id="mc-label-type" style="width: auto; padding: 6px; font-size: 14px;">
+                <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap;">
+                    <label style="margin: 0; flex-grow: 1;">選項清單 (按住 ≡ 拖曳，點選 〇 設解答)：</label>
+                    <select id="mc-layout" style="width: auto; padding: 6px; font-size: 14px;" title="選擇選項的排列方式">
+                        <option value="4x1">1行1選項</option>
+                        <option value="2x2">1行2選項</option>
+                        <option value="1x4">1行4選項</option>
+                    </select>
+                    <select id="mc-label-type" style="width: auto; padding: 6px; font-size: 14px;" title="選擇選項的標號樣式">
                         <option value="ABC">A, B, C...</option>
                         <option value="123">1, 2, 3...</option>
+                        <option value="circled_num">①, ②, ③...</option>
+                        <option value="solid_circled_num">❶, ❷, ❸...</option>
                     </select>
                 </div>
                 <div id="options-container">
@@ -311,8 +352,8 @@
                 </div>
             </div>
 
-            <div style="margin-top: auto; padding-top: 20px;">
-                <button onclick="generateQuestion()" style="width: 100%; font-size: 16px; padding: 15px;">加入並產出格式 ➡</button>
+            <div style="margin-top: auto; padding-top: 20px; display: flex; gap: 10px;">
+                <button id="submit-btn" onclick="generateQuestion()" style="flex: 1; font-size: 16px; padding: 15px;">加入並產出格式 ➡</button>
             </div>
         </div>
 
@@ -320,11 +361,31 @@
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h2 style="margin: 0; border: none; padding: 0;">2. 輸出結果</h2>
-                <button class="secondary" onclick="copyText()">📋 複製全部文字</button>
+                <div>
+                    <button class="secondary success" style="margin-right: 5px; color: white;" onclick="resetForm()">➕ 新增題目</button>
+                    <button class="secondary" onclick="copyText()">📋 複製全部</button>
+                </div>
             </div>
             
+            <!-- 新增：匯出 / 匯入功能列 -->
+            <div class="action-bar">
+                <span style="font-weight: 600; font-size: 14px; color: #555;">📁 檔案：</span>
+                <button class="secondary btn-sm" onclick="exportMD()">📄 匯出 MD</button>
+                <button class="secondary btn-sm" onclick="document.getElementById('import-file').click()">📂 匯入 MD</button>
+                <input type="file" id="import-file" accept=".md" style="display: none;" onchange="importMD(event)">
+                
+                <div class="divider"></div>
+                
+                <span style="font-weight: 600; font-size: 14px; color: #555;">📝 Word排版：</span>
+                <select id="word-cols" style="width: auto; padding: 4px; font-size: 13px; border-radius: 4px; border: 1px solid #ccc;">
+                    <option value="1">單欄 (A4)</option>
+                    <option value="2">雙欄 (A4)</option>
+                </select>
+                <button class="secondary btn-sm" onclick="exportWord()">匯出 Word</button>
+            </div>
+
             <div id="questions-container" class="questions-list">
-                <div class="empty-msg" id="empty-msg">產出的排版題目會顯示在這裡...<br>(可上下拖曳題目排序)</div>
+                <div class="empty-msg" id="empty-msg">產出的排版題目會顯示在這裡...<br>點擊題目即可編輯，按住 ≡ 可拖曳排序。</div>
             </div>
             <!-- 隱藏的文字區域，用來幫助複製純文字 -->
             <textarea id="hidden-clipboard" style="position: absolute; left: -9999px;"></textarea>
@@ -336,18 +397,16 @@
     </div>
 
     <script>
-        let questionsList = []; // 改用陣列儲存所有題目資料，方便重新排序與計算題號
+        let questionsList = []; // 儲存所有題目資料
+        let editingId = null;   // 目前正在編輯的題目 ID
 
-        // 排版常數設定 (依照您的需求)
+        // 排版常數設定
         const FULL_SPACE = '　'; // 全形空格 (＊)
         const HALF_SPACE = ' ';  // 半形空格 (*)
 
-        // 初始化先加入四個選項
+        // 初始化
         window.onload = function() {
-            addOption("選項一");
-            addOption("選項二");
-            addOption("選項三");
-            addOption("選項四");
+            resetForm(); // 初始化四個選項
         };
 
         // 切換題型介面
@@ -363,7 +422,7 @@
         }
 
         // 新增一個選項並加入拖曳功能
-        function addOption(defaultText = "") {
+        function addOption(defaultText = "", isCorrect = false) {
             const container = document.getElementById('options-container');
             
             const div = document.createElement('div');
@@ -371,7 +430,7 @@
             div.draggable = true;
             div.innerHTML = `
                 <span class="drag-handle" title="按住拖曳排序">≡</span>
-                <input type="radio" name="mc-ans" class="radio-correct" title="設為正確答案">
+                <input type="radio" name="mc-ans" class="radio-correct" title="設為正確答案" ${isCorrect ? 'checked' : ''}>
                 <input type="text" class="option-input" placeholder="請輸入選項內容..." value="${defaultText}">
                 <button class="secondary" style="padding: 6px 12px;" onclick="this.parentElement.remove()" title="刪除選項">✕</button>
             `;
@@ -387,39 +446,26 @@
             container.appendChild(div);
         }
 
-        // 處理拖曳排序邏輯
-        const container = document.getElementById('options-container');
-        container.addEventListener('dragover', e => {
+        // 處理選項拖曳排序邏輯
+        const optionsContainer = document.getElementById('options-container');
+        optionsContainer.addEventListener('dragover', e => {
             e.preventDefault();
-            const afterElement = getDragAfterElement(container, e.clientY);
-            const draggable = document.querySelector('.dragging');
+            const afterElement = getDragAfterElement(optionsContainer, e.clientY, '.option-item:not(.dragging)');
+            const draggable = document.querySelector('.option-item.dragging');
             if (draggable) {
                 if (afterElement == null) {
-                    container.appendChild(draggable);
+                    optionsContainer.appendChild(draggable);
                 } else {
-                    container.insertBefore(draggable, afterElement);
+                    optionsContainer.insertBefore(draggable, afterElement);
                 }
             }
         });
 
-        function getDragAfterElement(container, y) {
-            const draggableElements = [...container.querySelectorAll('.option-item:not(.dragging)')];
-            return draggableElements.reduce((closest, child) => {
-                const box = child.getBoundingClientRect();
-                const offset = y - box.top - box.height / 2;
-                if (offset < 0 && offset > closest.offset) {
-                    return { offset: offset, element: child };
-                } else {
-                    return closest;
-                }
-            }, { offset: Number.NEGATIVE_INFINITY }).element;
-        }
-
-        // --- 以下為新加入的：題目區塊拖曳排序邏輯 ---
+        // --- 題目區塊拖曳排序邏輯 ---
         const qContainer = document.getElementById('questions-container');
         qContainer.addEventListener('dragover', e => {
             e.preventDefault();
-            const afterElement = getDragAfterQElement(qContainer, e.clientY);
+            const afterElement = getDragAfterElement(qContainer, e.clientY, '.q-item:not(.dragging)');
             const draggable = document.querySelector('.q-item.dragging');
             if (draggable) {
                 if (afterElement == null) {
@@ -431,12 +477,12 @@
         });
 
         qContainer.addEventListener('drop', e => {
-            // 當拖放結束時，重新同步陣列順序並重新渲染題號
             syncQuestionsOrder();
         });
 
-        function getDragAfterQElement(container, y) {
-            const draggableElements = [...container.querySelectorAll('.q-item:not(.dragging)')];
+        // 通用拖曳計算函數
+        function getDragAfterElement(container, y, selector) {
+            const draggableElements = [...container.querySelectorAll(selector)];
             return draggableElements.reduce((closest, child) => {
                 const box = child.getBoundingClientRect();
                 const offset = y - box.top - box.height / 2;
@@ -460,15 +506,86 @@
             renderQuestions();
         }
 
-        function deleteQuestion(id) {
-            questionsList = questionsList.filter(q => q.id !== id);
-            renderQuestions();
+        // --- 新增 / 重置表單 ---
+        function resetForm() {
+            editingId = null;
+            document.getElementById('edit-title').innerText = "1. 編輯題目 (新增模式)";
+            document.getElementById('q-text').value = '';
+            document.getElementById('q-type').value = 'mc';
+            document.getElementById('mc-layout').value = '4x1';
+            document.getElementById('mc-label-type').value = 'ABC';
+            toggleType();
+
+            document.querySelectorAll('input[name="tf-ans"][value=" "]').forEach(r => r.checked = true);
+            
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+            addOption("選項一");
+            addOption("選項二");
+            addOption("選項三");
+            addOption("選項四");
+
+            const btn = document.getElementById('submit-btn');
+            btn.innerText = "加入並產出格式 ➡";
+            btn.className = "";
+            btn.style.backgroundColor = "var(--primary)";
+
+            renderQuestions(); // 移除正在編輯的樣式
+            document.getElementById('q-text').focus();
         }
 
-        // --- 核心：產生資料結構並觸發渲染 ---
+        // --- 編輯特定題目 ---
+        function editQuestion(id) {
+            const q = questionsList.find(item => item.id === id);
+            if (!q) return;
+
+            editingId = id;
+            document.getElementById('edit-title').innerText = `1. 編輯題目 (正在修改第 ${questionsList.indexOf(q) + 1} 題)`;
+            
+            // 載入資料
+            document.getElementById('q-type').value = q.type;
+            document.getElementById('q-text').value = q.text;
+            toggleType();
+
+            if (q.type === 'tf') {
+                document.querySelector(`input[name="tf-ans"][value="${q.answerTf || ' '}"]`).checked = true;
+            } else if (q.type === 'mc') {
+                document.getElementById('mc-layout').value = q.mcLayout || '4x1';
+                document.getElementById('mc-label-type').value = q.mcLabelType || 'ABC';
+                
+                const container = document.getElementById('options-container');
+                container.innerHTML = '';
+                q.options.forEach((opt, index) => {
+                    addOption(opt, index === q.answerIndex);
+                });
+            }
+
+            // 更新按鈕樣式
+            const btn = document.getElementById('submit-btn');
+            btn.innerText = "💾 更新此題目";
+            btn.className = "success";
+            btn.style.backgroundColor = "var(--success)";
+
+            renderQuestions(); // 標記正在編輯的項目
+            
+            // 捲動左側到頂部方便編輯
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function deleteQuestion(id, event) {
+            event.stopPropagation(); // 避免觸發點擊編輯事件
+            questionsList = questionsList.filter(q => q.id !== id);
+            if (editingId === id) resetForm(); // 如果刪除的是正在編輯的題目，重置表單
+            else renderQuestions();
+        }
+
+        // --- 核心：產生或更新資料結構 ---
         function generateQuestion() {
             const type = document.getElementById('q-type').value;
-            const qText = document.getElementById('q-text').value.trim();
+            let qText = document.getElementById('q-text').value.trim();
+            
+            // 替換半形問號為全形問號
+            qText = qText.replace(/\?/g, '？');
             
             if (!qText) { 
                 alert('請輸入題目內容！'); 
@@ -476,52 +593,57 @@
                 return; 
             }
 
-            // 將新題目儲存為物件
-            const newQuestion = {
-                id: Date.now(),
+            // 準備資料物件
+            const questionData = {
+                id: editingId || Date.now(), // 如果是編輯模式就沿用 ID，否則產生新 ID
                 type: type,
                 text: qText,
                 options: [],
                 answerIndex: -1,
                 answerTf: ' ',
-                mcLabelType: 'ABC'
+                mcLabelType: 'ABC',
+                mcLayout: '4x1'
             };
 
             if (type === 'tf') {
                 const ansObj = document.querySelector('input[name="tf-ans"]:checked');
                 if (ansObj && ansObj.value.trim() !== "") {
-                    newQuestion.answerTf = ansObj.value; // 'O' 或 'X'
+                    questionData.answerTf = ansObj.value;
                 }
             } else if (type === 'mc') {
                 const optionItems = document.querySelectorAll('.option-item');
-                newQuestion.mcLabelType = document.getElementById('mc-label-type').value;
+                questionData.mcLabelType = document.getElementById('mc-label-type').value;
+                questionData.mcLayout = document.getElementById('mc-layout').value;
 
                 optionItems.forEach((item, index) => {
-                    const text = item.querySelector('.option-input').value.trim();
+                    // 自動忽略(移除)選項內的空白字元 (包含全半形空白)
+                    const text = item.querySelector('.option-input').value.replace(/\s+/g, '');
                     const isCorrect = item.querySelector('.radio-correct').checked;
-                    if (isCorrect) newQuestion.answerIndex = index;
-                    newQuestion.options.push(text || "未命名選項");
+                    if (isCorrect) questionData.answerIndex = index;
+                    questionData.options.push(text || "未命名選項");
                 });
 
-                if (newQuestion.options.length === 0) {
+                if (questionData.options.length === 0) {
                     alert('選擇題至少需要一個選項！');
                     return;
                 }
             }
 
-            questionsList.push(newQuestion);
-            renderQuestions(); // 重新渲染畫面
-            
-            // 捲動到底部
-            setTimeout(() => {
-                qContainer.scrollTop = qContainer.scrollHeight;
-            }, 50);
-
-            // 清空輸入框方便下一題
-            document.getElementById('q-text').value = '';
-            document.querySelectorAll('.radio-correct').forEach(r => r.checked = false);
-            document.querySelectorAll('input[name="tf-ans"][value=" "]').forEach(r => r.checked = true);
-            document.getElementById('q-text').focus();
+            if (editingId) {
+                // 更新模式
+                const index = questionsList.findIndex(q => q.id === editingId);
+                if (index !== -1) questionsList[index] = questionData;
+                resetForm(); // 更新後自動回到新增模式
+            } else {
+                // 新增模式
+                questionsList.push(questionData);
+                resetForm();
+                
+                // 新增時自動捲動到底部
+                setTimeout(() => {
+                    qContainer.scrollTop = qContainer.scrollHeight;
+                }, 50);
+            }
         }
 
         // --- 將陣列渲染成畫面與格式化文字 ---
@@ -530,12 +652,20 @@
             container.innerHTML = '';
 
             if (questionsList.length === 0) {
-                container.innerHTML = '<div class="empty-msg" id="empty-msg">產出的排版題目會顯示在這裡...<br>(可上下拖曳題目排序)</div>';
+                container.innerHTML = '<div class="empty-msg" id="empty-msg">產出的排版題目會顯示在這裡...<br>點選題目即可修改，按住 ≡ 可拖曳排序。</div>';
                 return;
             }
 
+            // 定義各種標號樣式
+            const labelSets = {
+                'ABC': ['A','B','C','D','E','F','G','H','I','J'],
+                '123': ['1','2','3','4','5','6','7','8','9','10'],
+                'circled_num': ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'],
+                'solid_circled_num': ['❶','❷','❸','❹','❺','❻','❼','❽','❾','❿']
+            };
+
             questionsList.forEach((q, index) => {
-                const qNumber = index + 1; // 根據目前順序自動產生題號
+                const qNumber = index + 1;
                 let resultString = "";
                 let finalAnswerStr = FULL_SPACE;
 
@@ -544,32 +674,62 @@
                         finalAnswerStr = q.answerTf;
                     }
                     resultString += `（${HALF_SPACE}${finalAnswerStr}${HALF_SPACE}）${qNumber}.${HALF_SPACE}${q.text}`;
-                } else if (q.type === 'mc') {
-                    // 根據選擇的標籤類型給予 ABC 還是 123
-                    const labels = q.mcLabelType === '123' ? ['1','2','3','4','5','6','7','8','9','10'] : ['A','B','C','D','E','F','G','H','I','J'];
+                } 
+                else if (q.type === 'mc') {
+                    const currentLabels = labelSets[q.mcLabelType] || labelSets['ABC'];
+                    
+                    // 特殊符號不加括號
+                    const useParentheses = (q.mcLabelType === 'ABC' || q.mcLabelType === '123');
+                    
                     if (q.answerIndex !== -1) {
-                        finalAnswerStr = labels[q.answerIndex];
+                        finalAnswerStr = currentLabels[q.answerIndex];
                     }
+                    
+                    // 題目第一行
                     resultString += `（${HALF_SPACE}${finalAnswerStr}${HALF_SPACE}）${qNumber}.${HALF_SPACE}${q.text}\n`;
                     
+                    // 選項排版邏輯
+                    const indent = FULL_SPACE.repeat(4) + HALF_SPACE.repeat(2);
+                    const colSpace = FULL_SPACE.repeat(3); // 欄位間距 (3個全形空格)
+                    
+                    let cols = 1;
+                    if (q.mcLayout === '2x2') cols = 2;
+                    if (q.mcLayout === '1x4') cols = 4;
+
                     q.options.forEach((optText, i) => {
-                        const label = labels[i];
-                        const indent = FULL_SPACE.repeat(4) + HALF_SPACE.repeat(2);
-                        resultString += `${indent}(${label})${HALF_SPACE}${optText}${FULL_SPACE}`;
-                        if (i < q.options.length - 1) resultString += '\n'; // 最後一個選項不換行
+                        const lbl = useParentheses ? `(${currentLabels[i]})` : currentLabels[i];
+                        const itemText = `${lbl}${HALF_SPACE}${optText}`;
+
+                        if (cols === 1) {
+                            // 1行1選項 (預設)
+                            resultString += `${indent}${itemText}`;
+                            if (i < q.options.length - 1) resultString += '\n';
+                        } 
+                        else {
+                            // 多欄位排版 (2x2, 1x4)
+                            if (i % cols === 0) {
+                                // 新的一行開始
+                                if (i > 0) resultString += '\n';
+                                resultString += indent + itemText;
+                            } else {
+                                // 同一行的後續選項
+                                resultString += colSpace + itemText;
+                            }
+                        }
                     });
                 }
 
                 const div = document.createElement('div');
-                div.className = 'q-item';
+                div.className = `q-item ${editingId === q.id ? 'editing' : ''}`;
                 div.draggable = true;
                 div.dataset.id = q.id;
+                
                 div.innerHTML = `
                     <div class="q-header">
-                        <span class="q-drag-handle" title="按住拖曳排序題目">≡ 題號 ${qNumber}</span>
-                        <button class="secondary btn-sm danger" style="background:#fff; color:#e74c3c; border:1px solid #e74c3c;" onclick="deleteQuestion(${q.id})">刪除</button>
+                        <span class="q-drag-handle" title="按住拖曳排序題目">≡ 題號 ${qNumber} <span class="status-badge">編輯中</span></span>
+                        <button class="secondary btn-sm danger" style="background:#fff; color:#e74c3c; border:1px solid #e74c3c;" onclick="deleteQuestion(${q.id}, event)">刪除</button>
                     </div>
-                    <pre class="q-content">${resultString}</pre>
+                    <pre class="q-content" title="點擊編輯此題" onclick="editQuestion(${q.id})">${resultString}</pre>
                 `;
 
                 // 綁定題目區塊的拖曳事件
@@ -588,7 +748,7 @@
         function clearOutput() {
             if(confirm('確定要清空所有產出的題目嗎？這將會重置題號。')) {
                 questionsList = [];
-                renderQuestions();
+                resetForm();
             }
         }
 
@@ -612,13 +772,135 @@
             const btn = document.querySelector('button[onclick="copyText()"]');
             const originalText = btn.innerHTML;
             btn.innerHTML = '✅ 已複製全部！';
-            btn.style.backgroundColor = '#28a745';
+            btn.style.backgroundColor = 'var(--success)';
             btn.style.color = 'white';
             setTimeout(() => {
                 btn.innerHTML = originalText;
                 btn.style.backgroundColor = '';
                 btn.style.color = '';
             }, 2000);
+        }
+
+        // --- 匯出與匯入 MD 功能 ---
+        function exportMD() {
+            if (questionsList.length === 0) {
+                alert('目前沒有題目可匯出！');
+                return;
+            }
+            
+            const allText = Array.from(document.querySelectorAll('.q-content'))
+                                .map(pre => pre.innerText)
+                                .join('\n\n');
+            
+            // 將系統資料轉為 JSON 並隱藏在 Markdown 註解中，以便未來還原
+            const systemData = `\n\n<!-- EXAM_SYSTEM_DATA_START\n${JSON.stringify(questionsList)}\nEXAM_SYSTEM_DATA_END -->\n`;
+            const mdContent = `# 試卷輸出\n\n\`\`\`text\n${allText}\n\`\`\`${systemData}`;
+            
+            const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '試卷.md';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importMD(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                // 尋找藏在 Markdown 中的系統資料
+                const match = content.match(/<!-- EXAM_SYSTEM_DATA_START\n([\s\S]*?)\nEXAM_SYSTEM_DATA_END -->/);
+                if (match && match[1]) {
+                    try {
+                        questionsList = JSON.parse(match[1]);
+                        renderQuestions();
+                        resetForm(); 
+                        alert('✅ 成功匯入題目！');
+                    } catch (err) {
+                        alert('❌ 匯入失敗：檔案格式不正確或資料已損壞。');
+                    }
+                } else {
+                    alert('❌ 匯入失敗：找不到系統專用標籤，請確保該 .md 檔案是由本系統匯出。');
+                }
+                event.target.value = ''; // 允許重複匯入相同檔案
+            };
+            reader.readAsText(file);
+        }
+
+        // --- 匯出 Word 功能 ---
+        function exportWord() {
+            if (questionsList.length === 0) {
+                alert('目前沒有題目可匯出！');
+                return;
+            }
+
+            const cols = document.getElementById('word-cols').value;
+            // 判斷是否為雙欄 (以 Word 的 mso-columns 語法控制)
+            const columnStyle = cols === '2' ? 'mso-columns: 2 even 21.25pt;' : '';
+
+            const allText = Array.from(document.querySelectorAll('.q-content'))
+                                .map(pre => pre.innerText)
+                                .join('\n\n');
+            
+            // 轉換為適合放入 HTML 的格式
+            const formattedText = allText.replace(/&/g, '&amp;')
+                                         .replace(/</g, '&lt;')
+                                         .replace(/>/g, '&gt;')
+                                         .replace(/\n/g, '<br>');
+
+            // 組合符合 Microsoft Word 規範的 HTML 結構 (利用 .doc 擴充功能欺騙瀏覽器自動轉為 Word 模式)
+            const htmlContent = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office"
+                  xmlns:w="urn:schemas-microsoft-com:office:word"
+                  xmlns="http://www.w3.org/TR/REC-html40">
+            <head>
+                <meta charset="utf-8">
+                <title>試卷</title>
+                <!--[if gte mso 9]>
+                <xml>
+                    <w:WordDocument>
+                        <w:View>Print</w:View>
+                        <w:Zoom>100</w:Zoom>
+                        <w:DoNotOptimizeForBrowser/>
+                    </w:WordDocument>
+                </xml>
+                <![endif]-->
+                <style>
+                    @page WordSection1 {
+                        size: 595.3pt 841.9pt; /* A4 紙張大小 */
+                        margin: 72.0pt 72.0pt 72.0pt 72.0pt;
+                        ${columnStyle}
+                    }
+                    div.WordSection1 { page: WordSection1; }
+                    body {
+                        font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+                        font-size: 12pt;
+                    }
+                    p {
+                        line-height: 1.5;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="WordSection1">
+                    <p>${formattedText}</p>
+                </div>
+            </body>
+            </html>
+            `;
+
+            // \ufeff (BOM) 可確保 Word 預設以 UTF-8 開啟，不亂碼
+            const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '試卷.doc';
+            a.click();
+            URL.revokeObjectURL(url);
         }
     </script>
 </body>
