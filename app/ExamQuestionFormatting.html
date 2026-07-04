@@ -1,907 +1,2996 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>教師動態出題排版系統</title>
-    <style>
-        :root {
-            --primary: #4A90E2;
-            --primary-hover: #357ABD;
-            --bg: #F5F7FA;
-            --card-bg: #FFFFFF;
-            --border: #E4E7EB;
-            --text: #333333;
-            --danger: #e74c3c;
-            --success: #28a745;
-        }
-        body {
-            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        h1 {
-            color: #2C3E50;
-            text-align: center;
-            margin-bottom: 10px;
-            font-size: 1.8rem;
-        }
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 0.95rem;
-        }
-        .container {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-        @media (min-width: 768px) {
-            .container {
-                flex-direction: row;
-                align-items: stretch;
-            }
-        }
-        .card {
-            background: var(--card-bg);
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            flex: 1;
-            border: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            max-width: 100%;
-        }
-        .card h2 {
-            margin-top: 0;
-            color: #2C3E50;
-            font-size: 1.3rem;
-            border-bottom: 2px solid var(--primary);
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .form-group { margin-bottom: 20px; }
-        label { 
-            display: block; 
-            margin-bottom: 8px; 
-            font-weight: 600; 
-            color: #444;
-        }
-        input[type="text"], select {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 16px;
-            transition: border-color 0.2s;
-        }
-        input[type="text"]:focus, select:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
-        }
-        button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: bold;
-            transition: background-color 0.2s, transform 0.1s;
-        }
-        button:hover { background-color: var(--primary-hover); }
-        button:active { transform: scale(0.98); }
-        button.secondary { 
-            background-color: #f1f3f5; 
-            color: #495057; 
-            border: 1px solid #ced4da;
-        }
-        button.secondary:hover { background-color: #e2e6ea; }
-        button.danger { background-color: var(--danger); color: white; border: none; }
-        button.danger:hover { background-color: #c0392b; }
-        button.success { background-color: var(--success); color: white; border: none; }
-        button.success:hover { background-color: #218838; }
-        
-        /* 拖曳選項區域樣式 */
-        #options-container { margin-bottom: 15px; }
-        .option-item {
-            display: flex;
-            align-items: center;
-            background: #ffffff;
-            padding: 12px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            cursor: grab;
-            transition: box-shadow 0.2s, transform 0.2s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        }
-        .option-item:hover {
-            box-shadow: 0 4px 8px rgba(0,0,0,0.08);
-        }
-        .option-item:active { cursor: grabbing; }
-        .option-item.dragging { 
-            opacity: 0.6; 
-            background: #f8f9fa; 
-            border: 2px dashed var(--primary);
-            transform: scale(0.98);
-        }
-        .drag-handle { 
-            margin-right: 12px; 
-            color: #aaa; 
-            cursor: grab; 
-            font-size: 20px;
-            user-select: none;
-        }
-        .option-input { 
-            flex: 1; 
-            margin: 0 15px; 
-            padding: 8px !important;
-        }
-        .radio-correct { 
-            transform: scale(1.3); 
-            cursor: pointer; 
-            accent-color: var(--primary);
-        }
-        
-        .radio-group {
-            display: flex;
-            gap: 20px;
-            align-items: center;
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
-            border: 1px solid #eee;
-        }
-        .radio-group label {
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: normal;
-            cursor: pointer;
-        }
-        .radio-group input[type="radio"] {
-            transform: scale(1.2);
-            accent-color: var(--primary);
-        }
-        
-        /* 題目列表與拖曳相關樣式 */
-        .questions-list {
-            flex-grow: 1;
-            min-height: 300px;
-            background-color: #fafafa;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 10px;
-            overflow-y: auto;
-            max-height: 600px;
-        }
-        .q-item {
-            background: #fff;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            margin-bottom: 10px;
-            padding: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-        }
-        .q-item.editing {
-            border: 2px solid var(--primary);
-            background-color: #f4f9ff;
-            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.15);
-        }
-        .q-item.dragging {
-            opacity: 0.5;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
-            transform: scale(0.98);
-            border: 2px dashed var(--primary);
-        }
-        .q-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 8px;
-            margin-bottom: 8px;
-        }
-        .q-drag-handle {
-            cursor: grab;
-            font-size: 16px;
-            font-weight: bold;
-            color: #666;
-            padding: 0 10px;
-            user-select: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .q-drag-handle:active {
-            cursor: grabbing;
-        }
-        .btn-sm {
-            padding: 4px 10px;
-            font-size: 13px;
-        }
-        .q-content {
-            margin: 0;
-            font-family: "Courier New", "Microsoft JhengHei", monospace;
-            font-size: 15px;
-            line-height: 1.6;
-            white-space: pre-wrap;
-            color: var(--text);
-            padding: 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .q-content:hover {
-            background-color: #f1f3f5;
-        }
-        .empty-msg {
-            text-align: center;
-            color: #aaa;
-            margin-top: 50px;
-            line-height: 1.8;
-        }
-        .status-badge {
-            font-size: 12px;
-            background: var(--primary);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            display: none;
-        }
-        .q-item.editing .status-badge {
-            display: inline-block;
-        }
-        
-        /* 新增功能列樣式 */
-        .action-bar {
-            background: #f1f3f5;
-            padding: 10px 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
-            border: 1px solid #e0e4e8;
-        }
-        .action-bar .divider {
-            width: 1px;
-            height: 24px;
-            background-color: #ccc;
-            margin: 0 4px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>教師動態出題排版系統 V3.3</title>
+  <style>
+    :root {
+      --primary: #4A90E2;
+      --primary-hover: #357ABD;
+      --bg: #F5F7FA;
+      --card-bg: #FFFFFF;
+      --border: #E4E7EB;
+      --text: #2f3640;
+      --muted: #6c757d;
+      --danger: #e74c3c;
+      --success: #28a745;
+      --warning: #f39c12;
+      --paper-width: 210mm;
+      --paper-height: 297mm;
+      --paper-margin: 14mm;
+      --paper-margin-top: 25.4mm;
+      --paper-margin-right: 19.1mm;
+      --paper-margin-bottom: 25.4mm;
+      --paper-margin-left: 19.1mm;
+      --paper-inner-width: 171.8mm;
+      --paper-inner-height: 246.2mm;
+      --preview-font-size: 12pt;
+      --section-font-size: 14pt;
+      --question-font-size: 12pt;
+      --preview-columns: 1;
+      --preview-gap: 12.7mm;
+      --preview-zoom: 1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 20px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+    }
+    h1 {
+      margin: 0 0 8px;
+      text-align: center;
+      font-size: 1.8rem;
+      color: #26384d;
+    }
+    .subtitle {
+      text-align: center;
+      color: var(--muted);
+      line-height: 1.6;
+      margin: 0 auto 22px;
+      max-width: 960px;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: minmax(340px, 430px) minmax(540px, 1fr);
+      gap: 18px;
+      max-width: 1440px;
+      margin: 0 auto;
+      align-items: start;
+    }
+    @media (max-width: 980px) {
+      body { padding: 12px; }
+      .container { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.05);
+      min-width: 0;
+    }
+    .card h2 {
+      margin: 0 0 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--primary);
+      font-size: 1.18rem;
+      color: #26384d;
+    }
+    .form-group { margin-bottom: 14px; }
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 7px;
+      color: #3d4652;
+    }
+    input[type="text"], input[type="number"], textarea, select {
+      width: 100%;
+      padding: 10px 11px;
+      border: 1px solid #cfd6df;
+      border-radius: 8px;
+      font-size: 15px;
+      font-family: inherit;
+      background: #fff;
+    }
+    textarea { min-height: 86px; resize: vertical; line-height: 1.55; }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(74,144,226,.18);
+    }
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      background: var(--primary);
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .18s, transform .08s;
+      font-family: inherit;
+    }
+    button:hover { background: var(--primary-hover); }
+    button:active { transform: scale(.98); }
+    button.secondary { background: #f1f3f5; color: #3f4954; border: 1px solid #cfd6df; }
+    button.secondary:hover { background: #e6eaee; }
+    button.success { background: var(--success); }
+    button.success:hover { background: #218838; }
+    button.danger { background: var(--danger); }
+    button.danger:hover { background: #c0392b; }
+    button.warning { background: var(--warning); }
+    button.warning:hover { background: #d88708; }
+    button.btn-sm { padding: 5px 8px; font-size: 12px; border-radius: 6px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .row > * { min-width: 0; }
+    .row.two > * { flex: 1; }
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+      margin-top: 5px;
+    }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid #dfe5ec;
+      background: #f7f9fb;
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+    .toolbar select { width: auto; min-width: 88px; padding: 7px 8px; font-size: 13px; }
+    .toolbar .divider { width: 1px; height: 24px; background: #ccd3da; margin: 0 2px; }
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #eef5ff;
+      color: #2e6da4;
+      font-weight: 700;
+      font-size: 12px;
+      border: 1px solid #d5e7fb;
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .section-box, .group-box, .question-box, .material-node-box {
+      border: 1px solid #d9e0e7;
+      background: #fff;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    }
+    .section-box.dragging, .group-box.dragging, .question-box.dragging, .material-node-box.dragging { opacity: .55; }
+    .section-head, .group-head, .question-head, .material-node-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 10px;
+    }
+    .section-head { background: #f2f7fc; border-radius: 10px 10px 0 0; border-bottom: 1px solid #d9e0e7; }
+    .group-head { background: #faf7ef; border-radius: 10px 10px 0 0; border-bottom: 1px solid #e9ddc8; }
+    .question-head { background: #fff; border-radius: 10px; }
+    .material-node-head { background: #f8fbff; border-radius: 10px; }
+    .material-node-box { border-color: #d5e7fb; background: #fbfdff; }
+    .question-child-materials { margin: .15em 0 .55em 2.1em; }
+    .structure-child-materials { padding: 0 10px 10px 34px; }
+    .drag-handle { cursor: grab; color: #7b8794; user-select: none; font-weight: 800; padding: 0 4px; }
+    .title-line { display: flex; gap: 7px; align-items: center; min-width: 0; }
+    .title-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 800; }
+    .children-list, .group-children {
+      padding: 10px 10px 2px 24px;
+      min-height: 44px;
+    }
+    .drop-zone {
+      border: 1px dashed #b8c7d6;
+      border-radius: 9px;
+      background: #fbfdff;
+      color: #8a96a3;
+      text-align: center;
+      padding: 10px;
+      font-size: 13px;
+      margin: 4px 0 10px;
+    }
+    .drop-zone.drag-over { background: #eaf4ff; border-color: var(--primary); color: #2e6da4; }
+    .empty {
+      text-align: center;
+      color: #97a2ad;
+      line-height: 1.8;
+      padding: 32px 10px;
+      border: 1px dashed #d7dde4;
+      border-radius: 10px;
+      background: #fafafa;
+    }
+    .option-item, .match-row {
+      display: grid;
+      grid-template-columns: 26px 26px 1fr 34px;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      border: 1px solid #dfe5ec;
+      border-radius: 9px;
+      margin-bottom: 8px;
+      background: #fff;
+    }
+    .option-item.dragging { opacity: .55; border-style: dashed; border-color: var(--primary); background: #f3f9ff; }
+    .option-drag-handle { cursor: grab; color: #7b8794; user-select: none; font-weight: 900; text-align: center; }
+    .option-drag-handle:active { cursor: grabbing; }
+    .match-row { grid-template-columns: 1fr 1fr 36px; }
+    .option-item input { margin: 0; }
+    .preview-shell {
+      overflow: auto;
+      max-height: 76vh;
+      padding: 16px;
+      background: #e9edf2;
+      border-radius: 12px;
+      border: 1px solid #d6dde6;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      direction: ltr;
+    }
+    .preview-pages {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      align-items: center;
+      width: max-content;
+      max-width: none;
+    }
+    .preview-paper {
+      width: var(--paper-width);
+      height: var(--paper-height);
+      min-height: var(--paper-height);
+      flex: 0 0 auto;
+      background: white;
+      padding: var(--paper-margin-top) var(--paper-margin-right) var(--paper-margin-bottom) var(--paper-margin-left);
+      box-shadow: 0 7px 24px rgba(0,0,0,.22);
+      font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+      font-size: var(--question-font-size);
+      line-height: 1.55;
+      color: #111;
+      transform-origin: top center;
+      zoom: var(--preview-zoom);
+      box-sizing: border-box;
+      overflow: hidden;
+      position: relative;
+    }
+    .preview-page-label {
+      position: absolute;
+      right: 6mm;
+      bottom: 4mm;
+      color: #a0a8b0;
+      font-size: 9pt;
+      line-height: 1;
+      user-select: none;
+    }
+    .preview-shell.vertical-preview {
+      justify-content: flex-end !important;
+      align-items: flex-start;
+      text-align: initial;
+      direction: ltr;
+    }
+    .preview-shell.vertical-preview .preview-pages {
+      align-items: flex-end;
+    }
+    .preview-shell.vertical-preview .preview-paper {
+      transform-origin: top right;
+      margin-left: auto;
+      margin-right: 0;
+    }
+    @media (max-width: 1220px) {
+      .preview-paper { margin-bottom: 0; }
+    }
+    @media (max-width: 980px) {
+      .preview-paper { margin-bottom: 0; }
+    }
+    .preview-content {
+      width: 100%;
+      height: var(--paper-inner-height);
+      column-count: var(--preview-columns);
+      column-gap: var(--preview-gap);
+      column-fill: auto !important;
+      overflow: visible;
+    }
+    .preview-content.vertical-writing {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      width: var(--paper-inner-width);
+      height: var(--paper-inner-height);
+      margin-left: auto;
+      margin-right: 0;
+      column-count: var(--preview-columns);
+      column-gap: var(--preview-gap);
+      column-fill: auto !important;
+      direction: ltr;
+      text-align: start;
+      overflow: visible;
+      vertical-align: top;
+    }
+    .exam-section {
+      break-inside: auto;
+      page-break-inside: auto;
+      margin: 0 0 .85em;
+    }
+    .exam-group, .question-block {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      margin: 0 0 .85em;
+    }
+    .exam-section-title {
+      margin: 0 0 .12em;
+      font-size: var(--section-font-size);
+      line-height: 1.45;
+    }
+    .exam-section-title-main { font-weight: 800; }
+    .exam-section-score { font-weight: 400; }
+    .exam-section-instruction {
+      margin: 0 0 .45em;
+      padding-left: 2em;
+      font-size: var(--question-font-size);
+      line-height: 1.45;
+      font-weight: 400;
+      white-space: pre-wrap;
+    }
+    .exam-group-title {
+      font-weight: 800;
+      margin: .25em 0 .35em;
+      font-size: calc(var(--question-font-size) + 1pt);
+      line-height: 1.45;
+    }
+    .question-block, .exam-material { font-size: var(--question-font-size); }
+    .exam-material {
+      border: 1px solid #aaa;
+      padding: .55em .7em;
+      margin: .35em 0 .6em;
+      white-space: pre-wrap;
+    }
+    .question-stem { margin: 0; white-space: normal; }
+    .stem-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: auto;
+      margin: 0;
+    }
+    .stem-table td {
+      border: none;
+      padding: 0;
+      vertical-align: top;
+      line-height: inherit;
+    }
+    .stem-answer-cell, .stem-number-cell {
+      width: 1%;
+      white-space: nowrap;
+      padding-right: .25em !important;
+    }
+    .stem-text-cell {
+      width: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .stem-horizontal { display: block; }
+    .stem-vertical { display: none; }
+    .vertical-writing .exam-section {
+      display: block;
+      vertical-align: top;
+      margin: 0 0 0 1.05em;
+      break-inside: auto;
+      page-break-inside: auto;
+    }
+    .vertical-writing .exam-section-title {
+      display: block;
+      margin: 0 0 0 .65em;
+      vertical-align: top;
+    }
+    .vertical-writing .exam-group,
+    .vertical-writing .question-block {
+      display: block;
+      vertical-align: top;
+      margin: 0 0 0 .85em;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .vertical-writing .exam-group-title,
+    .vertical-writing .exam-material {
+      display: block;
+      margin: 0 0 0 .6em;
+      vertical-align: top;
+    }
+    /* 直書預覽改用專用的「前綴絕對定位＋題文區塊上方留白」結構。
+       目的：讓題文換到下一直欄時，仍從答案框與題號之後的位置開始，
+       等同橫書的題號後懸掛縮排。 */
+    .vertical-writing .stem-horizontal {
+      display: none !important;
+    }
+    .vertical-writing .stem-vertical {
+      display: block !important;
+      position: relative;
+      --stem-prefix-indent: 2.8em;
+      padding-top: var(--stem-prefix-indent);
+      margin: 0 .15em 0 .55em;
+      vertical-align: top;
+      white-space: normal;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .vertical-writing .stem-vertical.has-answer {
+      --stem-prefix-indent: 5.2em;
+    }
+    .vertical-writing .stem-vertical-prefix {
+      position: absolute;
+      top: 0;
+      right: 0;
+      white-space: nowrap;
+      line-height: 1.55;
+      vertical-align: top;
+      text-align: start;
+    }
+    .vertical-writing .stem-vertical-body {
+      display: block;
+      white-space: pre-wrap;
+      word-break: normal;
+      overflow-wrap: normal;
+      vertical-align: top;
+    }
+    .vertical-writing .answer-box {
+      min-width: auto;
+      min-height: 3.2em;
+      text-align: center;
+      vertical-align: top;
+    }
+    .vertical-writing .option-table,
+    .vertical-writing .matching-table {
+      display: inline-table;
+      width: auto;
+      height: auto;
+      table-layout: auto;
+      margin: 0 .25em 0 0;
+      vertical-align: top;
+    }
+    .vertical-writing .option-table td,
+    .vertical-writing .matching-table td {
+      padding: 0 .15em 0 .35em;
+      word-break: normal;
+      overflow-wrap: normal;
+      vertical-align: top;
+    }
+    /* V2.12：直書時，單欄預覽與 Word 輸出選項另起直欄，並與題文一樣從題號後方開始。 */
+    .vertical-writing .vertical-option-separate {
+      display: block;
+      padding-top: 2.8em;
+      margin: 0 .15em 0 .55em;
+      break-inside: avoid;
+      page-break-inside: avoid;
+      vertical-align: top;
+      white-space: normal;
+    }
+    .vertical-writing .vertical-option-separate.has-answer {
+      padding-top: 5.2em;
+    }
+    .vertical-writing .vertical-option-separate .option-table {
+      margin: 0;
+    }
+    .answer-box { display: inline-block; min-width: 3.2em; text-align: center; white-space: nowrap; }
+    .option-table, .matching-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin: 0 0 .04em;
+      line-height: 1.18;
+    }
+    .option-table td, .matching-table td {
+      border: none;
+      padding: 0 .9em 0 0;
+      vertical-align: top;
+      white-space: normal;
+      word-break: break-word;
+    }
+    .matching-table .connect-cell { width: 28%; padding: 0 .7em; }
+    .connect-dots { display: flex; justify-content: space-between; letter-spacing: .2em; }
+    .answer-note { color: #555; font-size: .92em; margin-top: .25em; }
+    .answer-lines { display: inline-block; min-width: 11em; border-bottom: 1px solid #111; height: 1.35em; }
+    .line-block { margin-top: .25em; }
+    .line-block div { border-bottom: 1px solid #111; height: 1.55em; }
+
+
+    .material-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 9px 10px;
+      border: 1px solid #dfe5ec;
+      border-radius: 9px;
+      background: #fbfdff;
+      color: #4f5d6b;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(30, 42, 56, .45);
+      padding: 24px;
+      overflow: auto;
+    }
+    .modal-backdrop.active { display: block; }
+    .modal-window {
+      max-width: 1120px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 14px;
+      border: 1px solid #d6dde6;
+      box-shadow: 0 12px 40px rgba(0,0,0,.28);
+      overflow: hidden;
+    }
+    .modal-head, .modal-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 18px;
+      background: #f7f9fb;
+      border-bottom: 1px solid #e1e6ed;
+    }
+    .modal-foot {
+      border-top: 1px solid #e1e6ed;
+      border-bottom: none;
+      justify-content: flex-end;
+    }
+    .modal-head h3 { margin: 0; color: #26384d; }
+    .modal-body {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 14px;
+      padding: 16px;
+    }
+    @media (max-width: 900px) { .modal-body { grid-template-columns: 1fr; } }
+    .material-list-panel, .material-editor-panel {
+      border: 1px solid #dfe5ec;
+      border-radius: 12px;
+      padding: 12px;
+      background: #fcfdff;
+      min-width: 0;
+    }
+    .material-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+    .material-card {
+      border: 1px solid #d9e0e7;
+      border-radius: 10px;
+      background: #fff;
+      padding: 9px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .material-card.active { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(74,144,226,.14); }
+    .material-card-title { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .material-card-meta { margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .material-editor-panel textarea { min-height: 120px; }
+    .ai-import-textarea { min-height: 300px; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 13px; line-height: 1.5; }
+    .ai-import-prompt { min-height: 180px; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 12px; line-height: 1.5; }
+    .mini-table-editor { overflow: auto; border: 1px solid #e1e6ed; border-radius: 10px; background: #fff; padding: 8px; }
+    .mini-table-editor table { border-collapse: collapse; width: 100%; min-width: 520px; }
+    .mini-table-editor td { border: 1px solid #cfd6df; padding: 4px; }
+    .mini-table-editor input { border: none; padding: 6px; width: 100%; min-width: 90px; }
+    .wordbank-row {
+      display: grid;
+      grid-template-columns: 34px 1fr 38px;
+      gap: 7px;
+      align-items: center;
+      border: 1px solid #dfe5ec;
+      border-radius: 8px;
+      padding: 6px;
+      margin-bottom: 6px;
+      background: #fff;
+    }
+    .material-block {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      margin: .35em 0 .65em;
+      font-size: var(--question-font-size);
+    }
+    .material-title {
+      font-weight: 700;
+      margin-bottom: .22em;
+    }
+    .material-boxed {
+      border: 1px solid #999;
+      padding: .55em .7em;
+    }
+    .material-text-body { white-space: pre-wrap; }
+    .material-wordbank-items {
+      display: grid;
+      gap: .2em .9em;
+      line-height: 1.45;
+    }
+    .material-wordbank-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      line-height: 1.45;
+    }
+    .material-wordbank-table td {
+      border: none;
+      padding: 0 .9em 0 0;
+      vertical-align: top;
+      word-break: break-word;
+    }
+    .material-table-wrap { overflow: visible; }
+    .material-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      line-height: 1.35;
+    }
+    .material-table.compact { font-size: .95em; }
+    .material-table th, .material-table td {
+      border: 1px solid #333;
+      padding: .24em .42em;
+      vertical-align: middle;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+    .material-table th { font-weight: 700; background: #f3f3f3; }
+    .image-placeholder {
+      border: 1.5px dashed #444;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #555;
+      margin: .4em auto;
+      background: #fafafa;
+      position: relative;
+      resize: both;
+      overflow: auto;
+      min-width: 25mm;
+      min-height: 18mm;
+    }
+    .image-placeholder-inner { pointer-events: none; line-height: 1.45; }
+    .image-placeholder-label { font-weight: 700; }
+    .material-warning {
+      border: 1px dashed #e0a800;
+      color: #8a6100;
+      background: #fff8e1;
+      padding: .35em .55em;
+      margin: .25em 0;
+      font-size: .92em;
+    }
+
+    .inline-options {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 8px 0 0;
+    }
+    .inline-options select { width: auto; min-width: 86px; padding: 7px 9px; }
+    .disabled-field { opacity: .58; }
+    .hidden { display: none !important; }
+  </style>
 </head>
 <body>
+  <h1>📝 教師動態出題排版系統 V3.3</h1>
+  <p class="subtitle">V3.3：新增多頁預覽，內容超過單頁時會自動延伸為第 2 頁、第 3 頁。</p>
 
-    <h1>📝 教師動態出題排版系統</h1>
-    <div class="subtitle">自動處理全半形空白對齊，支援拖曳排序與解答套用</div>
+  <div class="container">
+    <section class="card">
+      <h2 id="formTitle">1. 新增／編輯項目</h2>
 
-    <div class="container">
-        <!-- 左側：輸入區 -->
-        <div class="card">
-            <h2>
-                <span id="edit-title">1. 編輯題目</span>
-            </h2>
-            
-            <div class="form-group">
-                <label for="q-type">題型：</label>
-                <select id="q-type" onchange="toggleType()">
-                    <option value="mc">選擇題</option>
-                    <option value="tf">是非題</option>
-                </select>
-            </div>
+      <div class="toolbar">
+        <button type="button" class="secondary btn-sm" onclick="setFormKind('section')">＋大題</button>
+        <button type="button" class="secondary btn-sm" onclick="setFormKind('group')">＋題組</button>
+        <button type="button" class="secondary btn-sm" onclick="setFormKind('question')">＋題目</button>
+        <button type="button" class="secondary btn-sm" onclick="setFormKind('material')">＋題目材料</button>
+        <button type="button" class="secondary btn-sm" onclick="resetForm()">清空表單</button>
+      </div>
 
-            <div class="form-group">
-                <label for="q-text">題目內容：</label>
-                <input type="text" id="q-text" placeholder="請輸入題目敘述...">
-            </div>
+      <div class="form-group">
+        <label for="item-kind">項目類型</label>
+        <select id="item-kind" onchange="switchFormKind()">
+          <option value="section">大題</option>
+          <option value="group">題組</option>
+          <option value="question">題目／小題</option>
+          <option value="material">題目材料</option>
+        </select>
+      </div>
 
-            <!-- 選擇題選項編輯區 -->
-            <div id="mc-area" class="form-group">
-                <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap;">
-                    <label style="margin: 0; flex-grow: 1;">選項清單 (按住 ≡ 拖曳，點選 〇 設解答)：</label>
-                    <select id="mc-layout" style="width: auto; padding: 6px; font-size: 14px;" title="選擇選項的排列方式">
-                        <option value="4x1">1行1選項</option>
-                        <option value="2x2">1行2選項</option>
-                        <option value="1x4">1行4選項</option>
-                    </select>
-                    <select id="mc-label-type" style="width: auto; padding: 6px; font-size: 14px;" title="選擇選項的標號樣式">
-                        <option value="ABC">A, B, C...</option>
-                        <option value="123">1, 2, 3...</option>
-                        <option value="circled_num">①, ②, ③...</option>
-                        <option value="solid_circled_num">❶, ❷, ❸...</option>
-                    </select>
-                </div>
-                <div id="options-container">
-                    <!-- 動態產生的選項會放在這 -->
-                </div>
-                <button type="button" class="secondary" onclick="addOption()">+ 新增選項</button>
-            </div>
+      <div id="section-form" class="panel active">
+        <div class="form-group">
+          <label for="section-title">大題標題</label>
+          <input id="section-title" type="text" placeholder="例如：選擇題、閱讀測驗、連連看">
+          <div class="hint">大題會依順序自動編為「一、二、三」。標題不需要自己輸入編號。</div>
+        </div>
+        <div class="form-group section-score-form">
+          <label style="display:flex;gap:8px;align-items:center;font-weight:600;">
+            <input id="section-score-enabled" type="checkbox" onchange="toggleSectionScoreField()">
+            加入分數說明
+          </label>
+          <div id="section-score-options" class="inline-options disabled-field">
+            <span>每題</span>
+            <select id="section-score-per-question" disabled></select>
+            <span>分，總分會依本大題題數自動計算。</span>
+          </div>
+          <div class="hint">輸出範例：「一、是非題（共 10 分，每題 2 分）」；總分會依大題內題目數計算，題組內小題也會列入。</div>
+        </div>
+        <div class="form-group section-instruction-form">
+          <label style="display:flex;gap:8px;align-items:center;font-weight:600;">
+            <input id="section-instruction-enabled" type="checkbox" onchange="toggleSectionInstructionField()">
+            加入題目說明
+          </label>
+          <textarea id="section-instruction" placeholder="例如：正確的打Ｏ、錯誤的打Ｘ。" disabled></textarea>
+          <div class="hint">題目說明會出現在大題下一行，不加粗；縮排對齊「一、」後方。</div>
+        </div>
+      </div>
 
-            <!-- 是非題解答區 -->
-            <div id="tf-area" class="form-group" style="display: none;">
-                <label>正確解答：</label>
-                <div class="radio-group">
-                    <label>
-                        <input type="radio" name="tf-ans" value="O"> O (圈)
-                    </label>
-                    <label>
-                        <input type="radio" name="tf-ans" value="X"> X (叉)
-                    </label>
-                    <label style="color: #888;">
-                        <input type="radio" name="tf-ans" value=" " checked> 不預設答案
-                    </label>
-                </div>
-            </div>
+      <div id="group-form" class="panel">
+        <div class="form-group">
+          <label for="group-parent">所屬大題</label>
+          <select id="group-parent"></select>
+        </div>
+        <div class="form-group">
+          <label for="group-title">題組標題</label>
+          <input id="group-title" type="text" placeholder="例如：請閱讀下列資料，回答問題">
+        </div>
+        <div class="form-group">
+          <label>題組材料／作答資訊</label>
+          <div class="material-summary">
+            <span id="group-material-summary">尚未建立題組材料</span>
+            <button type="button" class="secondary btn-sm" onclick="openMaterialModal()">編輯題組材料</button>
+          </div>
+          <div class="hint">可加入閱讀短文、選填字庫、表格或圖片框，作為題目前的判讀資訊。</div>
+        </div>
+        <div class="form-group">
+          <label for="group-material">舊版快速文字材料</label>
+          <textarea id="group-material" placeholder="可留白。若尚未使用題組材料編輯器，這裡的文字會自動轉成閱讀短文材料。"></textarea>
+          <div class="hint">保留此欄位是為了相容 V2 舊資料；V3 建議主要使用上方「題組材料編輯器」。</div>
+        </div>
+      </div>
 
-            <div style="margin-top: auto; padding-top: 20px; display: flex; gap: 10px;">
-                <button id="submit-btn" onclick="generateQuestion()" style="flex: 1; font-size: 16px; padding: 15px;">加入並產出格式 ➡</button>
-            </div>
+      <div id="material-form" class="panel">
+        <div class="form-group">
+          <label for="material-parent">放置位置</label>
+          <select id="material-parent"></select>
+          <div class="hint">可放在大題、題組或題目下方。若放在題目底下，材料會成為該題的從屬解題資料。</div>
+        </div>
+        <div class="form-group">
+          <label>題目材料內容</label>
+          <div class="material-summary">
+            <span id="standalone-material-summary">尚未設定題目材料</span>
+            <button type="button" class="secondary btn-sm" onclick="openMaterialModal('item')">編輯題目材料</button>
+          </div>
+          <div class="hint">材料可為閱讀短文、選填字庫、表格或圖片框；適合放在題目前、題組中段，或降階成某一題的專用資料。</div>
+        </div>
+      </div>
+
+      <div id="question-form" class="panel">
+        <div class="form-group">
+          <label for="question-parent">放置位置</label>
+          <select id="question-parent" onchange="refreshWordbankSelect()"></select>
+          <div class="hint">可放在大題之下，也可放進題組作為小題。</div>
+        </div>
+        <div class="form-group">
+          <label for="question-type">題型</label>
+          <select id="question-type" onchange="switchQuestionType()">
+            <option value="mc">單選題</option>
+            <option value="tf">是非題</option>
+            <option value="fill">填充題</option>
+            <option value="wordbankFill">選填題</option>
+            <option value="short">簡答題</option>
+            <option value="matching">連連看</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="question-stem">題目內容</label>
+          <textarea id="question-stem" placeholder="請輸入題目敘述。可換行。"></textarea>
         </div>
 
-        <!-- 右側：輸出區 -->
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h2 style="margin: 0; border: none; padding: 0;">2. 輸出結果</h2>
-                <div>
-                    <button class="secondary success" style="margin-right: 5px; color: white;" onclick="resetForm()">➕ 新增題目</button>
-                    <button class="secondary" onclick="copyText()">📋 複製全部</button>
-                </div>
+        <div id="mc-fields" class="q-fields">
+          <div class="row two form-group">
+            <div>
+              <label for="option-columns">選項欄數</label>
+              <select id="option-columns">
+                <option value="1">1 欄</option>
+                <option value="2">2 欄</option>
+                <option value="4">4 欄</option>
+              </select>
             </div>
-            
-            <!-- 新增：匯出 / 匯入功能列 -->
-            <div class="action-bar">
-                <span style="font-weight: 600; font-size: 14px; color: #555;">📁 檔案：</span>
-                <button class="secondary btn-sm" onclick="exportMD()">📄 匯出 MD</button>
-                <button class="secondary btn-sm" onclick="document.getElementById('import-file').click()">📂 匯入 MD</button>
-                <input type="file" id="import-file" accept=".md" style="display: none;" onchange="importMD(event)">
-                
-                <div class="divider"></div>
-                
-                <span style="font-weight: 600; font-size: 14px; color: #555;">📝 Word排版：</span>
-                <select id="word-cols" style="width: auto; padding: 4px; font-size: 13px; border-radius: 4px; border: 1px solid #ccc;">
-                    <option value="1">單欄 (A4)</option>
-                    <option value="2">雙欄 (A4)</option>
-                </select>
-                <button class="secondary btn-sm" onclick="exportWord()">匯出 Word</button>
+            <div>
+              <label for="option-label-type">選項標號</label>
+              <select id="option-label-type">
+                <option value="ABC">A, B, C</option>
+                <option value="123">1, 2, 3</option>
+                <option value="circled">①, ②, ③</option>
+                <option value="solid">❶, ❷, ❸</option>
+              </select>
             </div>
-
-            <div id="questions-container" class="questions-list">
-                <div class="empty-msg" id="empty-msg">產出的排版題目會顯示在這裡...<br>點擊題目即可編輯，按住 ≡ 可拖曳排序。</div>
-            </div>
-            <!-- 隱藏的文字區域，用來幫助複製純文字 -->
-            <textarea id="hidden-clipboard" style="position: absolute; left: -9999px;"></textarea>
-
-            <div style="margin-top: 15px; text-align: right;">
-                <button class="danger" onclick="clearOutput()">🗑️ 清空所有內容</button>
-            </div>
+          </div>
+          <div class="form-group">
+            <label>選項清單</label>
+            <div id="options-container"></div>
+            <button type="button" class="secondary btn-sm" onclick="addOption()">＋新增選項</button>
+          </div>
+          <div class="form-group">
+            <label for="space-policy">選項空白處理</label>
+            <select id="space-policy">
+              <option value="trim">只去除前後空白</option>
+              <option value="keep">保留原樣</option>
+              <option value="removeAll">移除所有空白</option>
+            </select>
+          </div>
         </div>
+
+        <div id="tf-fields" class="q-fields hidden">
+          <div class="form-group">
+            <label for="tf-answer">是非答案</label>
+            <select id="tf-answer">
+              <option value="">不預設答案</option>
+              <option value="O">O</option>
+              <option value="X">X</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="fill-fields" class="q-fields hidden">
+          <div class="form-group">
+            <label for="fill-answer">填充答案</label>
+            <input id="fill-answer" type="text" placeholder="教師版與答案表使用">
+          </div>
+        </div>
+
+        <div id="wordbankFill-fields" class="q-fields hidden">
+          <div class="form-group">
+            <label for="wordbank-block-select">連結選填字庫</label>
+            <select id="wordbank-block-select"></select>
+            <div class="hint">題幹可用 {{1}}、{{2}} 表示空格；若無題組字庫，仍可手動輸入答案。</div>
+          </div>
+          <div class="form-group">
+            <label for="wordbank-fill-answer">選填答案</label>
+            <input id="wordbank-fill-answer" type="text" placeholder="例如：甲／蒸發；乙／凝結">
+          </div>
+          <div class="row two form-group">
+            <div>
+              <label for="wordbank-blank-width">空格寬度</label>
+              <input id="wordbank-blank-width" type="number" min="3" max="20" value="6">
+            </div>
+            <div>
+              <label style="display:flex;gap:8px;align-items:center;font-weight:600;margin-top:31px;">
+                <input id="wordbank-show-code" type="checkbox" checked>
+                教師版答案優先顯示代號
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div id="short-fields" class="q-fields hidden">
+          <div class="row two form-group">
+            <div>
+              <label for="short-lines">作答線行數</label>
+              <input id="short-lines" type="number" min="1" max="12" value="3">
+            </div>
+            <div>
+              <label for="short-answer">參考答案</label>
+              <input id="short-answer" type="text" placeholder="可留白">
+            </div>
+          </div>
+        </div>
+
+        <div id="matching-fields" class="q-fields hidden">
+          <div class="form-group">
+            <label>連連看項目</label>
+            <div id="matching-container"></div>
+            <button type="button" class="secondary btn-sm" onclick="addMatchingRow()">＋新增配對列</button>
+            <div class="hint">學生版會以隱形表格呈現，中間欄顯示左右兩個「．」供連線。教師版會額外顯示答案配對。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="saveBtn" type="button" class="success" style="flex:1;" onclick="saveCurrentItem()">加入項目</button>
+        <button type="button" class="secondary" onclick="resetForm()">取消編輯</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2. 結構、預覽與輸出</h2>
+      <div class="toolbar">
+        <span class="pill">檢視</span>
+        <button type="button" class="secondary btn-sm" onclick="setViewMode('structure')">編輯清單</button>
+        <button type="button" class="secondary btn-sm" onclick="setViewMode('preview')">即時預覽</button>
+        <div class="divider"></div>
+        <span class="pill">紙張</span>
+        <select id="paper-size" onchange="updateSettingsFromUi()">
+          <option value="A4">A4</option>
+          <option value="A3">A3</option>
+          <option value="B4" selected>B4</option>
+          <option value="B3">B3</option>
+        </select>
+        <select id="orientation" onchange="updateSettingsFromUi()">
+          <option value="portrait">直式</option>
+          <option value="landscape">橫式</option>
+        </select>
+        <select id="writing-mode" onchange="updateSettingsFromUi()">
+          <option value="horizontal">橫書</option>
+          <option value="vertical">直書</option>
+        </select>
+        <select id="preview-columns" onchange="updateSettingsFromUi()">
+          <option value="1">預覽單欄</option>
+          <option value="2">預覽雙欄</option>
+          <option value="3">預覽三欄</option>
+        </select>
+        <select id="preview-mode" onchange="renderAll()">
+          <option value="student">學生版</option>
+          <option value="teacher">教師版</option>
+        </select>
+        <select id="word-margin" onchange="updateSettingsFromUi()" title="Word 相容檔與 Word 格式複製的頁面邊界">
+          <option value="medium">Word 邊界：中</option>
+          <option value="narrow">Word 邊界：窄</option>
+        </select>
+        <select id="section-font-size" onchange="updateSettingsFromUi()" title="大題標題字級">
+          <option value="12">大題 12pt</option>
+          <option value="14" selected>大題 14pt</option>
+          <option value="16">大題 16pt</option>
+        </select>
+        <select id="question-font-size" onchange="updateSettingsFromUi()" title="題目與小題字級">
+          <option value="12" selected>小題 12pt</option>
+          <option value="13">小題 13pt</option>
+          <option value="14">小題 14pt</option>
+        </select>
+        <div class="divider"></div>
+        <button type="button" class="secondary btn-sm" onclick="copyPlainText()">複製純文字</button>
+        <button type="button" class="secondary btn-sm" onclick="copyWordHtml()">複製 Word 格式</button>
+        <button type="button" class="secondary btn-sm" onclick="openAiImportModal()">AI 題庫貼上匯入</button>
+        <button type="button" class="secondary btn-sm" onclick="exportMD()">匯出 MD</button>
+        <button type="button" class="secondary btn-sm" onclick="document.getElementById('import-file').click()">匯入 MD</button>
+        <input id="import-file" type="file" accept=".md,.json" class="hidden" onchange="importMD(event)">
+        <button type="button" class="secondary btn-sm" onclick="exportWordCompat()">匯出 Word 相容檔</button>
+        <button type="button" class="warning btn-sm" onclick="exportPDF()">列印／匯出 PDF</button>
+      </div>
+      <div class="hint" style="margin-bottom:10px;">直書模式採保守支援：中文考卷輸出時，選擇題預設一個選項一欄，Word 直書格式仍可能需要教師手動微調。橫書模式為主要穩定輸出模式。PDF 採瀏覽器列印流程，可選擇印表機或另存 PDF。</div>
+
+      <div id="structure-view" class="panel active">
+        <div id="structure-list"></div>
+        <div class="row" style="margin-top:12px; justify-content:flex-end;">
+          <button type="button" class="danger" onclick="clearAll()">清空全部</button>
+        </div>
+      </div>
+
+      <div id="preview-view" class="panel">
+        <div class="preview-shell">
+          <div id="preview-pages" class="preview-pages"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+
+  <div id="material-modal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-window">
+      <div class="modal-head">
+        <h3 id="material-modal-title">材料編輯器</h3>
+        <button type="button" class="secondary btn-sm" onclick="closeMaterialModal(false)">關閉</button>
+      </div>
+      <div class="modal-body">
+        <div class="material-list-panel">
+          <div class="material-actions">
+            <button type="button" class="secondary btn-sm" onclick="addMaterialBlock('text')">＋閱讀短文</button>
+            <button type="button" class="secondary btn-sm" onclick="addMaterialBlock('wordbank')">＋選填字庫</button>
+            <button type="button" class="secondary btn-sm" onclick="addMaterialBlock('table')">＋表格</button>
+            <button type="button" class="secondary btn-sm" onclick="addMaterialBlock('imagePlaceholder')">＋圖片框</button>
+          </div>
+          <div id="material-block-list" class="material-block-list"></div>
+          <div class="hint">題組材料會依順序輸出；題目材料模式只會保留第一個材料區塊。</div>
+        </div>
+        <div class="material-editor-panel">
+          <div id="material-editor-empty" class="empty">請先新增或選取一個材料區塊。</div>
+          <div id="material-editor" class="hidden"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="secondary" onclick="closeMaterialModal(false)">取消</button>
+        <button type="button" class="success" onclick="closeMaterialModal(true)">完成</button>
+      </div>
     </div>
+  </div>
 
-    <script>
-        let questionsList = []; // 儲存所有題目資料
-        let editingId = null;   // 目前正在編輯的題目 ID
+  <div id="ai-import-modal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-window">
+      <div class="modal-head">
+        <h3>AI 題庫貼上匯入</h3>
+        <button type="button" class="secondary btn-sm" onclick="closeAiImportModal()">關閉</button>
+      </div>
+      <div class="modal-body" style="grid-template-columns: 1fr 1fr;">
+        <div class="material-list-panel">
+          <label for="ai-import-prompt">給生成式 AI 的提示詞</label>
+          <textarea id="ai-import-prompt" class="ai-import-prompt" readonly></textarea>
+          <div class="row" style="margin-top:8px;">
+            <button type="button" class="secondary btn-sm" onclick="copyAiImportPrompt()">複製提示詞</button>
+          </div>
+          <div class="hint">把提示詞連同你的題庫資料貼給 AI，要求它只輸出 JSON。再把 AI 回傳內容貼到右側匯入。</div>
+        </div>
+        <div class="material-editor-panel">
+          <label for="ai-import-json">貼上 AI 轉換後的題庫 JSON</label>
+          <textarea id="ai-import-json" class="ai-import-textarea" placeholder="請貼上 AI 回傳的 JSON，可包含 ```json 程式碼區塊。"></textarea>
+          <label style="display:flex;gap:8px;align-items:center;font-weight:600;margin-top:10px;">
+            <input id="ai-import-clear-first" type="checkbox">
+            匯入前清空目前試卷
+          </label>
+          <div class="hint">支援簡單大題：是非題、選擇題、填充題。選擇題答案可用 A/B/C/D、1/2/3/4 或 0 起算索引。</div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="secondary" onclick="closeAiImportModal()">取消</button>
+        <button type="button" class="success" onclick="importAiQuestionBank()">匯入題庫</button>
+      </div>
+    </div>
+  </div>
 
-        // 排版常數設定
-        const FULL_SPACE = '　'; // 全形空格 (＊)
-        const HALF_SPACE = ' ';  // 半形空格 (*)
+  <textarea id="hidden-clipboard" class="hidden"></textarea>
 
-        // 初始化
-        window.onload = function() {
-            resetForm(); // 初始化四個選項
-        };
+<script>
+  const STORAGE_KEY = 'exam-formatting-v3-data';
+  const LEGACY_STORAGE_KEY = 'exam-formatting-v2-data';
+  const PAPER_SIZES = {
+    A4: { w: 210, h: 297 },
+    A3: { w: 297, h: 420 },
+    B4: { w: 257, h: 364 },
+    B3: { w: 364, h: 515 }
+  };
+  const WORD_MARGINS = {
+    medium: { name: '中', top: 25.4, right: 19.1, bottom: 25.4, left: 19.1 },
+    narrow: { name: '窄', top: 12.7, right: 12.7, bottom: 12.7, left: 12.7 }
+  };
+  const LABEL_SETS = {
+    ABC: ['A','B','C','D','E','F','G','H','I','J'],
+    123: ['１','２','３','４','５','６','７','８','９','１０'],
+    circled: ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'],
+    solid: ['❶','❷','❸','❹','❺','❻','❼','❽','❾','❿']
+  };
+  const MATERIAL_LABEL_SETS = {
+    jia: ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'],
+    ABC: LABEL_SETS.ABC,
+    123: LABEL_SETS['123']
+  };
+  const MATERIAL_TYPE_NAMES = { text: '閱讀短文', wordbank: '選填字庫', table: '表格', imagePlaceholder: '圖片框' };
+  const MATCH_LEFT_LABELS = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+  let examData = {
+    version: 3.2,
+    settings: { paperSize: 'B4', orientation: 'portrait', writingMode: 'horizontal', previewColumns: 1, previewMode: 'student', wordMargin: 'medium', sectionFontSize: 14, questionFontSize: 12 },
+    sections: []
+  };
+  let editing = null;
+  let viewMode = 'structure';
+  let dragState = null;
+  let formMaterialBlocks = [];
+  let formStandaloneMaterialBlock = makeMaterialBlock('text');
+  let materialModalDraft = [];
+  let selectedMaterialId = null;
+  let materialModalTarget = 'group';
 
-        // 切換題型介面
-        function toggleType() {
-            const type = document.getElementById('q-type').value;
-            if (type === 'mc') {
-                document.getElementById('mc-area').style.display = 'block';
-                document.getElementById('tf-area').style.display = 'none';
-            } else {
-                document.getElementById('mc-area').style.display = 'none';
-                document.getElementById('tf-area').style.display = 'block';
-            }
+  window.addEventListener('load', () => {
+    initScoreSelect();
+    loadData();
+    if (examData.sections.length === 0) {
+      examData.sections.push(makeSection('選擇題'));
+    }
+    syncSettingsToUi();
+    resetForm();
+    renderAll();
+    window.addEventListener('resize', updatePreviewZoom);
+    initOptionDragSorting();
+  });
+
+  function uid(prefix) {
+    if (window.crypto && crypto.randomUUID) return prefix + '_' + crypto.randomUUID().slice(0, 8);
+    return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  }
+  function escapeHtml(str) {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+  function nl2br(str) { return escapeHtml(str).replace(/\n/g, '<br>'); }
+  function toFullWidthDigits(value) { return String(value ?? '').replace(/[0-9]/g, ch => '０１２３４５６７８９'[Number(ch)]); }
+  function toFullWidthAlnum(value) {
+    return String(value ?? '').replace(/[A-Za-z0-9]/g, ch => {
+      if (/[0-9]/.test(ch)) return '０１２３４５６７８９'[Number(ch)];
+      return String.fromCharCode(ch.charCodeAt(0) + 0xFEE0);
+    });
+  }
+  function chineseNumber(n) {
+    const d = ['零','一','二','三','四','五','六','七','八','九'];
+    if (n <= 10) return n === 10 ? '十' : d[n];
+    if (n < 20) return '十' + d[n - 10];
+    const tens = Math.floor(n / 10), ones = n % 10;
+    return d[tens] + '十' + (ones ? d[ones] : '');
+  }
+  function parenChinese(n) { return '（' + chineseNumber(n) + '）'; }
+  function questionKindName(type) {
+    return { mc: '單選', tf: '是非', fill: '填充', wordbankFill: '選填', short: '簡答', matching: '連連看' }[type] || type;
+  }
+  function formatQuestionNumber(qNo) {
+    return examData.settings.writingMode === 'vertical' ? `${toFullWidthDigits(qNo)}．` : `${qNo}.`;
+  }
+  function formatOptionLabel(label, vertical=false) {
+    const normalized = vertical ? toFullWidthAlnum(label) : label;
+    return vertical ? `（${normalized}）` : `(${normalized})`;
+  }
+  function formatScoreValue(value) {
+    const n = Number(value || 0);
+    return Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10);
+  }
+  function countQuestionsInNode(node) {
+    if (!node) return 0;
+    if (node.type === 'question') return 1;
+    if (Array.isArray(node.children)) return node.children.reduce((sum, child) => sum + countQuestionsInNode(child), 0);
+    return 0;
+  }
+  function countQuestionsInSection(sec) {
+    return (sec.children || []).reduce((sum, child) => sum + countQuestionsInNode(child), 0);
+  }
+  function sectionScoreText(sec) {
+    if (!sec || !sec.scoreEnabled) return '';
+    const per = Number(sec.scorePerQuestion || 2);
+    const total = countQuestionsInSection(sec) * per;
+    return `（共 ${formatScoreValue(total)} 分，每題 ${formatScoreValue(per)} 分）`;
+  }
+  function renderSectionHeader(sec, sIdx) {
+    const numberTitle = `${chineseNumber(sIdx+1)}、${escapeHtml(sec.title || '未命名大題')}`;
+    const score = sectionScoreText(sec);
+    const instruction = sec.instructionEnabled && sec.instruction ? `<div class="exam-section-instruction">${nl2br(sec.instruction)}</div>` : '';
+    return `<div class="exam-section-title"><span class="exam-section-title-main">${numberTitle}</span>${score ? `<span class="exam-section-score">${escapeHtml(score)}</span>` : ''}</div>${instruction}`;
+  }
+
+  function getCurrentPaperInnerWidthMm() {
+    const settings = examData?.settings || {};
+    const size = PAPER_SIZES[settings.paperSize] || PAPER_SIZES.B4;
+    const w = settings.orientation === 'landscape' ? size.h : size.w;
+    const margin = WORD_MARGINS[settings.wordMargin] || WORD_MARGINS.medium;
+    return Math.max(20, w - margin.left - margin.right);
+  }
+  function getDefaultImagePlaceholderWidthMm() {
+    const cols = Math.max(1, Number(examData?.settings?.previewColumns || 1));
+    const gap = 12.7;
+    const columnWidth = Math.max(35, (getCurrentPaperInnerWidthMm() - (cols - 1) * gap) / cols);
+    return Math.max(40, Math.round((columnWidth - 4) * 10) / 10);
+  }
+
+  function makeSection(title='未命名大題', instruction='', instructionEnabled=false, scoreEnabled=false, scorePerQuestion=2) { return { id: uid('sec'), type: 'section', title, instruction, instructionEnabled, scoreEnabled, scorePerQuestion, children: [], collapsed: false }; }
+  function makeGroup(title='未命名題組', material='') { return { id: uid('grp'), type: 'group', title, material, materialBlocks: material ? [makeMaterialBlock('text', { text: material })] : [], children: [], collapsed: false }; }
+  function makeQuestion(type='mc') {
+    return {
+      id: uid('q'), type: 'question', qType: type, stem: '',
+      answer: { value: '' },
+      content: { options: ['選項一','選項二','選項三','選項四'], matchingPairs: [{left:'', right:'', answer:'A'}], wordBankBlockId: '' },
+      layout: { optionColumns: 1, labelType: 'ABC', spacePolicy: 'trim', shortLines: 3, blankWidth: 6, showAnswerAsCode: true }
+    };
+  }
+  function makeMaterialBlock(type='text', overrides={}) {
+    const base = { id: uid('mat'), type, title: MATERIAL_TYPE_NAMES[type] || '材料', content: {}, layout: {} };
+    if (type === 'text') {
+      base.title = '閱讀資料';
+      base.content = { text: overrides.text || '' };
+      base.layout = { showTitle: false, boxed: true };
+    } else if (type === 'wordbank') {
+      base.title = '選填字庫';
+      base.content = { labelMode: 'coded', labelType: 'jia', items: [{ text: '蒸發' }, { text: '凝結' }, { text: '降雨' }] };
+      base.layout = { columns: 3, boxed: true, showTitle: true };
+    } else if (type === 'table') {
+      base.title = '資料表';
+      base.content = { rows: [['項目','資料一','資料二'], ['甲','',''], ['乙','','']] };
+      base.layout = { showTitle: true, headerRow: true, headerCol: false, border: true, fullWidth: true, fontSizeOffset: 0 };
+    } else if (type === 'imagePlaceholder') {
+      base.title = '圖片';
+      base.content = { note: '請在 Word 中將此框替換為圖片' };
+      base.layout = { widthMm: getDefaultImagePlaceholderWidthMm(), heightMm: 30, align: 'center', showSizeHint: true, borderStyle: 'dashed' };
+    }
+    return normalizeMaterialBlock(Object.assign(base, overrides || {}));
+  }
+  function makeMaterialNode(block) {
+    const normalized = normalizeMaterialBlock(cloneData(block || makeMaterialBlock('text')));
+    return { id: uid('matnode'), type: 'material', block: normalized, collapsed: false };
+  }
+
+  function saveData() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(examData));
+  }
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (raw) examData = normalizeData(JSON.parse(raw));
+    } catch (e) { console.warn(e); }
+  }
+  function normalizeData(data) {
+    const fallback = { version: 3, settings: { paperSize: 'B4', orientation: 'portrait', writingMode: 'horizontal', previewColumns: 1, previewMode: 'student', wordMargin: 'medium', sectionFontSize: 14, questionFontSize: 12 }, sections: [] };
+    data = Object.assign(fallback, data || {});
+    data.version = 3.2;
+    data.settings = Object.assign(fallback.settings, data.settings || {});
+    data.sections = Array.isArray(data.sections) ? data.sections : [];
+    data.sections.forEach(sec => {
+      sec.type = 'section'; sec.instruction = sec.instruction || ''; sec.instructionEnabled = !!sec.instructionEnabled; sec.scoreEnabled = !!sec.scoreEnabled; sec.scorePerQuestion = Number(sec.scorePerQuestion || 2); sec.children = Array.isArray(sec.children) ? sec.children : [];
+      sec.children.forEach(child => normalizeNode(child));
+    });
+    return data;
+  }
+  function normalizeNode(node) {
+    if (node.type === 'material') {
+      node.block = normalizeMaterialBlock(node.block || node.materialBlock || makeMaterialBlock('text'));
+      node.collapsed = !!node.collapsed;
+      return;
+    }
+    if (node.type === 'group') {
+      node.material = node.material || '';
+      node.materialBlocks = normalizeMaterialBlocks(node.materialBlocks, node.material);
+      node.children = Array.isArray(node.children) ? node.children : [];
+      node.children.forEach(q => normalizeNode(q));
+    }
+    if (node.type === 'question') {
+      node.answer = node.answer || { value: '' };
+      node.content = node.content || {};
+      node.layout = Object.assign({ optionColumns: 1, labelType: 'ABC', spacePolicy: 'trim', shortLines: 3, blankWidth: 6, showAnswerAsCode: true }, node.layout || {});
+      node.children = Array.isArray(node.children) ? node.children : [];
+      node.children = node.children.filter(child => child && child.type === 'material');
+      node.children.forEach(child => normalizeNode(child));
+      if (!node.qType) node.qType = 'mc';
+      if (node.qType === 'mc' && !Array.isArray(node.content.options)) node.content.options = ['選項一','選項二','選項三','選項四'];
+      if (node.qType === 'matching' && !Array.isArray(node.content.matchingPairs)) node.content.matchingPairs = [{left:'', right:'', answer:'A'}];
+      if (node.qType === 'wordbankFill') {
+        node.content.wordBankBlockId = node.content.wordBankBlockId || '';
+        node.answer.value = node.answer.value || '';
+        node.layout.blankWidth = Number(node.layout.blankWidth || 6);
+        node.layout.showAnswerAsCode = node.layout.showAnswerAsCode !== false;
+      }
+    }
+  }
+  function normalizeMaterialBlocks(blocks, legacyMaterial='') {
+    let list = Array.isArray(blocks) ? blocks.map(b => normalizeMaterialBlock(b)).filter(Boolean) : [];
+    if (list.length === 0 && legacyMaterial) list = [makeMaterialBlock('text', { title: '閱讀資料', content: { text: legacyMaterial }, layout: { showTitle: false, boxed: true } })];
+    return list;
+  }
+  function normalizeMaterialBlock(block) {
+    if (!block || typeof block !== 'object') return null;
+    const type = block.type || 'text';
+    block.id = block.id || uid('mat');
+    block.type = type;
+    block.title = block.title || MATERIAL_TYPE_NAMES[type] || '材料';
+    block.content = block.content || {};
+    block.layout = block.layout || {};
+    if (type === 'text') {
+      block.content.text = String(block.content.text ?? '');
+      block.layout = Object.assign({ showTitle: false, boxed: true }, block.layout || {});
+    } else if (type === 'wordbank') {
+      block.content.labelMode = block.content.labelMode || 'coded';
+      block.content.labelType = block.content.labelType || 'jia';
+      block.content.items = Array.isArray(block.content.items) ? block.content.items.map(item => typeof item === 'string' ? { text: item } : { text: String(item.text ?? '') }) : [];
+      if (block.content.items.length === 0) block.content.items = [{ text: '' }];
+      block.layout = Object.assign({ columns: 3, boxed: true, showTitle: true }, block.layout || {});
+      block.layout.columns = Math.max(1, Number(block.layout.columns || 3));
+    } else if (type === 'table') {
+      block.content.rows = Array.isArray(block.content.rows) && block.content.rows.length ? block.content.rows.map(row => Array.isArray(row) ? row.map(cell => String(cell ?? '')) : ['']) : [['項目','資料'], ['','']];
+      block.layout = Object.assign({ showTitle: true, headerRow: true, headerCol: false, border: true, fullWidth: true, fontSizeOffset: 0 }, block.layout || {});
+    } else if (type === 'imagePlaceholder') {
+      block.content.note = block.content.note || '請在 Word 中將此框替換為圖片';
+      block.layout = Object.assign({ widthMm: getDefaultImagePlaceholderWidthMm(), heightMm: 30, align: 'center', showSizeHint: true, borderStyle: 'dashed' }, block.layout || {});
+      block.layout.widthMm = Math.max(25, Number(block.layout.widthMm || getDefaultImagePlaceholderWidthMm()));
+      block.layout.heightMm = Math.max(18, Number(block.layout.heightMm || 30));
+    }
+    return block;
+  }
+
+  function findSection(id) { return examData.sections.find(s => s.id === id); }
+  function findNode(id) {
+    for (const sec of examData.sections) {
+      if (sec.id === id) return { node: sec, parentArray: examData.sections, parent: null };
+      const found = findInArray(sec.children, id, sec);
+      if (found) return found;
+    }
+    return null;
+  }
+  function findInArray(arr, id, parent) {
+    for (const node of arr) {
+      if (node.id === id) return { node, parentArray: arr, parent };
+      if (node.type === 'group' || node.type === 'question') {
+        const found = findInArray(node.children || [], id, node);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+  function removeNode(id) {
+    const found = findNode(id);
+    if (!found) return null;
+    const idx = found.parentArray.findIndex(n => n.id === id);
+    if (idx === -1) return null;
+    return found.parentArray.splice(idx, 1)[0];
+  }
+  function appendNodeToSection(nodeId, sectionId) {
+    const found = findNode(nodeId);
+    const sec = findSection(sectionId);
+    if (!found || !sec || found.node.type === 'section') return;
+    const node = removeNode(nodeId);
+    if (node) sec.children.push(node);
+    afterMutation();
+  }
+  function appendQuestionToGroup(qid, groupId) {
+    const found = findNode(qid);
+    const group = findNode(groupId)?.node;
+    if (!found || !group || group.type !== 'group' || found.node.type !== 'question') return;
+    const node = removeNode(qid);
+    if (node) group.children.push(node);
+    afterMutation();
+  }
+  function appendMaterialToGroup(mid, groupId) {
+    const found = findNode(mid);
+    const group = findNode(groupId)?.node;
+    if (!found || !group || group.type !== 'group' || found.node.type !== 'material') return;
+    const node = removeNode(mid);
+    if (node) group.children.push(node);
+    afterMutation();
+  }
+  function appendMaterialToQuestion(mid, qid) {
+    const found = findNode(mid);
+    const q = findNode(qid)?.node;
+    if (!found || !q || q.type !== 'question' || found.node.type !== 'material') return;
+    q.children = Array.isArray(q.children) ? q.children : [];
+    const node = removeNode(mid);
+    if (node) q.children.push(node);
+    afterMutation();
+  }
+  function demoteMaterialToPreviousQuestion(mid) {
+    const found = findNode(mid);
+    if (!found || found.node.type !== 'material') return alert('只有題目材料可以降階。');
+    const arr = found.parentArray;
+    const idx = arr.findIndex(n => n.id === mid);
+    for (let i = idx - 1; i >= 0; i--) {
+      if (arr[i]?.type === 'question') {
+        const node = removeNode(mid);
+        arr[i].children = Array.isArray(arr[i].children) ? arr[i].children : [];
+        arr[i].children.push(node);
+        afterMutation();
+        return;
+      }
+    }
+    alert('前方沒有可綁定的題目。請先把材料移到某一題後方，再按降階。');
+  }
+  function promoteMaterial(mid) {
+    const found = findNode(mid);
+    if (!found || found.node.type !== 'material' || found.parent?.type !== 'question') return;
+    const qFound = findNode(found.parent.id);
+    const parentArr = qFound?.parentArray;
+    if (!parentArr) return;
+    const node = removeNode(mid);
+    const qIndex = parentArr.findIndex(n => n.id === found.parent.id);
+    parentArr.splice(qIndex + 1, 0, node);
+    afterMutation();
+  }
+  function moveSectionBefore(dragId, targetId) {
+    if (dragId === targetId) return;
+    const arr = examData.sections;
+    const from = arr.findIndex(s => s.id === dragId);
+    const to = arr.findIndex(s => s.id === targetId);
+    if (from < 0 || to < 0) return;
+    const [node] = arr.splice(from, 1);
+    const newTo = arr.findIndex(s => s.id === targetId);
+    arr.splice(newTo, 0, node);
+    afterMutation();
+  }
+  function moveNodeRelative(id, direction) {
+    const found = findNode(id);
+    if (!found) return;
+    const arr = found.parentArray;
+    const idx = arr.findIndex(n => n.id === id);
+    const target = idx + direction;
+    if (idx < 0 || target < 0 || target >= arr.length) return;
+    [arr[idx], arr[target]] = [arr[target], arr[idx]];
+    afterMutation();
+  }
+  function afterMutation() { saveData(); renderAll(); populateParentSelects(); }
+
+  function setFormKind(kind) {
+    document.getElementById('item-kind').value = kind;
+    switchFormKind();
+  }
+  function switchFormKind() {
+    const kind = document.getElementById('item-kind').value;
+    document.querySelectorAll('#section-form, #group-form, #question-form, #material-form').forEach(p => p.classList.remove('active'));
+    document.getElementById(kind + '-form').classList.add('active');
+    document.getElementById('formTitle').innerText = editing ? '1. 編輯項目' : '1. 新增項目';
+    populateParentSelects();
+  }
+  function switchQuestionType() {
+    const type = document.getElementById('question-type').value;
+    document.querySelectorAll('.q-fields').forEach(el => el.classList.add('hidden'));
+    const panel = document.getElementById(type + '-fields');
+    if (panel) panel.classList.remove('hidden');
+    if (type === 'wordbankFill') refreshWordbankSelect(document.getElementById('wordbank-block-select')?.value || '');
+  }
+  function populateParentSelects() {
+    const groupParent = document.getElementById('group-parent');
+    const questionParent = document.getElementById('question-parent');
+    const materialParent = document.getElementById('material-parent');
+    const groupParentValue = groupParent.value;
+    const questionParentValue = questionParent.value;
+    const materialParentValue = materialParent?.value || '';
+    groupParent.innerHTML = '';
+    questionParent.innerHTML = '';
+    if (materialParent) materialParent.innerHTML = '';
+    examData.sections.forEach((sec, sIdx) => {
+      const secLabel = `${chineseNumber(sIdx+1)}、${sec.title || '未命名大題'}`;
+      groupParent.insertAdjacentHTML('beforeend', `<option value="${sec.id}">${escapeHtml(secLabel)}</option>`);
+      questionParent.insertAdjacentHTML('beforeend', `<option value="section:${sec.id}">放在大題：${escapeHtml(secLabel)}</option>`);
+      if (materialParent) materialParent.insertAdjacentHTML('beforeend', `<option value="section:${sec.id}">放在大題：${escapeHtml(secLabel)}</option>`);
+      let groupIdx = 0, secQ = 0;
+      (sec.children || []).forEach(child => {
+        if (child.type === 'question') {
+          secQ++;
+          if (materialParent) materialParent.insertAdjacentHTML('beforeend', `<option value="question:${child.id}">降階到題目：${escapeHtml(secLabel)} / ${secQ}. ${escapeHtml(child.stem || '未命名題目')}</option>`);
         }
-
-        // 新增一個選項並加入拖曳功能
-        function addOption(defaultText = "", isCorrect = false) {
-            const container = document.getElementById('options-container');
-            
-            const div = document.createElement('div');
-            div.className = 'option-item';
-            div.draggable = true;
-            div.innerHTML = `
-                <span class="drag-handle" title="按住拖曳排序">≡</span>
-                <input type="radio" name="mc-ans" class="radio-correct" title="設為正確答案" ${isCorrect ? 'checked' : ''}>
-                <input type="text" class="option-input" placeholder="請輸入選項內容..." value="${defaultText}">
-                <button class="secondary" style="padding: 6px 12px;" onclick="this.parentElement.remove()" title="刪除選項">✕</button>
-            `;
-
-            // 拖曳事件綁定
-            div.addEventListener('dragstart', (e) => {
-                setTimeout(() => div.classList.add('dragging'), 0);
-            });
-            div.addEventListener('dragend', () => {
-                div.classList.remove('dragging');
-            });
-            
-            container.appendChild(div);
-        }
-
-        // 處理選項拖曳排序邏輯
-        const optionsContainer = document.getElementById('options-container');
-        optionsContainer.addEventListener('dragover', e => {
-            e.preventDefault();
-            const afterElement = getDragAfterElement(optionsContainer, e.clientY, '.option-item:not(.dragging)');
-            const draggable = document.querySelector('.option-item.dragging');
-            if (draggable) {
-                if (afterElement == null) {
-                    optionsContainer.appendChild(draggable);
-                } else {
-                    optionsContainer.insertBefore(draggable, afterElement);
-                }
+        if (child.type === 'group') {
+          groupIdx++;
+          questionParent.insertAdjacentHTML('beforeend', `<option value="group:${child.id}">放在題組：${escapeHtml(secLabel)} / ${parenChinese(groupIdx)} ${escapeHtml(child.title || '未命名題組')}</option>`);
+          if (materialParent) materialParent.insertAdjacentHTML('beforeend', `<option value="group:${child.id}">放在題組：${escapeHtml(secLabel)} / ${parenChinese(groupIdx)} ${escapeHtml(child.title || '未命名題組')}</option>`);
+          let subQ = 0;
+          (child.children || []).forEach(q => {
+            if (q.type === 'question') {
+              subQ++;
+              if (materialParent) materialParent.insertAdjacentHTML('beforeend', `<option value="question:${q.id}">降階到小題：${escapeHtml(secLabel)} / ${parenChinese(groupIdx)} / ${subQ}. ${escapeHtml(q.stem || '未命名題目')}</option>`);
             }
+          });
+        }
+      });
+    });
+    if (groupParentValue) groupParent.value = groupParentValue;
+    if (questionParentValue) questionParent.value = questionParentValue;
+    if (materialParent && materialParentValue) materialParent.value = materialParentValue;
+    refreshWordbankSelect();
+  }
+  function initScoreSelect() {
+    const sel = document.getElementById('section-score-per-question');
+    if (!sel || sel.options.length) return;
+    for (let v = 0.5; v <= 20; v += 0.5) {
+      const value = Math.round(v * 10) / 10;
+      const opt = document.createElement('option');
+      opt.value = String(value);
+      opt.textContent = `${formatScoreValue(value)} 分`;
+      if (value === 2) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  }
+  function toggleSectionScoreField() {
+    const enabled = document.getElementById('section-score-enabled')?.checked;
+    const sel = document.getElementById('section-score-per-question');
+    const box = document.getElementById('section-score-options');
+    if (sel) sel.disabled = !enabled;
+    if (box) box.classList.toggle('disabled-field', !enabled);
+  }
+  function toggleSectionInstructionField() {
+    const enabled = document.getElementById('section-instruction-enabled')?.checked;
+    const field = document.getElementById('section-instruction');
+    if (field) field.disabled = !enabled;
+  }
+
+
+  function cloneData(obj) { return JSON.parse(JSON.stringify(obj || null)); }
+  function materialTypeName(type) { return MATERIAL_TYPE_NAMES[type] || type || '材料'; }
+  function getCurrentGroupForQuestionForm() {
+    const parentVal = document.getElementById('question-parent')?.value || '';
+    const [parentType, parentId] = parentVal.split(':');
+    if (parentType === 'group') return findNode(parentId)?.node || null;
+    return null;
+  }
+  function getGroupMaterialBlocks(group) {
+    return normalizeMaterialBlocks(group?.materialBlocks || [], group?.material || '');
+  }
+  function getWordbankBlocksForSelectedParent() {
+    const group = getCurrentGroupForQuestionForm();
+    return group ? getGroupMaterialBlocks(group).filter(b => b.type === 'wordbank') : [];
+  }
+  function updateGroupMaterialSummary() {
+    const el = document.getElementById('group-material-summary');
+    if (!el) return;
+    if (!formMaterialBlocks.length) {
+      el.textContent = '尚未建立題組材料';
+      return;
+    }
+    const counts = formMaterialBlocks.reduce((map, b) => {
+      const name = materialTypeName(b.type);
+      map[name] = (map[name] || 0) + 1;
+      return map;
+    }, {});
+    el.textContent = Object.entries(counts).map(([name, count]) => `${name}×${count}`).join('、');
+  }
+  function updateStandaloneMaterialSummary() {
+    const el = document.getElementById('standalone-material-summary');
+    if (!el) return;
+    const block = normalizeMaterialBlock(formStandaloneMaterialBlock || makeMaterialBlock('text'));
+    el.textContent = `${materialTypeName(block.type)}：${block.title || materialTypeName(block.type)}`;
+  }
+  function refreshWordbankSelect(selectedValue='') {
+    const sel = document.getElementById('wordbank-block-select');
+    if (!sel) return;
+    const blocks = getWordbankBlocksForSelectedParent();
+    sel.innerHTML = '';
+    if (blocks.length === 0) {
+      sel.insertAdjacentHTML('beforeend', '<option value="">未找到同題組選填字庫</option>');
+      return;
+    }
+    blocks.forEach(block => sel.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(block.id)}">${escapeHtml(block.title || '選填字庫')}</option>`));
+    if (selectedValue && blocks.some(b => b.id === selectedValue)) sel.value = selectedValue;
+  }
+  function openMaterialModal(target='group') {
+    materialModalTarget = target || 'group';
+    if (materialModalTarget === 'item') {
+      materialModalDraft = [cloneData(formStandaloneMaterialBlock || makeMaterialBlock('text'))];
+    } else {
+      materialModalDraft = cloneData(formMaterialBlocks || []) || [];
+    }
+    selectedMaterialId = materialModalDraft[0]?.id || null;
+    const title = document.getElementById('material-modal-title');
+    if (title) title.innerText = materialModalTarget === 'item' ? '題目材料編輯器' : '題組材料編輯器';
+    document.getElementById('material-modal').classList.add('active');
+    document.getElementById('material-modal').setAttribute('aria-hidden', 'false');
+    renderMaterialModal();
+  }
+  function closeMaterialModal(save=false) {
+    if (save) {
+      saveMaterialEditorFields();
+      if (materialModalTarget === 'item') {
+        formStandaloneMaterialBlock = normalizeMaterialBlock(materialModalDraft[0] || makeMaterialBlock('text'));
+        updateStandaloneMaterialSummary();
+      } else {
+        formMaterialBlocks = normalizeMaterialBlocks(materialModalDraft, '');
+        updateGroupMaterialSummary();
+        refreshWordbankSelect();
+      }
+    }
+    document.getElementById('material-modal').classList.remove('active');
+    document.getElementById('material-modal').setAttribute('aria-hidden', 'true');
+  }
+  function renderMaterialModal() {
+    renderMaterialBlockList();
+    renderMaterialEditor();
+  }
+  function renderMaterialBlockList() {
+    const list = document.getElementById('material-block-list');
+    if (!list) return;
+    if (!materialModalDraft.length) {
+      list.innerHTML = '<div class="empty">尚無材料區塊。</div>';
+      return;
+    }
+    list.innerHTML = materialModalDraft.map((block, idx) => {
+      const active = block.id === selectedMaterialId ? ' active' : '';
+      const title = block.title || materialTypeName(block.type);
+      return `<div class="material-card${active}" onclick="selectMaterialBlock('${block.id}')">
+        <div class="material-card-title">${idx+1}. ${escapeHtml(title)}</div>
+        <div class="material-card-meta">${escapeHtml(materialTypeName(block.type))}</div>
+        <div class="row" style="margin-top:7px;" onclick="event.stopPropagation()">
+          <button type="button" class="secondary btn-sm" onclick="moveMaterialBlock('${block.id}', -1)">上移</button>
+          <button type="button" class="secondary btn-sm" onclick="moveMaterialBlock('${block.id}', 1)">下移</button>
+          <button type="button" class="secondary btn-sm" onclick="duplicateMaterialBlock('${block.id}')">複製</button>
+          <button type="button" class="danger btn-sm" onclick="deleteMaterialBlock('${block.id}')">刪除</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  function selectMaterialBlock(id) {
+    saveMaterialEditorFields();
+    selectedMaterialId = id;
+    renderMaterialModal();
+  }
+  function addMaterialBlock(type) {
+    saveMaterialEditorFields();
+    const block = makeMaterialBlock(type);
+    if (materialModalTarget === 'item') materialModalDraft = [block];
+    else materialModalDraft.push(block);
+    selectedMaterialId = block.id;
+    renderMaterialModal();
+  }
+  function moveMaterialBlock(id, direction) {
+    saveMaterialEditorFields();
+    const idx = materialModalDraft.findIndex(b => b.id === id);
+    const target = idx + direction;
+    if (idx < 0 || target < 0 || target >= materialModalDraft.length) return;
+    [materialModalDraft[idx], materialModalDraft[target]] = [materialModalDraft[target], materialModalDraft[idx]];
+    renderMaterialModal();
+  }
+  function duplicateMaterialBlock(id) {
+    saveMaterialEditorFields();
+    const idx = materialModalDraft.findIndex(b => b.id === id);
+    if (idx < 0) return;
+    const copy = cloneData(materialModalDraft[idx]);
+    copy.id = uid('mat');
+    copy.title = (copy.title || materialTypeName(copy.type)) + ' 副本';
+    materialModalDraft.splice(idx + 1, 0, normalizeMaterialBlock(copy));
+    selectedMaterialId = copy.id;
+    renderMaterialModal();
+  }
+  function deleteMaterialBlock(id) {
+    if (!confirm('確定刪除此材料區塊嗎？')) return;
+    const idx = materialModalDraft.findIndex(b => b.id === id);
+    if (idx < 0) return;
+    materialModalDraft.splice(idx, 1);
+    selectedMaterialId = materialModalDraft[Math.min(idx, materialModalDraft.length - 1)]?.id || null;
+    renderMaterialModal();
+  }
+  function renderMaterialEditor() {
+    const editor = document.getElementById('material-editor');
+    const empty = document.getElementById('material-editor-empty');
+    const block = materialModalDraft.find(b => b.id === selectedMaterialId);
+    if (!editor || !empty) return;
+    if (!block) {
+      editor.classList.add('hidden'); empty.classList.remove('hidden'); editor.innerHTML = '';
+      return;
+    }
+    empty.classList.add('hidden'); editor.classList.remove('hidden');
+    const common = `<div class="row two form-group"><div><label for="mat-title">材料標題</label><input id="mat-title" type="text" value="${escapeHtml(block.title || '')}"></div><div><label>材料類型</label><input type="text" value="${escapeHtml(materialTypeName(block.type))}" disabled></div></div>`;
+    if (block.type === 'text') editor.innerHTML = common + renderTextMaterialEditor(block);
+    else if (block.type === 'wordbank') editor.innerHTML = common + renderWordbankMaterialEditor(block);
+    else if (block.type === 'table') editor.innerHTML = common + renderTableMaterialEditor(block);
+    else if (block.type === 'imagePlaceholder') editor.innerHTML = common + renderImageMaterialEditor(block);
+    else editor.innerHTML = common + '<div class="empty">未知材料類型。</div>';
+  }
+  function renderTextMaterialEditor(block) {
+    return `<div class="form-group"><label for="mat-text">閱讀／資料文字</label><textarea id="mat-text" placeholder="輸入閱讀短文、實驗紀錄或題組資料。">${escapeHtml(block.content.text || '')}</textarea></div>
+      <div class="row two form-group"><label style="font-weight:600;"><input id="mat-show-title" type="checkbox" ${block.layout.showTitle ? 'checked' : ''}> 顯示標題</label><label style="font-weight:600;"><input id="mat-boxed" type="checkbox" ${block.layout.boxed !== false ? 'checked' : ''}> 加外框</label></div>`;
+  }
+  function renderWordbankMaterialEditor(block) {
+    const items = block.content.items || [];
+    return `<div class="row two form-group"><div><label for="mat-label-mode">標號模式</label><select id="mat-label-mode"><option value="coded" ${block.content.labelMode !== 'plain' ? 'selected' : ''}>有代號</option><option value="plain" ${block.content.labelMode === 'plain' ? 'selected' : ''}>無代號</option></select></div><div><label for="mat-label-type">代號類型</label><select id="mat-label-type"><option value="jia" ${block.content.labelType === 'jia' ? 'selected' : ''}>甲乙丙</option><option value="ABC" ${block.content.labelType === 'ABC' ? 'selected' : ''}>ABC</option><option value="123" ${block.content.labelType === '123' ? 'selected' : ''}>123</option></select></div></div>
+      <div class="row two form-group"><div><label for="mat-columns">顯示欄數</label><input id="mat-columns" type="number" min="1" max="6" value="${escapeHtml(block.layout.columns || 3)}"></div><div style="padding-top:31px;"><label style="font-weight:600;"><input id="mat-boxed" type="checkbox" ${block.layout.boxed !== false ? 'checked' : ''}> 加外框</label> <label style="font-weight:600;margin-left:8px;"><input id="mat-show-title" type="checkbox" ${block.layout.showTitle !== false ? 'checked' : ''}> 顯示標題</label></div></div>
+      <div class="form-group"><label>字庫項目</label><div id="wordbank-item-editor">${items.map((it, i) => renderWordbankItemRow(it.text, i)).join('')}</div><button type="button" class="secondary btn-sm" onclick="addWordbankEditorRow()">＋新增字詞</button></div>`;
+  }
+  function renderWordbankItemRow(text='', idx=0) {
+    return `<div class="wordbank-row"><span class="option-drag-handle">${idx+1}</span><input type="text" class="mat-wordbank-item" value="${escapeHtml(text)}" placeholder="字詞"><button type="button" class="secondary btn-sm" onclick="this.closest('.wordbank-row').remove(); renumberWordbankRows();">刪除</button></div>`;
+  }
+  function addWordbankEditorRow() {
+    const box = document.getElementById('wordbank-item-editor');
+    if (!box) return;
+    box.insertAdjacentHTML('beforeend', renderWordbankItemRow('', box.querySelectorAll('.wordbank-row').length));
+    renumberWordbankRows();
+  }
+  function renumberWordbankRows() {
+    document.querySelectorAll('#wordbank-item-editor .wordbank-row .option-drag-handle').forEach((el, i) => el.textContent = i + 1);
+  }
+  function renderTableMaterialEditor(block) {
+    const rows = block.content.rows || [['']];
+    return `<div class="row two form-group"><div><label style="font-weight:600;"><input id="mat-show-title" type="checkbox" ${block.layout.showTitle !== false ? 'checked' : ''}> 顯示表格標題</label><br><label style="font-weight:600;"><input id="mat-header-row" type="checkbox" ${block.layout.headerRow !== false ? 'checked' : ''}> 第一列為標題列</label><br><label style="font-weight:600;"><input id="mat-header-col" type="checkbox" ${block.layout.headerCol ? 'checked' : ''}> 第一欄為標題欄</label></div><div><label style="font-weight:600;"><input id="mat-full-width" type="checkbox" ${block.layout.fullWidth !== false ? 'checked' : ''}> 滿版寬度</label><div class="row" style="margin-top:8px;"><button type="button" class="secondary btn-sm" onclick="addTableRow()">＋列</button><button type="button" class="secondary btn-sm" onclick="deleteTableRow()">－列</button><button type="button" class="secondary btn-sm" onclick="addTableCol()">＋欄</button><button type="button" class="secondary btn-sm" onclick="deleteTableCol()">－欄</button></div></div></div>
+      <div class="form-group"><label>表格內容</label><div class="mini-table-editor"><table id="mat-table-editor"><tbody>${rows.map(row => `<tr>${row.map(cell => `<td><input type="text" value="${escapeHtml(cell)}"></td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
+  }
+  function getTableEditorMatrix() {
+    return [...document.querySelectorAll('#mat-table-editor tr')].map(tr => [...tr.querySelectorAll('input')].map(input => input.value));
+  }
+  function setTableEditorMatrix(rows) {
+    const block = materialModalDraft.find(b => b.id === selectedMaterialId);
+    if (!block) return;
+    block.content.rows = rows;
+    renderMaterialEditor();
+  }
+  function addTableRow() {
+    const rows = getTableEditorMatrix();
+    const cols = Math.max(1, rows[0]?.length || 1);
+    rows.push(Array.from({ length: cols }, () => ''));
+    setTableEditorMatrix(rows);
+  }
+  function deleteTableRow() {
+    const rows = getTableEditorMatrix();
+    if (rows.length > 1) rows.pop();
+    setTableEditorMatrix(rows);
+  }
+  function addTableCol() {
+    const rows = getTableEditorMatrix();
+    rows.forEach(row => row.push(''));
+    setTableEditorMatrix(rows.length ? rows : [['']]);
+  }
+  function deleteTableCol() {
+    const rows = getTableEditorMatrix();
+    rows.forEach(row => { if (row.length > 1) row.pop(); });
+    setTableEditorMatrix(rows.length ? rows : [['']]);
+  }
+  function renderImageMaterialEditor(block) {
+    const wCm = (Number(block.layout.widthMm || 80) / 10).toFixed(1);
+    const hCm = (Number(block.layout.heightMm || 50) / 10).toFixed(1);
+    return `<div class="row two form-group"><div><label for="mat-width-cm">建議寬度（cm）</label><input id="mat-width-cm" type="number" min="2.5" max="30" step="0.1" value="${wCm}"></div><div><label for="mat-height-cm">建議高度（cm）</label><input id="mat-height-cm" type="number" min="1.8" max="25" step="0.1" value="${hCm}"></div></div>
+      <div class="form-group"><label for="mat-image-note">框內提示</label><input id="mat-image-note" type="text" value="${escapeHtml(block.content.note || '')}"></div>
+      <div class="row two form-group"><label style="font-weight:600;"><input id="mat-show-size" type="checkbox" ${block.layout.showSizeHint !== false ? 'checked' : ''}> 顯示尺寸建議</label><label style="font-weight:600;"><input id="mat-show-title" type="checkbox" ${block.layout.showTitle ? 'checked' : ''}> 顯示標題</label></div>`;
+  }
+  function saveMaterialEditorFields() {
+    const block = materialModalDraft.find(b => b.id === selectedMaterialId);
+    const editor = document.getElementById('material-editor');
+    if (!block || !editor || editor.classList.contains('hidden')) return;
+    const title = document.getElementById('mat-title');
+    if (title) block.title = title.value.trim() || materialTypeName(block.type);
+    if (block.type === 'text') {
+      block.content.text = document.getElementById('mat-text')?.value || '';
+      block.layout.showTitle = !!document.getElementById('mat-show-title')?.checked;
+      block.layout.boxed = !!document.getElementById('mat-boxed')?.checked;
+    } else if (block.type === 'wordbank') {
+      block.content.labelMode = document.getElementById('mat-label-mode')?.value || 'coded';
+      block.content.labelType = document.getElementById('mat-label-type')?.value || 'jia';
+      block.content.items = [...document.querySelectorAll('.mat-wordbank-item')].map(input => ({ text: input.value.trim() })).filter(it => it.text);
+      if (block.content.items.length === 0) block.content.items = [{ text: '' }];
+      block.layout.columns = Math.max(1, Number(document.getElementById('mat-columns')?.value || 3));
+      block.layout.boxed = !!document.getElementById('mat-boxed')?.checked;
+      block.layout.showTitle = !!document.getElementById('mat-show-title')?.checked;
+    } else if (block.type === 'table') {
+      block.content.rows = getTableEditorMatrix();
+      block.layout.showTitle = !!document.getElementById('mat-show-title')?.checked;
+      block.layout.headerRow = !!document.getElementById('mat-header-row')?.checked;
+      block.layout.headerCol = !!document.getElementById('mat-header-col')?.checked;
+      block.layout.fullWidth = !!document.getElementById('mat-full-width')?.checked;
+    } else if (block.type === 'imagePlaceholder') {
+      block.layout.widthMm = Math.max(25, Number(document.getElementById('mat-width-cm')?.value || 8) * 10);
+      block.layout.heightMm = Math.max(18, Number(document.getElementById('mat-height-cm')?.value || 3) * 10);
+      block.layout.showSizeHint = !!document.getElementById('mat-show-size')?.checked;
+      block.layout.showTitle = !!document.getElementById('mat-show-title')?.checked;
+      block.content.note = document.getElementById('mat-image-note')?.value || '請在 Word 中將此框替換為圖片';
+    }
+  }
+
+  function resetForm() {
+    editing = null;
+    document.getElementById('formTitle').innerText = '1. 新增項目';
+    document.getElementById('saveBtn').innerText = '加入項目';
+    document.getElementById('section-title').value = '';
+    document.getElementById('section-score-enabled').checked = false;
+    document.getElementById('section-score-per-question').value = '2';
+    toggleSectionScoreField();
+    document.getElementById('section-instruction-enabled').checked = false;
+    document.getElementById('section-instruction').value = '';
+    toggleSectionInstructionField();
+    document.getElementById('group-title').value = '';
+    document.getElementById('group-material').value = '';
+    formMaterialBlocks = [];
+    updateGroupMaterialSummary();
+    formStandaloneMaterialBlock = makeMaterialBlock('text');
+    updateStandaloneMaterialSummary();
+    document.getElementById('question-stem').value = '';
+    document.getElementById('question-type').value = 'mc';
+    document.getElementById('option-columns').value = '1';
+    document.getElementById('option-label-type').value = 'ABC';
+    document.getElementById('space-policy').value = 'trim';
+    document.getElementById('tf-answer').value = '';
+    document.getElementById('fill-answer').value = '';
+    document.getElementById('wordbank-fill-answer').value = '';
+    document.getElementById('wordbank-blank-width').value = 6;
+    document.getElementById('wordbank-show-code').checked = true;
+    refreshWordbankSelect();
+    document.getElementById('short-lines').value = 3;
+    document.getElementById('short-answer').value = '';
+    const optC = document.getElementById('options-container');
+    optC.innerHTML = '';
+    ['選項一','選項二','選項三','選項四'].forEach((t, i) => addOption(t, i === 0));
+    const matchC = document.getElementById('matching-container');
+    matchC.innerHTML = '';
+    addMatchingRow('左側項目一', '右側項目一', 'A');
+    addMatchingRow('左側項目二', '右側項目二', 'B');
+    addMatchingRow('左側項目三', '右側項目三', 'C');
+    switchQuestionType();
+    switchFormKind();
+    renderStructure();
+  }
+
+  function addOption(text='', checked=false) {
+    const c = document.getElementById('options-container');
+    const div = document.createElement('div');
+    div.className = 'option-item';
+    div.draggable = true;
+    div.innerHTML = `<span class="option-drag-handle" title="拖曳調整選項順序">≡</span><input type="radio" name="mc-answer" ${checked ? 'checked' : ''} title="設為正解"><input type="text" class="opt-text" value="${escapeHtml(text)}" placeholder="選項文字"><button type="button" class="secondary btn-sm" onclick="this.closest('.option-item').remove()">刪除</button>`;
+    div.addEventListener('dragstart', () => setTimeout(() => div.classList.add('dragging'), 0));
+    div.addEventListener('dragend', () => div.classList.remove('dragging'));
+    c.appendChild(div);
+  }
+  function initOptionDragSorting() {
+    const c = document.getElementById('options-container');
+    if (!c || c.dataset.dragReady === '1') return;
+    c.dataset.dragReady = '1';
+    c.addEventListener('dragover', e => {
+      e.preventDefault();
+      const dragging = c.querySelector('.option-item.dragging');
+      if (!dragging) return;
+      const after = getOptionDragAfterElement(c, e.clientY);
+      if (after == null) c.appendChild(dragging);
+      else c.insertBefore(dragging, after);
+    });
+  }
+  function getOptionDragAfterElement(container, y) {
+    const els = [...container.querySelectorAll('.option-item:not(.dragging)')];
+    return els.reduce((closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) return { offset, element: child };
+      return closest;
+    }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+  }
+  function addMatchingRow(left='', right='', answer='') {
+    const c = document.getElementById('matching-container');
+    const div = document.createElement('div');
+    div.className = 'match-row';
+    div.innerHTML = `<input type="text" class="match-left" value="${escapeHtml(left)}" placeholder="左側項目"><input type="text" class="match-right" value="${escapeHtml(right)}" placeholder="右側項目"><button type="button" class="secondary btn-sm" onclick="this.closest('.match-row').remove()">刪除</button><input type="text" class="match-answer hidden" value="${escapeHtml(answer)}">`;
+    c.appendChild(div);
+  }
+  function applySpacePolicy(value, policy) {
+    if (policy === 'keep') return value;
+    if (policy === 'removeAll') return value.replace(/\s+/g, '');
+    return value.trim();
+  }
+
+  function saveCurrentItem() {
+    const kind = document.getElementById('item-kind').value;
+    if (kind === 'section') return saveSectionItem();
+    if (kind === 'group') return saveGroupItem();
+    if (kind === 'material') return saveMaterialItem();
+    return saveQuestionItem();
+  }
+  function saveSectionItem() {
+    const title = document.getElementById('section-title').value.trim() || '未命名大題';
+    const scoreEnabled = document.getElementById('section-score-enabled').checked;
+    const scorePerQuestion = Number(document.getElementById('section-score-per-question').value || 2);
+    const instructionEnabled = document.getElementById('section-instruction-enabled').checked;
+    const instruction = instructionEnabled ? document.getElementById('section-instruction').value.trim() : '';
+    if (editing && editing.type === 'section') {
+      const sec = findSection(editing.id);
+      if (sec) { sec.title = title; sec.scoreEnabled = scoreEnabled; sec.scorePerQuestion = scorePerQuestion; sec.instructionEnabled = instructionEnabled; sec.instruction = instruction; }
+    } else {
+      examData.sections.push(makeSection(title, instruction, instructionEnabled, scoreEnabled, scorePerQuestion));
+    }
+    resetForm(); afterMutation();
+  }
+  function saveGroupItem() {
+    if (examData.sections.length === 0) examData.sections.push(makeSection('未命名大題'));
+    const parentId = document.getElementById('group-parent').value;
+    const title = document.getElementById('group-title').value.trim() || '未命名題組';
+    const material = document.getElementById('group-material').value.trim();
+    let blocks = normalizeMaterialBlocks(formMaterialBlocks, '');
+    if (blocks.length === 0 && material) blocks = normalizeMaterialBlocks([], material);
+    if (editing && editing.type === 'group') {
+      const found = findNode(editing.id);
+      if (found) {
+        found.node.title = title;
+        found.node.material = material;
+        found.node.materialBlocks = blocks;
+        if (found.parent?.id !== parentId) {
+          const node = removeNode(editing.id);
+          findSection(parentId)?.children.push(node);
+        }
+      }
+    } else {
+      const group = makeGroup(title, material);
+      group.materialBlocks = blocks;
+      findSection(parentId)?.children.push(group);
+    }
+    resetForm(); afterMutation();
+  }
+  function saveMaterialItem() {
+    if (examData.sections.length === 0) examData.sections.push(makeSection('未命名大題'));
+    const parentVal = document.getElementById('material-parent')?.value || `section:${examData.sections[0].id}`;
+    const [parentType, parentId] = parentVal.split(':');
+    const block = normalizeMaterialBlock(formStandaloneMaterialBlock || makeMaterialBlock('text'));
+    if (editing && editing.type === 'material') {
+      const found = findNode(editing.id);
+      if (found) {
+        found.node.block = block;
+        if (found.parent?.id !== parentId) {
+          const node = removeNode(editing.id);
+          if (parentType === 'section') findSection(parentId)?.children.push(node);
+          if (parentType === 'group') findNode(parentId)?.node.children.push(node);
+          if (parentType === 'question') {
+            const q = findNode(parentId)?.node;
+            if (q) { q.children = Array.isArray(q.children) ? q.children : []; q.children.push(node); }
+          }
+        }
+      }
+    } else {
+      const node = makeMaterialNode(block);
+      if (parentType === 'section') findSection(parentId)?.children.push(node);
+      if (parentType === 'group') findNode(parentId)?.node.children.push(node);
+      if (parentType === 'question') {
+        const q = findNode(parentId)?.node;
+        if (q) { q.children = Array.isArray(q.children) ? q.children : []; q.children.push(node); }
+      }
+    }
+    resetForm(); afterMutation();
+  }
+  function buildQuestionFromForm(existing) {
+    const qType = document.getElementById('question-type').value;
+    const q = existing || makeQuestion(qType);
+    q.type = 'question';
+    q.qType = qType;
+    q.stem = document.getElementById('question-stem').value.trim();
+    q.answer = q.answer || { value: '' };
+    q.content = q.content || {};
+    q.layout = q.layout || {};
+    q.layout.optionColumns = Number(document.getElementById('option-columns').value || 1);
+    q.layout.labelType = document.getElementById('option-label-type').value;
+    q.layout.spacePolicy = document.getElementById('space-policy').value;
+    q.layout.shortLines = Math.max(1, Number(document.getElementById('short-lines').value || 3));
+    q.layout.blankWidth = Math.max(3, Number(document.getElementById('wordbank-blank-width')?.value || 6));
+    q.layout.showAnswerAsCode = document.getElementById('wordbank-show-code')?.checked !== false;
+    if (!q.stem) q.stem = qType === 'matching' ? '請將左右兩邊正確配對。' : (qType === 'wordbankFill' ? '請從選填字庫中選出正確答案，填入 {{1}}。' : '未命名題目');
+    if (qType === 'mc') {
+      const rows = [...document.querySelectorAll('.option-item')];
+      q.content.options = rows.map(row => applySpacePolicy(row.querySelector('.opt-text').value, q.layout.spacePolicy)).filter(v => v.length > 0);
+      if (q.content.options.length === 0) q.content.options = ['未命名選項'];
+      const checkedIndex = rows.findIndex(row => row.querySelector('input[type="radio"]').checked);
+      q.answer.value = checkedIndex >= 0 ? checkedIndex : '';
+    } else if (qType === 'tf') {
+      q.answer.value = document.getElementById('tf-answer').value;
+    } else if (qType === 'fill') {
+      q.answer.value = document.getElementById('fill-answer').value.trim();
+    } else if (qType === 'wordbankFill') {
+      q.content.wordBankBlockId = document.getElementById('wordbank-block-select')?.value || '';
+      q.answer.value = document.getElementById('wordbank-fill-answer')?.value.trim() || '';
+    } else if (qType === 'short') {
+      q.answer.value = document.getElementById('short-answer').value.trim();
+    } else if (qType === 'matching') {
+      const rows = [...document.querySelectorAll('.match-row')];
+      q.content.matchingPairs = rows.map((row, i) => ({
+        left: row.querySelector('.match-left').value.trim() || `左側項目${i+1}`,
+        right: row.querySelector('.match-right').value.trim() || `右側項目${i+1}`,
+        answer: LABEL_SETS.ABC[i] || String(i+1)
+      }));
+      q.answer.value = q.content.matchingPairs.map((p, i) => `${MATCH_LEFT_LABELS[i] || i+1}-${LABEL_SETS.ABC[i] || i+1}`).join('、');
+    }
+    return q;
+  }
+  function saveQuestionItem() {
+    if (examData.sections.length === 0) examData.sections.push(makeSection('未命名大題'));
+    const parentVal = document.getElementById('question-parent').value || `section:${examData.sections[0].id}`;
+    const [parentType, parentId] = parentVal.split(':');
+    if (editing && editing.type === 'question') {
+      const found = findNode(editing.id);
+      if (found) {
+        buildQuestionFromForm(found.node);
+        const currentParentId = found.parent?.id;
+        if (currentParentId !== parentId) {
+          const node = removeNode(editing.id);
+          if (parentType === 'section') findSection(parentId)?.children.push(node);
+          if (parentType === 'group') findNode(parentId)?.node.children.push(node);
+        }
+      }
+    } else {
+      const q = buildQuestionFromForm(null);
+      if (parentType === 'section') findSection(parentId)?.children.push(q);
+      if (parentType === 'group') findNode(parentId)?.node.children.push(q);
+    }
+    resetForm(); afterMutation();
+  }
+
+  function editItem(id) {
+    const found = findNode(id);
+    if (!found) return;
+    editing = { id, type: found.node.type === 'question' ? 'question' : found.node.type };
+    document.getElementById('saveBtn').innerText = '更新項目';
+    if (found.node.type === 'section') {
+      setFormKind('section');
+      document.getElementById('section-title').value = found.node.title || '';
+      document.getElementById('section-score-enabled').checked = !!found.node.scoreEnabled;
+      document.getElementById('section-score-per-question').value = String(found.node.scorePerQuestion || 2);
+      toggleSectionScoreField();
+      document.getElementById('section-instruction-enabled').checked = !!found.node.instructionEnabled;
+      document.getElementById('section-instruction').value = found.node.instruction || '';
+      toggleSectionInstructionField();
+    } else if (found.node.type === 'group') {
+      setFormKind('group');
+      document.getElementById('group-title').value = found.node.title || '';
+      document.getElementById('group-material').value = found.node.material || '';
+      formMaterialBlocks = cloneData(getGroupMaterialBlocks(found.node));
+      updateGroupMaterialSummary();
+      populateParentSelects();
+      document.getElementById('group-parent').value = found.parent.id;
+    } else if (found.node.type === 'material') {
+      setFormKind('material');
+      formStandaloneMaterialBlock = normalizeMaterialBlock(cloneData(found.node.block || makeMaterialBlock('text')));
+      populateParentSelects();
+      if (found.parent?.type === 'section') document.getElementById('material-parent').value = `section:${found.parent.id}`;
+      if (found.parent?.type === 'group') document.getElementById('material-parent').value = `group:${found.parent.id}`;
+      if (found.parent?.type === 'question') document.getElementById('material-parent').value = `question:${found.parent.id}`;
+      updateStandaloneMaterialSummary();
+    } else if (found.node.type === 'question') {
+      const q = found.node;
+      setFormKind('question');
+      document.getElementById('question-type').value = q.qType || 'mc';
+      document.getElementById('question-stem').value = q.stem || '';
+      document.getElementById('option-columns').value = q.layout?.optionColumns || 1;
+      document.getElementById('option-label-type').value = q.layout?.labelType || 'ABC';
+      document.getElementById('space-policy').value = q.layout?.spacePolicy || 'trim';
+      document.getElementById('tf-answer').value = q.qType === 'tf' ? (q.answer?.value || '') : '';
+      document.getElementById('fill-answer').value = q.qType === 'fill' ? (q.answer?.value || '') : '';
+      document.getElementById('wordbank-fill-answer').value = q.qType === 'wordbankFill' ? (q.answer?.value || '') : '';
+      document.getElementById('wordbank-blank-width').value = q.layout?.blankWidth || 6;
+      document.getElementById('wordbank-show-code').checked = q.layout?.showAnswerAsCode !== false;
+      document.getElementById('short-lines').value = q.layout?.shortLines || 3;
+      document.getElementById('short-answer').value = q.qType === 'short' ? (q.answer?.value || '') : '';
+      populateParentSelects();
+      document.getElementById('question-parent').value = found.parent.type === 'group' ? `group:${found.parent.id}` : `section:${found.parent.id}`;
+      refreshWordbankSelect(q.content?.wordBankBlockId || '');
+      const optC = document.getElementById('options-container'); optC.innerHTML = '';
+      (q.content?.options || ['選項一','選項二','選項三','選項四']).forEach((t, i) => addOption(t, Number(q.answer?.value) === i));
+      const matchC = document.getElementById('matching-container'); matchC.innerHTML = '';
+      (q.content?.matchingPairs || [{left:'', right:'', answer:'A'}]).forEach(p => addMatchingRow(p.left, p.right, p.answer));
+      switchQuestionType();
+    }
+    document.getElementById('formTitle').innerText = '1. 編輯項目';
+    renderStructure();
+  }
+  function deleteItem(id) {
+    const found = findNode(id);
+    if (!found) return;
+    const label = found.node.type === 'section' ? '大題與其內所有項目' : '項目';
+    if (!confirm(`確定要刪除此${label}嗎？`)) return;
+    removeNode(id);
+    if (editing?.id === id) resetForm();
+    afterMutation();
+  }
+  function toggleCollapse(id) {
+    const found = findNode(id);
+    if (!found) return;
+    found.node.collapsed = !found.node.collapsed;
+    afterMutation();
+  }
+
+  function renderAll() {
+    applyPreviewSettings();
+    renderStructure();
+    renderPreview();
+  }
+  function renderStructure() {
+    const list = document.getElementById('structure-list');
+    if (examData.sections.length === 0) {
+      list.innerHTML = '<div class="empty">目前沒有大題。請先新增大題。</div>';
+      return;
+    }
+    list.innerHTML = examData.sections.map((sec, sIdx) => renderSectionCard(sec, sIdx)).join('');
+    attachDragHandlers();
+  }
+  function renderSectionCard(sec, sIdx) {
+    const secNo = `${chineseNumber(sIdx+1)}、`;
+    const scoreLabel = sectionScoreText(sec);
+    const instructionLabel = sec.instructionEnabled && sec.instruction ? `｜說明：${sec.instruction}` : '';
+    const children = sec.collapsed ? '' : `<div class="children-list">${sec.children.map((child, idx) => renderChildCard(child, sec, idx)).join('')}<div class="drop-zone" data-drop="section" data-section-id="${sec.id}">拖曳題目、題組或材料到這裡，加入「${escapeHtml(secNo + sec.title)}」</div></div>`;
+    return `<div class="section-box" draggable="true" data-drag-type="section" data-id="${sec.id}">
+      <div class="section-head">
+        <div class="title-line"><span class="drag-handle">≡</span><span class="pill">大題</span><span class="title-text">${escapeHtml(secNo + (sec.title || '未命名大題') + scoreLabel + instructionLabel)}</span></div>
+        <div class="row"><button class="secondary btn-sm" onclick="toggleCollapse('${sec.id}')">${sec.collapsed ? '展開' : '收合'}</button><button class="secondary btn-sm" onclick="editItem('${sec.id}')">編輯</button><button class="secondary btn-sm" onclick="moveNodeRelative('${sec.id}', -1)">上移</button><button class="secondary btn-sm" onclick="moveNodeRelative('${sec.id}', 1)">下移</button><button class="danger btn-sm" onclick="deleteItem('${sec.id}')">刪除</button></div>
+      </div>${children}</div>`;
+  }
+  function renderChildCard(child, parent, idx) {
+    if (child.type === 'group') return renderGroupCard(child, parent, idx);
+    if (child.type === 'material') return renderMaterialNodeCard(child, parent, idx);
+    return renderQuestionCard(child, parent, idx);
+  }
+  function renderGroupCard(group, parent, idx) {
+    const groupIndex = parent.children.filter(c => c.type === 'group').findIndex(g => g.id === group.id) + 1;
+    const label = `${parenChinese(groupIndex)} ${group.title || '未命名題組'}`;
+    const children = group.collapsed ? '' : `<div class="group-children">${group.children.map((child, childIdx) => renderChildCard(child, group, childIdx)).join('')}<div class="drop-zone" data-drop="group" data-group-id="${group.id}">拖曳題目或材料到這裡，加入此題組</div></div>`;
+    return `<div class="group-box" draggable="true" data-drag-type="group" data-id="${group.id}">
+      <div class="group-head">
+        <div class="title-line"><span class="drag-handle">≡</span><span class="pill">題組</span><span class="title-text">${escapeHtml(label)}</span></div>
+        <div class="row"><button class="secondary btn-sm" onclick="toggleCollapse('${group.id}')">${group.collapsed ? '展開' : '收合'}</button><button class="secondary btn-sm" onclick="editItem('${group.id}')">編輯</button><button class="secondary btn-sm" onclick="moveNodeRelative('${group.id}', -1)">上移</button><button class="secondary btn-sm" onclick="moveNodeRelative('${group.id}', 1)">下移</button><button class="danger btn-sm" onclick="deleteItem('${group.id}')">刪除</button></div>
+      </div>${children}</div>`;
+  }
+  function renderQuestionCard(q, parent, idx) {
+    const qIndex = parent.children.filter(c => c.type === 'question').findIndex(item => item.id === q.id) + 1;
+    const label = `${qIndex}. ${q.stem || '未命名題目'}`;
+    const childMaterials = Array.isArray(q.children) && q.children.length
+      ? `<div class="structure-child-materials">${q.children.map((m, mi) => renderMaterialNodeCard(m, q, mi, true)).join('')}<div class="drop-zone" data-drop="question" data-question-id="${q.id}">拖曳題目材料到這裡，綁定此題</div></div>`
+      : `<div class="structure-child-materials"><div class="drop-zone" data-drop="question" data-question-id="${q.id}">拖曳題目材料到這裡，綁定此題</div></div>`;
+    return `<div class="question-box" draggable="true" data-drag-type="question" data-id="${q.id}">
+      <div class="question-head">
+        <div class="title-line"><span class="drag-handle">≡</span><span class="pill">${questionKindName(q.qType)}</span><span class="title-text">${escapeHtml(label)}</span></div>
+        <div class="row"><button class="secondary btn-sm" onclick="editItem('${q.id}')">編輯</button><button class="secondary btn-sm" onclick="moveNodeRelative('${q.id}', -1)">上移</button><button class="secondary btn-sm" onclick="moveNodeRelative('${q.id}', 1)">下移</button><button class="danger btn-sm" onclick="deleteItem('${q.id}')">刪除</button></div>
+      </div>${childMaterials}</div>`;
+  }
+  function renderMaterialNodeCard(node, parent, idx, nested=false) {
+    const block = normalizeMaterialBlock(node.block || makeMaterialBlock('text'));
+    const title = block.title || materialTypeName(block.type);
+    const canDemote = !nested && parent?.type !== 'question';
+    const promoteBtn = nested ? `<button class="secondary btn-sm" onclick="promoteMaterial('${node.id}')">升階</button>` : '';
+    const demoteBtn = canDemote ? `<button class="secondary btn-sm" onclick="demoteMaterialToPreviousQuestion('${node.id}')">降階</button>` : '';
+    return `<div class="material-node-box" draggable="true" data-drag-type="material" data-id="${node.id}">
+      <div class="material-node-head">
+        <div class="title-line"><span class="drag-handle">≡</span><span class="pill">材料</span><span class="title-text">${escapeHtml(materialTypeName(block.type))}：${escapeHtml(title)}</span></div>
+        <div class="row"><button class="secondary btn-sm" onclick="editItem('${node.id}')">編輯</button>${demoteBtn}${promoteBtn}<button class="secondary btn-sm" onclick="moveNodeRelative('${node.id}', -1)">上移</button><button class="secondary btn-sm" onclick="moveNodeRelative('${node.id}', 1)">下移</button><button class="danger btn-sm" onclick="deleteItem('${node.id}')">刪除</button></div>
+      </div></div>`;
+  }
+
+  function attachDragHandlers() {
+    document.querySelectorAll('[draggable="true"]').forEach(el => {
+      el.addEventListener('dragstart', e => {
+        e.stopPropagation();
+        dragState = { id: el.dataset.id, type: el.dataset.dragType };
+        el.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      el.addEventListener('dragend', e => {
+        e.stopPropagation();
+        el.classList.remove('dragging');
+        dragState = null;
+        document.querySelectorAll('.drag-over').forEach(z => z.classList.remove('drag-over'));
+      });
+    });
+    document.querySelectorAll('.section-box').forEach(card => {
+      card.addEventListener('dragover', e => {
+        if (dragState?.type === 'section' && dragState.id !== card.dataset.id) e.preventDefault();
+      });
+      card.addEventListener('drop', e => {
+        if (dragState?.type === 'section' && dragState.id !== card.dataset.id) {
+          e.preventDefault(); e.stopPropagation(); moveSectionBefore(dragState.id, card.dataset.id);
+        }
+      });
+    });
+    document.querySelectorAll('.drop-zone').forEach(zone => {
+      zone.addEventListener('dragover', e => {
+        if (!dragState) return;
+        const type = zone.dataset.drop;
+        const valid = (type === 'section' && (dragState.type === 'group' || dragState.type === 'question' || dragState.type === 'material')) || (type === 'group' && (dragState.type === 'question' || dragState.type === 'material')) || (type === 'question' && dragState.type === 'material');
+        if (valid) { e.preventDefault(); zone.classList.add('drag-over'); }
+      });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+      zone.addEventListener('drop', e => {
+        e.preventDefault(); e.stopPropagation(); zone.classList.remove('drag-over');
+        if (!dragState) return;
+        if (zone.dataset.drop === 'section') appendNodeToSection(dragState.id, zone.dataset.sectionId);
+        if (zone.dataset.drop === 'group') {
+          if (dragState.type === 'question') appendQuestionToGroup(dragState.id, zone.dataset.groupId);
+          if (dragState.type === 'material') appendMaterialToGroup(dragState.id, zone.dataset.groupId);
+        }
+        if (zone.dataset.drop === 'question') appendMaterialToQuestion(dragState.id, zone.dataset.questionId);
+      });
+    });
+  }
+
+  function syncSettingsToUi() {
+    document.getElementById('paper-size').value = examData.settings.paperSize;
+    document.getElementById('orientation').value = examData.settings.orientation;
+    document.getElementById('writing-mode').value = examData.settings.writingMode;
+    document.getElementById('preview-columns').value = examData.settings.previewColumns;
+    document.getElementById('preview-mode').value = examData.settings.previewMode || 'student';
+    document.getElementById('word-margin').value = examData.settings.wordMargin || 'medium';
+    document.getElementById('section-font-size').value = examData.settings.sectionFontSize || 14;
+    document.getElementById('question-font-size').value = examData.settings.questionFontSize || 12;
+  }
+  function updateSettingsFromUi() {
+    examData.settings.paperSize = document.getElementById('paper-size').value;
+    examData.settings.orientation = document.getElementById('orientation').value;
+    examData.settings.writingMode = document.getElementById('writing-mode').value;
+    examData.settings.previewColumns = Number(document.getElementById('preview-columns').value);
+    examData.settings.previewMode = document.getElementById('preview-mode').value;
+    examData.settings.wordMargin = document.getElementById('word-margin').value;
+    examData.settings.sectionFontSize = Number(document.getElementById('section-font-size').value);
+    examData.settings.questionFontSize = Number(document.getElementById('question-font-size').value);
+    saveData(); renderAll();
+  }
+  function applyPreviewSettings() {
+    const s = examData.settings;
+    const size = PAPER_SIZES[s.paperSize] || PAPER_SIZES.B4;
+    const w = s.orientation === 'landscape' ? size.h : size.w;
+    const h = s.orientation === 'landscape' ? size.w : size.h;
+    const margin = WORD_MARGINS[s.wordMargin] || WORD_MARGINS.medium;
+    document.documentElement.style.setProperty('--paper-width', w + 'mm');
+    document.documentElement.style.setProperty('--paper-height', h + 'mm');
+    document.documentElement.style.setProperty('--paper-margin-top', margin.top + 'mm');
+    document.documentElement.style.setProperty('--paper-margin-right', margin.right + 'mm');
+    document.documentElement.style.setProperty('--paper-margin-bottom', margin.bottom + 'mm');
+    document.documentElement.style.setProperty('--paper-margin-left', margin.left + 'mm');
+    document.documentElement.style.setProperty('--paper-inner-width', Math.max(20, w - margin.left - margin.right) + 'mm');
+    document.documentElement.style.setProperty('--paper-inner-height', Math.max(20, h - margin.top - margin.bottom) + 'mm');
+    document.documentElement.style.setProperty('--preview-columns', s.previewColumns || 1);
+    document.documentElement.style.setProperty('--section-font-size', (s.sectionFontSize || 14) + 'pt');
+    document.documentElement.style.setProperty('--question-font-size', (s.questionFontSize || 12) + 'pt');
+  }
+  function updatePreviewZoom() {
+    const shell = document.querySelector('.preview-shell');
+    if (!shell) return;
+    const s = examData.settings;
+    const size = PAPER_SIZES[s.paperSize] || PAPER_SIZES.B4;
+    const paperWidthMm = s.orientation === 'landscape' ? size.h : size.w;
+    const cssPxPerMm = 96 / 25.4;
+    const availableWidth = Math.max(320, shell.clientWidth - 36);
+    const paperCssWidth = paperWidthMm * cssPxPerMm;
+    const zoom = Math.min(1, Math.max(0.28, availableWidth / paperCssWidth));
+    document.documentElement.style.setProperty('--preview-zoom', zoom.toFixed(3));
+    if (s.writingMode === 'vertical') {
+      requestAnimationFrame(() => {
+        const maxLeft = Math.max(0, shell.scrollWidth - shell.clientWidth);
+        shell.scrollLeft = maxLeft;
+        shell.scrollTop = 0;
+        // 某些瀏覽器在 zoom/flex 組合下第一幀會重新計算 scrollWidth，補一次。
+        requestAnimationFrame(() => {
+          shell.scrollLeft = Math.max(0, shell.scrollWidth - shell.clientWidth);
+          shell.scrollTop = 0;
         });
+      });
+    }
+  }
+  function setViewMode(mode) {
+    viewMode = mode;
+    document.getElementById('structure-view').classList.toggle('active', mode === 'structure');
+    document.getElementById('preview-view').classList.toggle('active', mode === 'preview');
+    renderPreview();
+  }
+  function renderPreview() {
+    const mode = document.getElementById('preview-mode').value || 'student';
+    examData.settings.previewMode = mode;
+    const isVertical = examData.settings.writingMode === 'vertical';
+    const shell = document.querySelector('.preview-shell');
+    const previewView = document.getElementById('preview-view');
+    const pages = document.getElementById('preview-pages');
+    if (shell) shell.classList.toggle('vertical-preview', isVertical);
+    if (previewView) previewView.classList.toggle('vertical-preview', isVertical);
+    if (!pages) return;
+    pages.innerHTML = '';
+    renderPreviewPages(mode);
+    updatePreviewZoom();
+    bindImagePlaceholderResizers();
+  }
 
-        // --- 題目區塊拖曳排序邏輯 ---
-        const qContainer = document.getElementById('questions-container');
-        qContainer.addEventListener('dragover', e => {
-            e.preventDefault();
-            const afterElement = getDragAfterElement(qContainer, e.clientY, '.q-item:not(.dragging)');
-            const draggable = document.querySelector('.q-item.dragging');
-            if (draggable) {
-                if (afterElement == null) {
-                    qContainer.appendChild(draggable);
-                } else {
-                    qContainer.insertBefore(draggable, afterElement);
-                }
-            }
+  function makePreviewPaper(pageNo, isVertical) {
+    const paper = document.createElement('div');
+    paper.className = 'preview-paper';
+    paper.dataset.pageNo = String(pageNo);
+    const content = document.createElement('div');
+    content.className = 'preview-content';
+    content.classList.toggle('vertical-writing', isVertical);
+    const label = document.createElement('div');
+    label.className = 'preview-page-label';
+    label.textContent = `第 ${pageNo} 頁`;
+    paper.appendChild(content);
+    paper.appendChild(label);
+    return { paper, content };
+  }
+
+  function previewContentOverflows(content) {
+    const tolerance = 2;
+    return content.scrollHeight > content.clientHeight + tolerance || content.scrollWidth > content.clientWidth + tolerance;
+  }
+
+  function renderPreviewPages(mode='student') {
+    const pages = document.getElementById('preview-pages');
+    if (!pages) return;
+    const isVertical = examData.settings.writingMode === 'vertical';
+    const blocks = renderPreviewBlockHtmlList(mode);
+    const emptyHtml = '<div class="empty">尚無內容</div>';
+    let pageNo = 1;
+    let current = makePreviewPaper(pageNo, isVertical);
+    pages.appendChild(current.paper);
+    const sourceBlocks = blocks.length ? blocks : [emptyHtml];
+
+    sourceBlocks.forEach(blockHtml => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'preview-flow-block';
+      wrapper.innerHTML = blockHtml;
+      current.content.appendChild(wrapper);
+
+      if (previewContentOverflows(current.content) && current.content.children.length > 1) {
+        current.content.removeChild(wrapper);
+        pageNo++;
+        current = makePreviewPaper(pageNo, isVertical);
+        pages.appendChild(current.paper);
+        current.content.appendChild(wrapper);
+      }
+    });
+  }
+
+  function renderPreviewBlockHtmlList(mode='student') {
+    const blocks = [];
+    if (!examData.sections.length) return blocks;
+    examData.sections.forEach((sec, sIdx) => {
+      blocks.push(`<section class="exam-section preview-section-head">${renderSectionHeader(sec, sIdx)}</section>`);
+      let groupNo = 0, qNo = 0;
+      (sec.children || []).forEach(child => {
+        if (child.type === 'group') {
+          groupNo++;
+          blocks.push(...renderGroupPreviewBlockList(child, groupNo, mode));
+        } else if (child.type === 'question') {
+          qNo++;
+          blocks.push(renderQuestionHtml(child, qNo, mode, 'preview'));
+        } else if (child.type === 'material') {
+          blocks.push(renderMaterialNodeHtml(child, mode, 'preview'));
+        }
+      });
+    });
+    return blocks;
+  }
+
+  function renderGroupPreviewBlockList(group, groupNo, mode='student') {
+    const blocks = [];
+    const leadMaterialHtml = renderMaterialBlocksHtml(getGroupMaterialBlocks(group), mode, 'preview');
+    blocks.push(`<section class="exam-group preview-group-head"><div class="exam-group-title">${parenChinese(groupNo)} ${escapeHtml(group.title || '未命名題組')}</div>${leadMaterialHtml}</section>`);
+    let qNo = 0;
+    (group.children || []).forEach(child => {
+      if (child.type === 'question') blocks.push(renderQuestionHtml(child, ++qNo, mode, 'preview'));
+      if (child.type === 'material') blocks.push(renderMaterialNodeHtml(child, mode, 'preview'));
+    });
+    return blocks;
+  }
+
+  function renderExamHtml(mode='student', target='preview') {
+    if (examData.sections.length === 0) return '<div class="empty">尚無內容</div>';
+    return examData.sections.map((sec, sIdx) => {
+      const body = renderSectionChildrenHtml(sec.children, mode, target);
+      return `<section class="exam-section">${renderSectionHeader(sec, sIdx)}${body}</section>`;
+    }).join('');
+  }
+  function renderSectionChildrenHtml(children, mode, target='preview') {
+    let groupNo = 0, qNo = 0;
+    return children.map(child => {
+      if (child.type === 'group') {
+        groupNo++;
+        return renderGroupHtml(child, groupNo, mode, target);
+      }
+      if (child.type === 'question') {
+        qNo++;
+        return renderQuestionHtml(child, qNo, mode, target);
+      }
+      if (child.type === 'material') {
+        return renderMaterialNodeHtml(child, mode, target);
+      }
+      return '';
+    }).join('');
+  }
+  function renderGroupHtml(group, groupNo, mode, target='preview') {
+    let qNo = 0;
+    const leadMaterialHtml = renderMaterialBlocksHtml(getGroupMaterialBlocks(group), mode, target);
+    const body = (group.children || []).map(child => {
+      if (child.type === 'question') return renderQuestionHtml(child, ++qNo, mode, target);
+      if (child.type === 'material') return renderMaterialNodeHtml(child, mode, target);
+      return '';
+    }).join('');
+    return `<section class="exam-group"><div class="exam-group-title">${parenChinese(groupNo)} ${escapeHtml(group.title || '未命名題組')}</div>${leadMaterialHtml}${body}</section>`;
+  }
+  function renderMaterialNodeHtml(node, mode='student', target='preview') {
+    return renderMaterialBlockHtml(node.block || node.materialBlock || makeMaterialBlock('text'), mode, target);
+  }
+  function renderMaterialBlocksHtml(blocks, mode='student', target='preview') {
+    return (blocks || []).map(block => renderMaterialBlockHtml(block, mode, target)).join('');
+  }
+  function renderMaterialBlockHtml(block, mode='student', target='preview') {
+    block = normalizeMaterialBlock(block);
+    if (!block) return '';
+    if (block.type === 'text') return renderTextMaterialHtml(block, mode, target);
+    if (block.type === 'wordbank') return renderWordBankHtml(block, mode, target);
+    if (block.type === 'table') return renderTableMaterialHtml(block, mode, target);
+    if (block.type === 'imagePlaceholder') return renderImagePlaceholderHtml(block, mode, target);
+    return '';
+  }
+  function materialBlockWrapper(block, innerHtml, extraClass='') {
+    const boxed = block.layout?.boxed !== false ? ' material-boxed' : '';
+    const title = block.layout?.showTitle ? `<div class="material-title">${escapeHtml(block.title || materialTypeName(block.type))}</div>` : '';
+    return `<div class="material-block ${extraClass}${boxed}">${title}${innerHtml}</div>`;
+  }
+  function renderTextMaterialHtml(block, mode='student', target='preview') {
+    const body = `<div class="material-text-body">${nl2br(block.content?.text || '')}</div>`;
+    return materialBlockWrapper(block, body, 'material-text');
+  }
+  function getWordbankItemLabel(block, idx) {
+    if (block.content?.labelMode === 'plain') return '';
+    const labels = MATERIAL_LABEL_SETS[block.content?.labelType || 'jia'] || MATERIAL_LABEL_SETS.jia;
+    return labels[idx] || String(idx + 1);
+  }
+  function renderWordBankHtml(block, mode='student', target='preview') {
+    const items = block.content?.items || [];
+    const cols = Math.max(1, Number(block.layout?.columns || 3));
+    const cellWidth = (100 / cols).toFixed(4) + '%';
+    let rows = '';
+    for (let i = 0; i < items.length; i += cols) {
+      rows += '<tr>';
+      for (let c = 0; c < cols; c++) {
+        const idx = i + c;
+        if (idx < items.length) {
+          const label = getWordbankItemLabel(block, idx);
+          const prefix = label ? `${escapeHtml(label)}、` : '';
+          rows += `<td style="width:${cellWidth}">${prefix}${escapeHtml(items[idx].text || '')}</td>`;
+        } else {
+          rows += `<td style="width:${cellWidth}"></td>`;
+        }
+      }
+      rows += '</tr>';
+    }
+    const body = `<table class="material-wordbank-table"><tbody>${rows}</tbody></table>`;
+    return materialBlockWrapper(block, body, 'material-wordbank');
+  }
+  function renderTableMaterialHtml(block, mode='student', target='preview') {
+    const rows = block.content?.rows || [];
+    if (!rows.length) return '';
+    const title = block.layout?.showTitle ? `<div class="material-title">${escapeHtml(block.title || '資料表')}</div>` : '';
+    const tableRows = rows.map((row, rIdx) => `<tr>${row.map((cell, cIdx) => {
+      const tag = (block.layout?.headerRow && rIdx === 0) || (block.layout?.headerCol && cIdx === 0) ? 'th' : 'td';
+      return `<${tag}>${nl2br(cell)}</${tag}>`;
+    }).join('')}</tr>`).join('');
+    const fullWidth = block.layout?.fullWidth !== false ? 'width:100%;' : 'width:auto;';
+    return `<div class="material-block material-table-wrap">${title}<table class="material-table" style="${fullWidth}"><tbody>${tableRows}</tbody></table></div>`;
+  }
+  function renderImagePlaceholderHtml(block, mode='student', target='preview') {
+    const width = Math.max(25, Number(block.layout?.widthMm || getDefaultImagePlaceholderWidthMm()));
+    const height = Math.max(18, Number(block.layout?.heightMm || 30));
+    const cmText = `${(width / 10).toFixed(1)} × ${(height / 10).toFixed(1)} cm`;
+    const title = block.layout?.showTitle ? `<div class="material-title">${escapeHtml(block.title || '圖片')}</div>` : '';
+    const sizeHint = block.layout?.showSizeHint !== false ? `<div>建議 ${escapeHtml(cmText)}</div>` : '';
+    const resizeAttrs = target === 'preview' ? ` data-image-placeholder-id="${escapeHtml(block.id)}"` : '';
+    const resizeStyle = target === 'word' ? 'resize:none;overflow:hidden;' : '';
+    return `<div class="material-block material-image">${title}<div class="image-placeholder"${resizeAttrs} style="width:${width}mm;height:${height}mm;${resizeStyle}"><div class="image-placeholder-inner"><div class="image-placeholder-label">圖片框</div>${sizeHint}<div>${escapeHtml(block.content?.note || '')}</div></div></div></div>`;
+  }
+  function findMaterialBlockById(blockId) {
+    if (!blockId) return null;
+    function scanChildren(children, ctx={}) {
+      for (const node of children || []) {
+        if (node.type === 'section') {
+          const found = scanChildren(node.children || [], { section: node, ...ctx });
+          if (found) return found;
+        }
+        if (node.type === 'material') {
+          const block = normalizeMaterialBlock(node.block || node.materialBlock || makeMaterialBlock('text'));
+          if (block.id === blockId) return { block, node, ...ctx };
+        }
+        if (node.type === 'group') {
+          const groupBlock = getGroupMaterialBlocks(node).find(b => b.id === blockId);
+          if (groupBlock) return { block: groupBlock, group: node, ...ctx };
+          const found = scanChildren(node.children || [], { group: node, ...ctx });
+          if (found) return found;
+        }
+        if (node.type === 'question') {
+          const found = scanChildren(node.children || [], { question: node, ...ctx });
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+    return scanChildren(examData.sections || []);
+  }
+  function bindImagePlaceholderResizers() {
+    document.querySelectorAll('[data-image-placeholder-id]').forEach(el => {
+      el.addEventListener('mouseup', () => updateImagePlaceholderSizeFromElement(el));
+      el.addEventListener('touchend', () => updateImagePlaceholderSizeFromElement(el));
+    });
+  }
+  function updateImagePlaceholderSizeFromElement(el) {
+    const found = findMaterialBlockById(el.dataset.imagePlaceholderId);
+    if (!found) return;
+    const widthMm = Math.max(25, Math.round((el.offsetWidth * 25.4 / 96) * 10) / 10);
+    const heightMm = Math.max(18, Math.round((el.offsetHeight * 25.4 / 96) * 10) / 10);
+    if (Math.abs((found.block.layout.widthMm || 0) - widthMm) < .2 && Math.abs((found.block.layout.heightMm || 0) - heightMm) < .2) return;
+    found.block.layout.widthMm = widthMm;
+    found.block.layout.heightMm = heightMm;
+    saveData();
+  }
+  function answerBox(q, mode) {
+    if (mode !== 'teacher') return '（　）';
+    const vertical = examData.settings.writingMode === 'vertical';
+    if (q.qType === 'mc') {
+      const labels = LABEL_SETS[q.layout?.labelType || 'ABC'] || LABEL_SETS.ABC;
+      const label = labels[Number(q.answer?.value)] ?? '';
+      return `（${escapeHtml(vertical ? toFullWidthAlnum(label) : label)}）`;
+    }
+    if (q.qType === 'tf') return `（${escapeHtml(vertical ? toFullWidthAlnum(q.answer?.value || '　') : toFullWidthDigits(q.answer?.value || '　'))}）`;
+    return '';
+  }
+  function renderStemHtml(no, stem, options = {}, target='preview') {
+    const answerHtml = options.answerHtml || '';
+    const afterStemHtml = options.afterStemHtml || '';
+    const bodyHtml = options.bodyHtml || '';
+    const safeNo = escapeHtml(no);
+    const bodyContent = `${nl2br(stem)}${afterStemHtml}${bodyHtml}`;
+    const answerCell = answerHtml ? `<td class="stem-answer-cell"><span class="answer-box">${answerHtml}</span></td>` : '';
+    const verticalAnswer = answerHtml ? `<span class="answer-box">${answerHtml}</span>` : '';
+    const horizontalStem = `<div class="stem-horizontal"><table class="stem-table"><tbody><tr>${answerCell}<td class="stem-number-cell">${safeNo}</td><td class="stem-text-cell">${bodyContent}</td></tr></tbody></table></div>`;
+    const verticalPreviewStem = `<div class="stem-vertical ${answerHtml ? 'has-answer' : 'no-answer'}"><div class="stem-vertical-prefix">${verticalAnswer}<span class="stem-number-vertical">${safeNo}</span></div><div class="stem-vertical-body">${bodyContent}</div></div>`;
+    const verticalWordStem = `<div class="stem-word-vertical ${answerHtml ? 'has-answer' : 'no-answer'}">${verticalAnswer}<span class="stem-number-vertical">${safeNo}</span>${bodyContent}</div>`;
+
+    // Word/剪貼簿輸出時只輸出當前書寫方向需要的單一結構，避免 Word 貼上時同時顯示橫書與直書兩套 DOM 而重疊。
+    if (target === 'word') {
+      return examData.settings.writingMode === 'vertical' ? verticalWordStem : horizontalStem;
+    }
+    return `${horizontalStem}${verticalPreviewStem}`;
+  }
+  function renderQuestionHtml(q, qNo, mode, target='preview') {
+    const no = formatQuestionNumber(qNo);
+    let html = '';
+    if (q.qType === 'mc') html = renderMcHtml(q, no, mode, target);
+    else if (q.qType === 'tf') html = `<div class="question-block"><div class="question-stem">${renderStemHtml(no, q.stem, { answerHtml: answerBox(q, mode) }, target)}</div></div>`;
+    else if (q.qType === 'fill') html = renderFillHtml(q, no, mode, target);
+    else if (q.qType === 'wordbankFill') html = renderWordbankFillHtml(q, no, mode, target);
+    else if (q.qType === 'short') html = renderShortHtml(q, no, mode, target);
+    else if (q.qType === 'matching') html = renderMatchingHtml(q, no, mode, target);
+    else html = `<div class="question-block"><div class="question-stem">${renderStemHtml(no, q.stem, {}, target)}</div></div>`;
+    const childMaterials = renderQuestionChildMaterialsHtml(q, mode, target);
+    return html + childMaterials;
+  }
+  function renderQuestionChildMaterialsHtml(q, mode='student', target='preview') {
+    if (!Array.isArray(q.children) || !q.children.length) return '';
+    const body = q.children.filter(child => child.type === 'material').map(child => renderMaterialNodeHtml(child, mode, target)).join('');
+    return body ? `<div class="question-child-materials">${body}</div>` : '';
+  }
+  function renderOptionBlockHtml(options, labels, cols, target='preview') {
+    const verticalMode = examData.settings.writingMode === 'vertical';
+    const verticalWord = target === 'word' && verticalMode;
+    if (verticalWord) {
+      // V2 定案：Word 直書輸出採保守模式，不使用表格控制選項欄位。
+      // 選擇題固定為一個選項一欄，標號轉全形，降低 Word 直書跑版機率。
+      const indent = '　'.repeat(4);
+      const items = options.map((opt, idx) => {
+        const label = labels[idx] ?? toFullWidthDigits(idx + 1);
+        return `${indent}${escapeHtml(formatOptionLabel(label, true))}${escapeHtml(opt)}`;
+      }).join('<br>');
+      return `<div class="vertical-word-option-lines" style="display:block;white-space:pre-wrap;line-height:1.45;margin:0 .08em 0 .28em;writing-mode:tb-rl;-ms-writing-mode:tb-rl;layout-flow:vertical-ideographic;text-orientation:mixed;mso-layout-grid-align:none;">${items}</div>`;
+    }
+
+    const safeCols = Math.max(1, Number(cols || 1));
+    const cellWidth = (100 / safeCols).toFixed(4) + '%';
+    const colgroup = `<colgroup>${Array.from({length: safeCols}).map(()=>`<col style="width:${cellWidth}">`).join('')}</colgroup>`;
+    let rows = '';
+    for (let i = 0; i < options.length; i += safeCols) {
+      rows += '<tr>';
+      for (let c = 0; c < safeCols; c++) {
+        const idx = i + c;
+        const label = labels[idx] ?? toFullWidthDigits(idx+1);
+        const labelHtml = formatOptionLabel(label, verticalMode);
+        rows += idx < options.length ? `<td style="width:${cellWidth}">${escapeHtml(labelHtml)} ${escapeHtml(options[idx])}</td>` : `<td style="width:${cellWidth}"></td>`;
+      }
+      rows += '</tr>';
+    }
+    return `<table class="option-table">${colgroup}<tbody>${rows}</tbody></table>`;
+  }
+
+  function renderMcHtml(q, no, mode, target='preview') {
+    const labels = LABEL_SETS[q.layout?.labelType || 'ABC'] || LABEL_SETS.ABC;
+    const cols = Math.max(1, Number(q.layout?.optionColumns || 1));
+    const options = q.content?.options || [];
+    const optionBlock = renderOptionBlockHtml(options, labels, cols, target);
+    const isVertical = examData.settings.writingMode === 'vertical';
+    // 直書預覽單欄與 Word 直書輸出時，選項另起直欄，避免選項黏在題幹尾端。
+    // 另起欄後同樣保留答案框＋題號的上方縮排，等同橫書的懸掛縮排。
+    if (isVertical && (target === 'word' || cols === 1)) {
+      const ans = answerBox(q, mode);
+      const optionColumn = `<div class="vertical-option-separate ${ans ? 'has-answer' : 'no-answer'}">${optionBlock}</div>`;
+      return `<div class="question-block"><div class="question-stem">${renderStemHtml(no, q.stem, { answerHtml: ans }, target)}${optionColumn}</div></div>`;
+    }
+    return `<div class="question-block"><div class="question-stem">${renderStemHtml(no, q.stem, { answerHtml: answerBox(q, mode), bodyHtml: optionBlock }, target)}</div></div>`;
+  }
+  function getFillBlankUnits(answer) {
+    const chars = Array.from(String(answer || '').trim());
+    return Math.max(2, chars.length || 2);
+  }
+  function makeFillStudentBlank(answer) {
+    return `（ ${'　'.repeat(getFillBlankUnits(answer))} ）`;
+  }
+  function makeFillTeacherBlank(answer) {
+    const value = String(answer || '').trim();
+    return value ? `（ ${escapeHtml(value)} ）` : escapeHtml(makeFillStudentBlank(answer));
+  }
+  function renderFillStemWithParentheses(stem, answer, mode) {
+    const raw = String(stem || '');
+    const hasBlankParen = /（\s*）|\(\s*\)/.test(raw);
+    if (!hasBlankParen) return { html: nl2br(raw), replaced: false };
+    const replacement = mode === 'teacher' ? makeFillTeacherBlank(answer) : escapeHtml(makeFillStudentBlank(answer));
+    return { html: nl2br(raw).replace(/（\s*）|\(\s*\)/g, replacement), replaced: true };
+  }
+  function renderFillHtml(q, no, mode, target='preview') {
+    const answer = q.answer?.value || '';
+    const parsed = renderFillStemWithParentheses(q.stem, answer, mode);
+    if (parsed.replaced) {
+      return `<div class="question-block"><div class="question-stem">${renderStemHtml(no, '', { bodyHtml: parsed.html }, target)}</div></div>`;
+    }
+    const note = mode === 'teacher' && answer ? `<div class="answer-note">答案：${escapeHtml(answer)}</div>` : '';
+    const line = mode === 'teacher' && answer ? '' : ' <span class="answer-lines"></span>';
+    return `<div class="question-block"><div class="question-stem">${renderStemHtml(no, q.stem, { afterStemHtml: line }, target)}</div>${note}</div>`;
+  }
+  function renderWordbankFillHtml(q, no, mode, target='preview') {
+    const blankWidth = Math.max(3, Number(q.layout?.blankWidth || 6));
+    const blankHtml = `<span class="answer-lines" style="min-width:${blankWidth}em;"></span>`;
+    const stemHtml = nl2br(q.stem || '').replace(/\{\{\s*\d+\s*\}\}/g, blankHtml);
+    const group = findQuestionParentGroup(q.id);
+    const hasWordBank = group ? getGroupMaterialBlocks(group).some(b => b.type === 'wordbank' && (!q.content?.wordBankBlockId || b.id === q.content.wordBankBlockId)) : false;
+    const warn = hasWordBank ? '' : `<div class="material-warning">提醒：此選填題尚未連結同題組的選填字庫，或所在位置不是題組。</div>`;
+    const answer = mode === 'teacher' && q.answer?.value ? `<div class="answer-note">答案：${escapeHtml(q.answer.value)}</div>` : '';
+    return `<div class="question-block"><div class="question-stem">${renderStemHtml(no, '', { bodyHtml: stemHtml + warn + answer }, target)}</div></div>`;
+  }
+  function findQuestionParentGroup(qid) {
+    const found = findNode(qid);
+    return found?.parent?.type === 'group' ? found.parent : null;
+  }
+  function renderShortHtml(q, no, mode, target='preview') {
+    const lineCount = Math.max(1, Number(q.layout?.shortLines || 2));
+    const lineHtml = mode === 'teacher' && q.answer?.value ? `<div class="answer-note">參考答案：${escapeHtml(q.answer.value)}</div>` : `<div class="line-block">${Array.from({length: lineCount}).map(()=>'<div></div>').join('')}</div>`;
+    return `<div class="question-block"><div class="question-stem">${renderStemHtml(no, q.stem, { bodyHtml: lineHtml }, target)}</div></div>`;
+  }
+  function renderMatchingHtml(q, no, mode, target='preview') {
+    const pairs = q.content?.matchingPairs || [];
+    const rightItems = pairs.map(p => p.right);
+    let rows = '';
+    pairs.forEach((p, i) => {
+      const leftLabel = MATCH_LEFT_LABELS[i] || String(i+1);
+      const rightLabel = LABEL_SETS.ABC[i] || String(i+1);
+      rows += `<tr><td>${escapeHtml(leftLabel)}、${escapeHtml(p.left)}</td><td class="connect-cell"><span class="connect-dots">．．</span></td><td>(${escapeHtml(rightLabel)}) ${escapeHtml(rightItems[i] || '')}</td></tr>`;
+    });
+    const ans = mode === 'teacher' ? `<div class="answer-note">答案：${escapeHtml(q.answer?.value || '')}</div>` : '';
+    const matchingTable = `<table class="matching-table"><tbody>${rows}</tbody></table>${ans}`;
+    return `<div class="question-block"><div class="question-stem">${renderStemHtml(no, q.stem, { bodyHtml: matchingTable }, target)}</div></div>`;
+  }
+
+  function renderPlainText(mode='student') {
+    const lines = [];
+    examData.sections.forEach((sec, sIdx) => {
+      lines.push(`${chineseNumber(sIdx+1)}、${sec.title || '未命名大題'}${sectionScoreText(sec)}`);
+      if (sec.instructionEnabled && sec.instruction) lines.push(`　　${sec.instruction}`);
+      let groupNo = 0, qNo = 0;
+      sec.children.forEach(child => {
+        if (child.type === 'group') {
+          groupNo++; lines.push(`${parenChinese(groupNo)} ${child.title || '未命名題組'}`);
+          const materialText = renderMaterialBlocksPlain(getGroupMaterialBlocks(child));
+          if (materialText) lines.push(materialText);
+          let subNo = 0;
+          (child.children || []).forEach(item => {
+            if (item.type === 'question') lines.push(renderQuestionPlain(item, ++subNo, mode));
+            if (item.type === 'material') lines.push(renderMaterialBlocksPlain([item.block]));
+          });
+        } else if (child.type === 'question') {
+          qNo++; lines.push(renderQuestionPlain(child, qNo, mode));
+        } else if (child.type === 'material') {
+          lines.push(renderMaterialBlocksPlain([child.block]));
+        }
+      });
+      lines.push('');
+    });
+    return lines.join('\n').trim();
+  }
+  function renderMaterialBlocksPlain(blocks=[]) {
+    return (blocks || []).map(block => {
+      if (block.type === 'text') return `${block.layout?.showTitle ? (block.title + '\n') : ''}${block.content?.text || ''}`.trim();
+      if (block.type === 'wordbank') {
+        const items = (block.content?.items || []).map((item, idx) => {
+          const label = getWordbankItemLabel(block, idx);
+          return `${label ? label + '、' : ''}${item.text || ''}`;
+        }).join('　');
+        return `${block.layout?.showTitle !== false ? (block.title || '選填字庫') + '：\n' : ''}${items}`.trim();
+      }
+      if (block.type === 'table') {
+        const title = block.layout?.showTitle ? `${block.title || '資料表'}\n` : '';
+        const rows = (block.content?.rows || []).map(row => row.join('\t')).join('\n');
+        return `${title}${rows}`.trim();
+      }
+      if (block.type === 'imagePlaceholder') {
+        const w = ((Number(block.layout?.widthMm || getDefaultImagePlaceholderWidthMm())) / 10).toFixed(1);
+        const h = ((Number(block.layout?.heightMm || 30)) / 10).toFixed(1);
+        return `［圖片框：建議 ${w} × ${h} cm］`;
+      }
+      return '';
+    }).filter(Boolean).join('\n');
+  }
+  function renderQuestionPlain(q, qNo, mode) {
+    let out = '';
+    if (q.qType === 'mc') {
+      const labels = LABEL_SETS[q.layout?.labelType || 'ABC'] || LABEL_SETS.ABC;
+      const ans = mode === 'teacher' ? (labels[Number(q.answer?.value)] || '') : '　';
+      out = `（${ans}）${qNo}. ${q.stem}\n` + (q.content?.options || []).map((o, i) => `　(${labels[i] || toFullWidthDigits(i+1)}) ${o}`).join('\n');
+    } else if (q.qType === 'tf') {
+      out = `（${mode === 'teacher' ? toFullWidthDigits(q.answer?.value || '　') : '　'}）${qNo}. ${q.stem}`;
+    } else if (q.qType === 'fill') {
+      const raw = String(q.stem || '');
+      if (/（\s*）|\(\s*\)/.test(raw)) {
+        const replacement = mode === 'teacher' ? `（ ${q.answer?.value || '　'} ）` : makeFillStudentBlank(q.answer?.value);
+        out = `${qNo}. ${raw.replace(/（\s*）|\(\s*\)/g, replacement)}`;
+      } else {
+        out = `${qNo}. ${q.stem} ＿＿＿＿${mode === 'teacher' && q.answer?.value ? `（答案：${q.answer.value}）` : ''}`;
+      }
+    } else if (q.qType === 'wordbankFill') {
+      const stem = String(q.stem || '').replace(/\{\{\s*\d+\s*\}\}/g, '＿＿＿＿');
+      out = `${qNo}. ${stem}${mode === 'teacher' && q.answer?.value ? `\n答案：${q.answer.value}` : ''}`;
+    } else if (q.qType === 'short') {
+      out = `${qNo}. ${q.stem}${mode === 'teacher' && q.answer?.value ? `\n參考答案：${q.answer.value}` : '\n＿＿＿＿＿＿＿＿＿＿＿＿'}`;
+    } else if (q.qType === 'matching') {
+      const rows = (q.content?.matchingPairs || []).map((p,i) => `${MATCH_LEFT_LABELS[i] || i+1}、${p.left}　．　　　．　(${LABEL_SETS.ABC[i] || i+1}) ${p.right}`).join('\n');
+      out = `${qNo}. ${q.stem}\n${rows}${mode === 'teacher' ? `\n答案：${q.answer?.value || ''}` : ''}`;
+    } else {
+      out = `${qNo}. ${q.stem}`;
+    }
+    const childMaterials = Array.isArray(q.children) ? q.children.filter(child => child.type === 'material').map(child => renderMaterialBlocksPlain([child.block])).filter(Boolean).join('\n') : '';
+    return childMaterials ? `${out}\n${childMaterials}` : out;
+  }
+  async function copyPlainText() {
+    const mode = document.getElementById('preview-mode').value || 'student';
+    const text = renderPlainText(mode);
+    if (!text) return alert('目前沒有內容可以複製。');
+    try { await navigator.clipboard.writeText(text); alert('已複製純文字。'); }
+    catch (e) {
+      const ta = document.getElementById('hidden-clipboard'); ta.value = text; ta.classList.remove('hidden'); ta.select(); document.execCommand('copy'); ta.classList.add('hidden'); alert('已複製純文字。');
+    }
+  }
+  function getOutputHtml(mode) {
+    const vertical = examData.settings.writingMode === 'vertical';
+    const verticalStyle = 'writing-mode:tb-rl;-ms-writing-mode:tb-rl;layout-flow:vertical-ideographic;text-orientation:mixed;mso-layout-grid-align:none;';
+    return `<div class="WordSection1"${vertical ? ` style="${verticalStyle}"` : ''}><div class="exam-output ${vertical ? 'vertical-writing' : ''}"${vertical ? ` style="${verticalStyle}"` : ''}>${renderExamHtml(mode, 'word')}</div></div>`;
+  }
+  function getWordMargin() {
+    return WORD_MARGINS[examData.settings.wordMargin] || WORD_MARGINS.medium;
+  }
+  function getWordMarginCss() {
+    const m = getWordMargin();
+    return `${m.top}mm ${m.right}mm ${m.bottom}mm ${m.left}mm`;
+  }
+  function getPageStyle() {
+    const size = PAPER_SIZES[examData.settings.paperSize] || PAPER_SIZES.B4;
+    const w = examData.settings.orientation === 'landscape' ? size.h : size.w;
+    const h = examData.settings.orientation === 'landscape' ? size.w : size.h;
+    const vertical = examData.settings.writingMode === 'vertical';
+    const bodyMode = vertical ? 'writing-mode:tb-rl;-ms-writing-mode:tb-rl;layout-flow:vertical-ideographic;text-orientation:mixed;mso-layout-grid-align:none;' : '';
+    const pageMode = vertical ? 'writing-mode:tb-rl;layout-flow:vertical-ideographic;mso-layout-grid-align:none;' : '';
+    return `<style>@page WordSection1{size:${w}mm ${h}mm;margin:${getWordMarginCss()};${pageMode}}div.WordSection1{page:WordSection1;${bodyMode}}body{margin:0;${bodyMode}}</style>`;
+  }
+  function getOutputStyle() {
+    return `<style>
+      .exam-output{font-family:"Microsoft JhengHei","PingFang TC",sans-serif;font-size:${examData.settings.questionFontSize || 12}pt;line-height:1.55;color:#111;}
+      .exam-output.vertical-writing{writing-mode:tb-rl;-ms-writing-mode:tb-rl;layout-flow:vertical-ideographic;text-orientation:mixed;}
+      .exam-section{break-inside:auto;page-break-inside:auto;margin:0 0 .62em;}
+      .exam-group,.question-block{break-inside:avoid;page-break-inside:avoid;margin:0 0 .55em;}
+      .exam-section-title{margin:0 0 .12em;font-size:${examData.settings.sectionFontSize || 14}pt;line-height:1.45;}.exam-section-title-main{font-weight:700;}.exam-section-score{font-weight:400;}.exam-section-instruction{margin:0 0 .45em;padding-left:2em;font-size:${examData.settings.questionFontSize || 12}pt;line-height:1.45;font-weight:400;white-space:pre-wrap;}
+      .exam-group-title{font-weight:700;margin:0 0 .35em;font-size:${(examData.settings.questionFontSize || 12) + 1}pt;line-height:1.45;}
+      .exam-material{border:1px solid #999;padding:.55em .7em;margin:.35em 0 .6em;white-space:pre-wrap;}
+      .question-child-materials{margin:.15em 0 .55em 2.1em;}
+      .material-block{break-inside:avoid;page-break-inside:avoid;margin:.35em 0 .65em;font-size:${examData.settings.questionFontSize || 12}pt;}
+      .material-title{font-weight:700;margin-bottom:.22em;}.material-boxed{border:1px solid #999;padding:.55em .7em;}.material-text-body{white-space:pre-wrap;}
+      .material-wordbank-items{display:grid;gap:.2em .9em;line-height:1.45;}.material-wordbank-table{width:100%;border-collapse:collapse;table-layout:fixed;line-height:1.45;}.material-wordbank-table td{border:none;padding:0 .9em 0 0;vertical-align:top;word-break:break-word;}.material-table{width:100%;border-collapse:collapse;table-layout:fixed;line-height:1.35;}.material-table th,.material-table td{border:1px solid #333;padding:.24em .42em;vertical-align:middle;word-break:break-word;white-space:pre-wrap;}.material-table th{font-weight:700;background:#f3f3f3;}
+      .image-placeholder{border:1.5px dashed #444;display:flex;align-items:center;justify-content:center;text-align:center;color:#555;margin:.4em auto;background:#fafafa;overflow:hidden;}.image-placeholder-label{font-weight:700;}.material-warning{border:1px dashed #e0a800;color:#8a6100;background:#fff8e1;padding:.35em .55em;margin:.25em 0;font-size:.92em;}
+      .question-stem{margin:0;white-space:normal;}
+      .stem-table{width:100%;border-collapse:collapse;table-layout:auto;margin:0;}
+      .stem-table td{border:none;padding:0;vertical-align:top;line-height:inherit;}
+      .stem-answer-cell,.stem-number-cell{width:1%;white-space:nowrap;padding-right:.25em;}
+      .stem-text-cell{width:auto;white-space:pre-wrap;word-break:break-word;}
+      .stem-horizontal{display:block;}.stem-vertical{display:none;}
+      .exam-output.vertical-writing .stem-horizontal{display:none !important;}
+      .exam-output.vertical-writing .stem-vertical{display:block !important;position:relative;--stem-prefix-indent:2.8em;padding-top:var(--stem-prefix-indent);margin:0 .08em 0 .35em;white-space:normal;break-inside:avoid;page-break-inside:avoid;}
+      .exam-output.vertical-writing .stem-vertical.has-answer{--stem-prefix-indent:5.2em;}
+      .exam-output.vertical-writing .stem-vertical-prefix{position:absolute;top:0;right:0;white-space:nowrap;line-height:1.55;text-align:start;}
+      .exam-output.vertical-writing .stem-vertical-body{display:block;white-space:pre-wrap;word-break:normal;overflow-wrap:normal;}
+      .exam-output.vertical-writing .answer-box{min-width:auto;min-height:3.2em;text-align:center;vertical-align:top;}
+      .exam-output.vertical-writing .stem-word-vertical{display:block;writing-mode:tb-rl;-ms-writing-mode:tb-rl;layout-flow:vertical-ideographic;text-orientation:mixed;mso-layout-grid-align:none;padding-top:2.8em;text-indent:-2.8em;margin:0 .08em 0 .28em;white-space:pre-wrap;word-break:normal;overflow-wrap:normal;break-inside:avoid;page-break-inside:avoid;}
+      .exam-output.vertical-writing .stem-word-vertical.has-answer{padding-top:5.2em;text-indent:-5.2em;}
+      .exam-output.vertical-writing .stem-word-vertical .option-table,.exam-output.vertical-writing .stem-word-vertical .matching-table{text-indent:0;}
+      .exam-output.vertical-writing .vertical-option-list,.exam-output.vertical-writing .vertical-option-item{writing-mode:tb-rl;-ms-writing-mode:tb-rl;layout-flow:vertical-ideographic;text-orientation:mixed;mso-layout-grid-align:none;}
+      .exam-output.vertical-writing .vertical-option-list{text-indent:0;display:inline-block;vertical-align:top;margin:0 0 0 .2em;}
+      .exam-output.vertical-writing .vertical-option-item{display:inline-block;width:1.45em;max-width:1.45em;vertical-align:top;margin-left:.5em;white-space:normal;word-break:normal;overflow-wrap:normal;}
+      .exam-output.vertical-writing .vertical-option-separate{display:block;padding-top:2.8em;margin:0 .08em 0 .28em;break-inside:avoid;page-break-inside:avoid;}
+      .exam-output.vertical-writing .vertical-option-separate.has-answer{padding-top:5.2em;}
+      .exam-output.vertical-writing .option-table,.exam-output.vertical-writing .matching-table{width:auto;table-layout:auto;margin:0 .08em 0 0;}
+      .option-table,.matching-table{width:100%;border-collapse:collapse;table-layout:fixed;margin:0 0 .03em;line-height:1.18;}
+      .option-table td,.matching-table td{border:none;padding:0 .9em 0 0;vertical-align:top;word-break:break-word;}
+      .connect-cell{width:28%;padding:0 .7em;}.connect-dots{display:flex;justify-content:space-between;}
+      .answer-box{display:inline-block;min-width:3.2em;text-align:center;white-space:nowrap;}
+      .answer-note{color:#555;font-size:.92em;}.answer-lines{display:inline-block;min-width:11em;border-bottom:1px solid #111;height:1.35em;}
+      .line-block div{border-bottom:1px solid #111;height:1.55em;}
+    </style>`;
+  }
+  function getOfficeXml() {
+    return `<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->`;
+  }
+  function getWordDocumentHtml(mode) {
+    const vertical = examData.settings.writingMode === 'vertical';
+    const verticalStyle = 'writing-mode:tb-rl;-ms-writing-mode:tb-rl;layout-flow:vertical-ideographic;text-orientation:mixed;mso-layout-grid-align:none;';
+    return `<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>試卷</title>${getOfficeXml()}${getPageStyle()}${getOutputStyle()}</head><body${vertical ? ` style="${verticalStyle}"` : ''}>${getOutputHtml(mode)}</body></html>`;
+  }
+  function getWordClipboardHtml(mode) {
+    const vertical = examData.settings.writingMode === 'vertical';
+    const verticalStyle = 'writing-mode:tb-rl;-ms-writing-mode:tb-rl;layout-flow:vertical-ideographic;text-orientation:mixed;mso-layout-grid-align:none;';
+    return `<html><head><meta charset="utf-8">${getOutputStyle()}</head><body${vertical ? ` style="${verticalStyle}"` : ''}>${getOutputHtml(mode)}</body></html>`;
+  }
+  async function copyWordHtml() {
+    const mode = document.getElementById('preview-mode').value || 'student';
+    const html = getWordClipboardHtml(mode);
+    const text = renderPlainText(mode);
+    try {
+      if (window.ClipboardItem) {
+        await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], {type:'text/html'}), 'text/plain': new Blob([text], {type:'text/plain'}) })]);
+        alert('已複製 Word 格式。請貼到已設定欄位的 Word 中。');
+      } else throw new Error('ClipboardItem unsupported');
+    } catch (e) {
+      const div = document.createElement('div');
+      div.contentEditable = true; div.style.position = 'fixed'; div.style.left = '-9999px'; div.innerHTML = html;
+      document.body.appendChild(div); const range = document.createRange(); range.selectNodeContents(div); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range); document.execCommand('copy'); document.body.removeChild(div);
+      alert('已嘗試複製 Word 格式。');
+    }
+  }
+  function getBrowserPrintPageStyle() {
+    const size = PAPER_SIZES[examData.settings.paperSize] || PAPER_SIZES.B4;
+    const w = examData.settings.orientation === 'landscape' ? size.h : size.w;
+    const h = examData.settings.orientation === 'landscape' ? size.w : size.h;
+    const marginCss = getWordMarginCss();
+    const vertical = examData.settings.writingMode === 'vertical';
+    const bodyMode = vertical ? 'writing-mode:tb-rl;-ms-writing-mode:tb-rl;layout-flow:vertical-ideographic;text-orientation:mixed;mso-layout-grid-align:none;' : '';
+    return `<style>@page{size:${w}mm ${h}mm;margin:${marginCss};}html,body{margin:0;padding:0;background:#fff;${bodyMode}}.WordSection1{page:auto;}@media print{.exam-output{box-shadow:none;}body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}</style>`;
+  }
+  function getPrintDocumentHtml(mode) {
+    const vertical = examData.settings.writingMode === 'vertical';
+    const verticalStyle = 'writing-mode:tb-rl;-ms-writing-mode:tb-rl;layout-flow:vertical-ideographic;text-orientation:mixed;mso-layout-grid-align:none;';
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>試卷列印版</title>${getBrowserPrintPageStyle()}${getOutputStyle()}</head><body${vertical ? ` style="${verticalStyle}"` : ''}>${getOutputHtml(mode)}<script>window.addEventListener('load',function(){setTimeout(function(){window.focus();window.print();},250);});<\/script></body></html>`;
+  }
+  function exportPDF() {
+    const mode = document.getElementById('preview-mode').value || 'student';
+    const html = getPrintDocumentHtml(mode);
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('瀏覽器阻擋了列印視窗。請允許彈出視窗，或改用「匯出 Word 相容檔」。');
+      return;
+    }
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  }
+
+  function getAiImportPromptText() {
+    return `你是一位熟悉台灣國小命題格式的助理。請把我提供的題庫或教材內容轉換成「教師動態出題排版系統 V3.3」可匯入的 JSON。\n\n只輸出 JSON，不要輸出解釋、Markdown 標題或額外文字。\n\nJSON 格式如下：\n{\n  "sections": [\n    {\n      "title": "是非題",\n      "instruction": "正確的打 O，錯誤的打 X。",\n      "scorePerQuestion": 2,\n      "questions": [\n        { "type": "tf", "stem": "水會受熱蒸發。", "answer": "O" }\n      ]\n    },\n    {\n      "title": "選擇題",\n      "instruction": "請選出最適合的答案。",\n      "scorePerQuestion": 2,\n      "questions": [\n        { "type": "mc", "stem": "下列何者是沉水性植物？", "options": ["荷花", "睡蓮", "金魚藻", "布袋蓮"], "answer": "C" }\n      ]\n    },\n    {\n      "title": "填充題",\n      "instruction": "請將正確答案填入括號或空格中。",\n      "scorePerQuestion": 2,\n      "questions": [\n        { "type": "fill", "stem": "水在常溫下多為（）。", "answer": "液體" }\n      ]\n    }\n  ]\n}\n\n規則：\n1. type 只使用 tf、mc、fill 三種。\n2. 是非題 answer 使用 O 或 X。\n3. 選擇題 options 必須是陣列，answer 可用 A/B/C/D 或 1/2/3/4。\n4. 填充題若題幹已有「（）」請保留；系統會自動依答案長度產生學生版空格。\n5. 題目文字不要自行加題號。\n\n以下是我要轉換的題庫／教材內容：\n`;
+  }
+  function openAiImportModal() {
+    const modal = document.getElementById('ai-import-modal');
+    document.getElementById('ai-import-prompt').value = getAiImportPromptText();
+    document.getElementById('ai-import-json').value = '';
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+  function closeAiImportModal() {
+    const modal = document.getElementById('ai-import-modal');
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+  async function copyAiImportPrompt() {
+    const text = getAiImportPromptText();
+    try { await navigator.clipboard.writeText(text); alert('已複製 AI 題庫匯入提示詞。'); }
+    catch (e) {
+      const ta = document.getElementById('hidden-clipboard');
+      ta.value = text; ta.classList.remove('hidden'); ta.select(); document.execCommand('copy'); ta.classList.add('hidden');
+      alert('已複製 AI 題庫匯入提示詞。');
+    }
+  }
+  function extractJsonFromAiText(text) {
+    const raw = String(text || '').trim();
+    if (!raw) throw new Error('沒有貼上內容。');
+    const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    const candidate = fence ? fence[1].trim() : raw;
+    try { return JSON.parse(candidate); }
+    catch (e) {
+      const firstObj = candidate.indexOf('{');
+      const lastObj = candidate.lastIndexOf('}');
+      const firstArr = candidate.indexOf('[');
+      const lastArr = candidate.lastIndexOf(']');
+      if (firstObj >= 0 && lastObj > firstObj) return JSON.parse(candidate.slice(firstObj, lastObj + 1));
+      if (firstArr >= 0 && lastArr > firstArr) return JSON.parse(candidate.slice(firstArr, lastArr + 1));
+      throw e;
+    }
+  }
+  function normalizeImportedSections(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload.sections)) return payload.sections;
+    if (Array.isArray(payload.questions)) return [{ title: payload.title || '匯入題庫', instruction: payload.instruction || '', questions: payload.questions }];
+    throw new Error('JSON 需要包含 sections 或 questions 陣列。');
+  }
+  function importedTypeToQType(type, sectionTitle='') {
+    const t = String(type || '').trim().toLowerCase();
+    const title = String(sectionTitle || '');
+    if (['tf','truefalse','true_false','是非','是非題'].includes(t) || /是非|判斷/.test(title)) return 'tf';
+    if (['mc','choice','multiplechoice','multiple_choice','single','singlechoice','選擇','選擇題','單選'].includes(t) || /選擇|單選/.test(title)) return 'mc';
+    if (['fill','blank','填充','填空','填充題','填空題'].includes(t) || /填充|填空/.test(title)) return 'fill';
+    return 'mc';
+  }
+  function normalizeImportedAnswerForMc(answer, optionsLength) {
+    const raw = String(answer ?? '').trim();
+    if (!raw) return '';
+    const upper = raw.toUpperCase();
+    if (/^[A-Z]$/.test(upper)) return Math.max(0, upper.charCodeAt(0) - 65);
+    const zhIdx = '甲乙丙丁戊己庚辛壬癸'.indexOf(raw[0]);
+    if (zhIdx >= 0 && zhIdx < optionsLength) return zhIdx;
+    const circledIdx = '①②③④⑤⑥⑦⑧⑨⑩'.indexOf(raw[0]);
+    if (circledIdx >= 0 && circledIdx < optionsLength) return circledIdx;
+    const num = Number(raw.replace(/[０-９]/g, ch => '０１２３４５６７８９'.indexOf(ch)));
+    if (Number.isFinite(num)) {
+      if (num >= 1 && num <= optionsLength) return num - 1;
+      if (num >= 0 && num < optionsLength) return num;
+    }
+    return '';
+  }
+  function makeQuestionFromImported(item, sectionTitle='') {
+    const qType = importedTypeToQType(item.type || item.qType, sectionTitle);
+    const q = makeQuestion(qType);
+    q.qType = qType;
+    q.stem = String(item.stem || item.question || item.title || '').trim() || '未命名題目';
+    if (qType === 'tf') {
+      const ans = String(item.answer ?? '').trim().toUpperCase();
+      q.answer.value = ans === 'X' || ans === 'FALSE' || ans === '錯' ? 'X' : (ans ? 'O' : '');
+    } else if (qType === 'mc') {
+      const opts = Array.isArray(item.options) ? item.options : (Array.isArray(item.choices) ? item.choices : []);
+      q.content.options = opts.map(v => String(v).trim()).filter(Boolean);
+      if (q.content.options.length === 0) q.content.options = ['選項一','選項二','選項三','選項四'];
+      q.answer.value = normalizeImportedAnswerForMc(item.answer, q.content.options.length);
+      q.layout.optionColumns = Number(item.optionColumns || 1);
+      q.layout.labelType = item.labelType || 'ABC';
+    } else if (qType === 'fill') {
+      q.answer.value = String(item.answer ?? '').trim();
+    }
+    return q;
+  }
+  function importAiQuestionBank() {
+    const raw = document.getElementById('ai-import-json')?.value || '';
+    try {
+      const payload = extractJsonFromAiText(raw);
+      const importedSections = normalizeImportedSections(payload);
+      const shouldClear = document.getElementById('ai-import-clear-first')?.checked;
+      if (shouldClear) examData.sections = [];
+      let sectionCount = 0, questionCount = 0;
+      importedSections.forEach(secData => {
+        const title = String(secData.title || secData.name || '匯入題庫').trim() || '匯入題庫';
+        const questions = Array.isArray(secData.questions) ? secData.questions : [];
+        if (!questions.length) return;
+        const sec = makeSection(title);
+        sec.instruction = String(secData.instruction || '').trim();
+        sec.instructionEnabled = !!sec.instruction;
+        sec.scoreEnabled = secData.scoreEnabled !== false && secData.scorePerQuestion != null;
+        sec.scorePerQuestion = Number(secData.scorePerQuestion || 2);
+        questions.forEach(item => {
+          sec.children.push(makeQuestionFromImported(item || {}, title));
+          questionCount++;
         });
+        examData.sections.push(sec);
+        sectionCount++;
+      });
+      if (!sectionCount || !questionCount) throw new Error('沒有可匯入的大題或題目。');
+      examData.version = 3.2;
+      syncSettingsToUi(); resetForm(); afterMutation(); closeAiImportModal();
+      alert(`已匯入 ${sectionCount} 個大題、${questionCount} 題。`);
+    } catch (err) {
+      alert('匯入失敗：' + (err?.message || 'JSON 格式不正確。'));
+    }
+  }
 
-        qContainer.addEventListener('drop', e => {
-            syncQuestionsOrder();
-        });
+  function exportMD() {
+    examData.version = 3.2;
+    const content = `# 試卷資料 V3.3
 
-        // 通用拖曳計算函數
-        function getDragAfterElement(container, y, selector) {
-            const draggableElements = [...container.querySelectorAll(selector)];
-            return draggableElements.reduce((closest, child) => {
-                const box = child.getBoundingClientRect();
-                const offset = y - box.top - box.height / 2;
-                if (offset < 0 && offset > closest.offset) {
-                    return { offset: offset, element: child };
-                } else {
-                    return closest;
-                }
-            }, { offset: Number.NEGATIVE_INFINITY }).element;
-        }
+\`\`\`text
+${renderPlainText('student')}
+\`\`\`
 
-        function syncQuestionsOrder() {
-            const items = document.querySelectorAll('.q-item');
-            const newOrder = [];
-            items.forEach(item => {
-                const id = parseInt(item.dataset.id);
-                const q = questionsList.find(q => q.id === id);
-                if (q) newOrder.push(q);
-            });
-            questionsList = newOrder;
-            renderQuestions();
-        }
-
-        // --- 新增 / 重置表單 ---
-        function resetForm() {
-            editingId = null;
-            document.getElementById('edit-title').innerText = "1. 編輯題目 (新增模式)";
-            document.getElementById('q-text').value = '';
-            document.getElementById('q-type').value = 'mc';
-            document.getElementById('mc-layout').value = '4x1';
-            document.getElementById('mc-label-type').value = 'ABC';
-            toggleType();
-
-            document.querySelectorAll('input[name="tf-ans"][value=" "]').forEach(r => r.checked = true);
-            
-            const container = document.getElementById('options-container');
-            container.innerHTML = '';
-            addOption("選項一");
-            addOption("選項二");
-            addOption("選項三");
-            addOption("選項四");
-
-            const btn = document.getElementById('submit-btn');
-            btn.innerText = "加入並產出格式 ➡";
-            btn.className = "";
-            btn.style.backgroundColor = "var(--primary)";
-
-            renderQuestions(); // 移除正在編輯的樣式
-            document.getElementById('q-text').focus();
-        }
-
-        // --- 編輯特定題目 ---
-        function editQuestion(id) {
-            const q = questionsList.find(item => item.id === id);
-            if (!q) return;
-
-            editingId = id;
-            document.getElementById('edit-title').innerText = `1. 編輯題目 (正在修改第 ${questionsList.indexOf(q) + 1} 題)`;
-            
-            // 載入資料
-            document.getElementById('q-type').value = q.type;
-            document.getElementById('q-text').value = q.text;
-            toggleType();
-
-            if (q.type === 'tf') {
-                document.querySelector(`input[name="tf-ans"][value="${q.answerTf || ' '}"]`).checked = true;
-            } else if (q.type === 'mc') {
-                document.getElementById('mc-layout').value = q.mcLayout || '4x1';
-                document.getElementById('mc-label-type').value = q.mcLabelType || 'ABC';
-                
-                const container = document.getElementById('options-container');
-                container.innerHTML = '';
-                q.options.forEach((opt, index) => {
-                    addOption(opt, index === q.answerIndex);
-                });
-            }
-
-            // 更新按鈕樣式
-            const btn = document.getElementById('submit-btn');
-            btn.innerText = "💾 更新此題目";
-            btn.className = "success";
-            btn.style.backgroundColor = "var(--success)";
-
-            renderQuestions(); // 標記正在編輯的項目
-            
-            // 捲動左側到頂部方便編輯
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function deleteQuestion(id, event) {
-            event.stopPropagation(); // 避免觸發點擊編輯事件
-            questionsList = questionsList.filter(q => q.id !== id);
-            if (editingId === id) resetForm(); // 如果刪除的是正在編輯的題目，重置表單
-            else renderQuestions();
-        }
-
-        // --- 核心：產生或更新資料結構 ---
-        function generateQuestion() {
-            const type = document.getElementById('q-type').value;
-            let qText = document.getElementById('q-text').value.trim();
-            
-            // 替換半形問號為全形問號
-            qText = qText.replace(/\?/g, '？');
-            
-            if (!qText) { 
-                alert('請輸入題目內容！'); 
-                document.getElementById('q-text').focus();
-                return; 
-            }
-
-            // 準備資料物件
-            const questionData = {
-                id: editingId || Date.now(), // 如果是編輯模式就沿用 ID，否則產生新 ID
-                type: type,
-                text: qText,
-                options: [],
-                answerIndex: -1,
-                answerTf: ' ',
-                mcLabelType: 'ABC',
-                mcLayout: '4x1'
-            };
-
-            if (type === 'tf') {
-                const ansObj = document.querySelector('input[name="tf-ans"]:checked');
-                if (ansObj && ansObj.value.trim() !== "") {
-                    questionData.answerTf = ansObj.value;
-                }
-            } else if (type === 'mc') {
-                const optionItems = document.querySelectorAll('.option-item');
-                questionData.mcLabelType = document.getElementById('mc-label-type').value;
-                questionData.mcLayout = document.getElementById('mc-layout').value;
-
-                optionItems.forEach((item, index) => {
-                    // 自動忽略(移除)選項內的空白字元 (包含全半形空白)
-                    const text = item.querySelector('.option-input').value.replace(/\s+/g, '');
-                    const isCorrect = item.querySelector('.radio-correct').checked;
-                    if (isCorrect) questionData.answerIndex = index;
-                    questionData.options.push(text || "未命名選項");
-                });
-
-                if (questionData.options.length === 0) {
-                    alert('選擇題至少需要一個選項！');
-                    return;
-                }
-            }
-
-            if (editingId) {
-                // 更新模式
-                const index = questionsList.findIndex(q => q.id === editingId);
-                if (index !== -1) questionsList[index] = questionData;
-                resetForm(); // 更新後自動回到新增模式
-            } else {
-                // 新增模式
-                questionsList.push(questionData);
-                resetForm();
-                
-                // 新增時自動捲動到底部
-                setTimeout(() => {
-                    qContainer.scrollTop = qContainer.scrollHeight;
-                }, 50);
-            }
-        }
-
-        // --- 將陣列渲染成畫面與格式化文字 ---
-        function renderQuestions() {
-            const container = document.getElementById('questions-container');
-            container.innerHTML = '';
-
-            if (questionsList.length === 0) {
-                container.innerHTML = '<div class="empty-msg" id="empty-msg">產出的排版題目會顯示在這裡...<br>點選題目即可修改，按住 ≡ 可拖曳排序。</div>';
-                return;
-            }
-
-            // 定義各種標號樣式
-            const labelSets = {
-                'ABC': ['A','B','C','D','E','F','G','H','I','J'],
-                '123': ['1','2','3','4','5','6','7','8','9','10'],
-                'circled_num': ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'],
-                'solid_circled_num': ['❶','❷','❸','❹','❺','❻','❼','❽','❾','❿']
-            };
-
-            questionsList.forEach((q, index) => {
-                const qNumber = index + 1;
-                let resultString = "";
-                let finalAnswerStr = FULL_SPACE;
-
-                if (q.type === 'tf') {
-                    if (q.answerTf && q.answerTf.trim() !== "") {
-                        finalAnswerStr = q.answerTf;
-                    }
-                    resultString += `（${HALF_SPACE}${finalAnswerStr}${HALF_SPACE}）${qNumber}.${HALF_SPACE}${q.text}`;
-                } 
-                else if (q.type === 'mc') {
-                    const currentLabels = labelSets[q.mcLabelType] || labelSets['ABC'];
-                    
-                    // 特殊符號不加括號
-                    const useParentheses = (q.mcLabelType === 'ABC' || q.mcLabelType === '123');
-                    
-                    if (q.answerIndex !== -1) {
-                        finalAnswerStr = currentLabels[q.answerIndex];
-                    }
-                    
-                    // 題目第一行
-                    resultString += `（${HALF_SPACE}${finalAnswerStr}${HALF_SPACE}）${qNumber}.${HALF_SPACE}${q.text}\n`;
-                    
-                    // 選項排版邏輯
-                    const indent = FULL_SPACE.repeat(4) + HALF_SPACE.repeat(2);
-                    const colSpace = FULL_SPACE.repeat(3); // 欄位間距 (3個全形空格)
-                    
-                    let cols = 1;
-                    if (q.mcLayout === '2x2') cols = 2;
-                    if (q.mcLayout === '1x4') cols = 4;
-
-                    q.options.forEach((optText, i) => {
-                        const lbl = useParentheses ? `(${currentLabels[i]})` : currentLabels[i];
-                        const itemText = `${lbl}${HALF_SPACE}${optText}`;
-
-                        if (cols === 1) {
-                            // 1行1選項 (預設)
-                            resultString += `${indent}${itemText}`;
-                            if (i < q.options.length - 1) resultString += '\n';
-                        } 
-                        else {
-                            // 多欄位排版 (2x2, 1x4)
-                            if (i % cols === 0) {
-                                // 新的一行開始
-                                if (i > 0) resultString += '\n';
-                                resultString += indent + itemText;
-                            } else {
-                                // 同一行的後續選項
-                                resultString += colSpace + itemText;
-                            }
-                        }
-                    });
-                }
-
-                const div = document.createElement('div');
-                div.className = `q-item ${editingId === q.id ? 'editing' : ''}`;
-                div.draggable = true;
-                div.dataset.id = q.id;
-                
-                div.innerHTML = `
-                    <div class="q-header">
-                        <span class="q-drag-handle" title="按住拖曳排序題目">≡ 題號 ${qNumber} <span class="status-badge">編輯中</span></span>
-                        <button class="secondary btn-sm danger" style="background:#fff; color:#e74c3c; border:1px solid #e74c3c;" onclick="deleteQuestion(${q.id}, event)">刪除</button>
-                    </div>
-                    <pre class="q-content" title="點擊編輯此題" onclick="editQuestion(${q.id})">${resultString}</pre>
-                `;
-
-                // 綁定題目區塊的拖曳事件
-                div.addEventListener('dragstart', (e) => {
-                    setTimeout(() => div.classList.add('dragging'), 0);
-                });
-                div.addEventListener('dragend', () => {
-                    div.classList.remove('dragging');
-                    syncQuestionsOrder(); // 確保放開時更新題號
-                });
-
-                container.appendChild(div);
-            });
-        }
-
-        function clearOutput() {
-            if(confirm('確定要清空所有產出的題目嗎？這將會重置題號。')) {
-                questionsList = [];
-                resetForm();
-            }
-        }
-
-        function copyText() {
-            if (questionsList.length === 0) {
-                alert('目前沒有內容可以複製！');
-                return;
-            }
-
-            // 收集所有題目的純文字，題與題之間多空一行
-            const allText = Array.from(document.querySelectorAll('.q-content'))
-                                .map(pre => pre.innerText)
-                                .join('\n\n');
-
-            const clipboardTextarea = document.getElementById('hidden-clipboard');
-            clipboardTextarea.value = allText;
-            clipboardTextarea.select();
-            document.execCommand('copy');
-            
-            // 視覺回饋
-            const btn = document.querySelector('button[onclick="copyText()"]');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '✅ 已複製全部！';
-            btn.style.backgroundColor = 'var(--success)';
-            btn.style.color = 'white';
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-                btn.style.backgroundColor = '';
-                btn.style.color = '';
-            }, 2000);
-        }
-
-        // --- 匯出與匯入 MD 功能 ---
-        function exportMD() {
-            if (questionsList.length === 0) {
-                alert('目前沒有題目可匯出！');
-                return;
-            }
-            
-            const allText = Array.from(document.querySelectorAll('.q-content'))
-                                .map(pre => pre.innerText)
-                                .join('\n\n');
-            
-            // 將系統資料轉為 JSON 並隱藏在 Markdown 註解中，以便未來還原
-            const systemData = `\n\n<!-- EXAM_SYSTEM_DATA_START\n${JSON.stringify(questionsList)}\nEXAM_SYSTEM_DATA_END -->\n`;
-            const mdContent = `# 試卷輸出\n\n\`\`\`text\n${allText}\n\`\`\`${systemData}`;
-            
-            const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = '試卷.md';
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        function importMD(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const content = e.target.result;
-                // 尋找藏在 Markdown 中的系統資料
-                const match = content.match(/<!-- EXAM_SYSTEM_DATA_START\n([\s\S]*?)\nEXAM_SYSTEM_DATA_END -->/);
-                if (match && match[1]) {
-                    try {
-                        questionsList = JSON.parse(match[1]);
-                        renderQuestions();
-                        resetForm(); 
-                        alert('✅ 成功匯入題目！');
-                    } catch (err) {
-                        alert('❌ 匯入失敗：檔案格式不正確或資料已損壞。');
-                    }
-                } else {
-                    alert('❌ 匯入失敗：找不到系統專用標籤，請確保該 .md 檔案是由本系統匯出。');
-                }
-                event.target.value = ''; // 允許重複匯入相同檔案
-            };
-            reader.readAsText(file);
-        }
-
-        // --- 匯出 Word 功能 ---
-        function exportWord() {
-            if (questionsList.length === 0) {
-                alert('目前沒有題目可匯出！');
-                return;
-            }
-
-            const cols = document.getElementById('word-cols').value;
-            // 判斷是否為雙欄 (以 Word 的 mso-columns 語法控制)
-            const columnStyle = cols === '2' ? 'mso-columns: 2 even 21.25pt;' : '';
-
-            const allText = Array.from(document.querySelectorAll('.q-content'))
-                                .map(pre => pre.innerText)
-                                .join('\n\n');
-            
-            // 轉換為適合放入 HTML 的格式
-            const formattedText = allText.replace(/&/g, '&amp;')
-                                         .replace(/</g, '&lt;')
-                                         .replace(/>/g, '&gt;')
-                                         .replace(/\n/g, '<br>');
-
-            // 組合符合 Microsoft Word 規範的 HTML 結構 (利用 .doc 擴充功能欺騙瀏覽器自動轉為 Word 模式)
-            const htmlContent = `
-            <html xmlns:o="urn:schemas-microsoft-com:office:office"
-                  xmlns:w="urn:schemas-microsoft-com:office:word"
-                  xmlns="http://www.w3.org/TR/REC-html40">
-            <head>
-                <meta charset="utf-8">
-                <title>試卷</title>
-                <!--[if gte mso 9]>
-                <xml>
-                    <w:WordDocument>
-                        <w:View>Print</w:View>
-                        <w:Zoom>100</w:Zoom>
-                        <w:DoNotOptimizeForBrowser/>
-                    </w:WordDocument>
-                </xml>
-                <![endif]-->
-                <style>
-                    @page WordSection1 {
-                        size: 595.3pt 841.9pt; /* A4 紙張大小 */
-                        margin: 72.0pt 72.0pt 72.0pt 72.0pt;
-                        ${columnStyle}
-                    }
-                    div.WordSection1 { page: WordSection1; }
-                    body {
-                        font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
-                        font-size: 12pt;
-                    }
-                    p {
-                        line-height: 1.5;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="WordSection1">
-                    <p>${formattedText}</p>
-                </div>
-            </body>
-            </html>
-            `;
-
-            // \ufeff (BOM) 可確保 Word 預設以 UTF-8 開啟，不亂碼
-            const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = '試卷.doc';
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-    </script>
+<!-- EXAM_SYSTEM_DATA_V3_START
+${JSON.stringify(examData)}
+EXAM_SYSTEM_DATA_V3_END -->
+`;
+    downloadBlob(content, '試卷資料_V3_3.md', 'text/markdown;charset=utf-8');
+  }
+  function importMD(event) {
+    const file = event.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const text = e.target.result;
+      const match = text.match(/<!-- EXAM_SYSTEM_DATA_V3_START\n([\s\S]*?)\nEXAM_SYSTEM_DATA_V3_END -->/) || text.match(/<!-- EXAM_SYSTEM_DATA_V2_START\n([\s\S]*?)\nEXAM_SYSTEM_DATA_V2_END -->/);
+      if (!match) return alert('匯入失敗：找不到 V2／V3 系統資料。');
+      try { examData = normalizeData(JSON.parse(match[1])); syncSettingsToUi(); resetForm(); afterMutation(); alert('匯入成功。'); }
+      catch (err) { alert('匯入失敗：資料格式不正確。'); }
+      event.target.value = '';
+    };
+    reader.readAsText(file);
+  }
+  function exportWordCompat() {
+    const mode = document.getElementById('preview-mode').value || 'student';
+    const doc = getWordDocumentHtml(mode);
+    downloadBlob('\ufeff' + doc, '試卷_V3_3_Word相容檔.doc', 'application/msword;charset=utf-8');
+  }
+  function downloadBlob(content, filename, type) {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+  }
+  function clearAll() {
+    if (!confirm('確定要清空整份試卷資料嗎？')) return;
+    examData.sections = [makeSection('選擇題')];
+    resetForm(); afterMutation();
+  }
+</script>
 </body>
 </html>
