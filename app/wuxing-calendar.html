@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>五行曆 ｜ 陳民峰‧蜜蜂老師試做</title>
+  <title>五行曆 ｜ 蜜蜂老師試做</title>
   
   <!-- Tailwind CSS 響應式切片排版框架 -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -2020,65 +2020,81 @@
       return gods.reduce((sum, god) => sum + Number(weights[god] || 0), 0);
     }
 
+    // 教師版主象判斷：方案一（直接修正優先順序）
+    // 原則：高風險／高張力組合優先，其次判制化與流通，再判單一旺象，最後才保守預設。
     function pickTeacherPattern(category, weights) {
       const bi = Number(weights['比肩'] || 0);
       const jie = Number(weights['劫財'] || 0);
       const shi = Number(weights['食神'] || 0);
       const shang = Number(weights['傷官'] || 0);
-      const cai = sumWeights(weights, ['偏財', '正財']);
+      const pianCai = Number(weights['偏財'] || 0);
+      const zhengCai = Number(weights['正財'] || 0);
+      const cai = pianCai + zhengCai;
       const guan = Number(weights['正官'] || 0);
       const sha = Number(weights['七殺'] || 0);
-      const yin = sumWeights(weights, ['偏印', '正印']);
+      const pianYin = Number(weights['偏印'] || 0);
+      const zhengYin = Number(weights['正印'] || 0);
+      const yin = pianYin + zhengYin;
       const guanSha = guan + sha;
       const shiShang = shi + shang;
       const biJie = bi + jie;
+      const support = yin + biJie;
 
+      // 門檻說明：強 >=34，中強 >=24，中 >=16。此處不顯示機率，只用來決定今日主象。
+      // 行政應對：先抓衝突／混雜／壓力，再看官印與殺印，避免「有一點官印」就誤判成順行。
       if (category === 'admin') {
-        if (guanSha >= 34 && shang >= 18 && yin < 28) return '傷官見官';
+        if (shang >= 34 && guan >= 16 && guanSha >= 22) return '傷官見官';
+        if (shang >= 34 && sha >= 16) return '傷官制殺';
         if (guan >= 16 && sha >= 16) return '官殺混雜';
-        if (sha >= 24 && yin >= 24) return '殺印相生';
-        if (guan >= 24 && yin >= 24) return '官印相生';
         if (guanSha >= 34 && yin < 20) return '官旺印弱';
-        if (sha >= 24 && shi >= 18) return '食神制殺';
-        if (sha >= 24 && shang >= 18) return '傷官制殺';
         if (biJie >= 30 && guanSha >= 24) return '比劫抗官';
-        if (yin >= 32 && guanSha < 18) return '印旺官弱';
-        return guanSha >= 24 ? '官印相生' : '印旺官弱';
+        if (sha >= 24 && yin >= 24 && shang < 34) return '殺印相生';
+        if (guan >= 24 && yin >= 24 && shang < 30 && sha < 24) return '官印相生';
+        if (sha >= 16 && shi >= 20) return '食神制殺';
+        if (yin >= 32 && guanSha < 22) return '印旺官弱';
+        if (guanSha >= 24 && yin < 24) return '官旺印弱';
+        if (sha >= 16) return (shang >= shi ? '傷官制殺' : '食神制殺');
+        return yin >= 24 ? '印旺官弱' : '官殺混雜';
       }
 
+      // 對學生：先抓管教張力與教學壓縮，再看有印收束的高品質輸出，最後才看單一食神／傷官。
       if (category === 'student') {
-        if (shang >= 20 && sha >= 20) return '傷官見殺';
-        if (guanSha >= 34 && shiShang < 24) return '官殺壓食傷';
-        if (shang >= 22 && yin >= 22) return '傷官佩印';
+        if (shang >= 34 && sha >= 16) return '傷官見殺';
+        if (guanSha >= 34 && shiShang < 28) return '官殺壓食傷';
+        if (shang >= 28 && yin >= 22) return '傷官佩印';
+        if (shiShang >= 42 && yin < 20) return '食傷過旺';
         if (shiShang >= 34 && yin >= 20) return '食傷配印';
-        if (shiShang >= 42) return '食傷過旺';
+        if (sha >= 16 && shi >= 20) return '食神制殺';
         if (shiShang < 18) return '食傷弱';
-        if (shang >= shi) return '傷官旺';
+        if (shang >= 24 && shang >= shi) return '傷官旺';
         return '食神旺';
       }
 
+      // 同事關係：先抓資源／責任／行政化風險，再看專業協作與創意交流。
       if (category === 'peer') {
-        if (biJie >= 28 && guanSha >= 24) return '官殺介入比劫';
-        if (jie >= 22 && cai < 18) return '財弱逢劫';
+        if (jie >= 24 && cai < 18) return '財弱逢劫';
+        if (biJie >= 30 && cai >= 24 && jie >= 16) return '比劫奪財';
+        if (biJie >= 28 && guanSha >= 22) return '官殺介入比劫';
+        if (jie >= 24) return '劫財旺';
         if (bi >= 16 && jie >= 16) return '比劫混雜';
-        if (biJie >= 30 && cai >= 18) return '比劫奪財';
-        if (biJie >= 28 && shiShang >= 24) return '比劫生食傷';
         if (biJie >= 28 && yin >= 22) return '比劫配印';
-        if (jie >= bi) return '劫財旺';
-        return '比肩旺';
+        if (biJie >= 28 && shiShang >= 24) return '比劫生食傷';
+        if (biJie >= 18 && cai >= 24) return '比劫奪財';
+        return bi >= jie ? '比肩旺' : '劫財旺';
       }
 
+      // 教學工作：先抓過勞與責任壓力，再看危機轉專業、輸出與依據是否失衡，最後才看成果或單一旺象。
       if (category === 'work') {
+        if (cai >= 34 && support < 30) return '財旺身弱';
+        if (guanSha >= 34 && yin < 24) return '官殺旺';
         if (sha >= 24 && yin >= 24) return '殺印相生';
-        if (yin >= 28 && shiShang >= 28) return '印食流通';
-        if (shiShang >= 30 && cai >= 22) return '食傷生財';
-        if (cai >= 34 && biJie + yin < 30) return '財旺身弱';
-        if (guanSha >= 34) return '官殺旺';
-        if (yin >= 42) return '印過旺';
-        if (yin >= 30 && shiShang < 20) return '印旺食傷弱';
         if (shiShang >= 34 && yin < 20) return '食傷旺印弱';
+        if (yin >= 30 && shiShang < 20) return '印旺食傷弱';
+        if (shiShang >= 30 && cai >= 22) return '食傷生財';
+        if (yin >= 28 && shiShang >= 28) return '印食流通';
         if (cai >= 28) return '財旺';
         if (shiShang >= 28) return '食傷旺';
+        if (yin >= 42) return '印過旺';
         return '印旺';
       }
       return '印旺';
