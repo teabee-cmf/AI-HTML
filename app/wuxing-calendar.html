@@ -216,6 +216,14 @@
           </div>
         </div>
 
+        <div class="mt-4 bg-gold/10 border border-gold/30 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" id="user-is-teacher" class="w-4 h-4 accent-[#A62B2B]" onchange="onTeacherModeToggle()">
+            <span class="font-bold text-earth"><i class="fa-solid fa-chalkboard-user mr-1"></i>我是教師</span>
+          </label>
+          <span class="text-sm text-ink/60 leading-relaxed">勾選後，生成個人命盤並點選日期，可開啟教師職場版四象解讀。</span>
+        </div>
+
         <div class="mt-4 pt-3 border-t border-gold/20 flex flex-wrap items-center justify-between gap-3">
           <p class="text-sm text-ink/60 max-w-md leading-relaxed">
             <i class="fa-solid fa-circle-info mr-1 text-gold"></i>
@@ -590,6 +598,85 @@
     </div>
   </dialog>
 
+
+  <!-- 彈出視窗三：教師職場版日期解讀 -->
+  <dialog id="modal-teacher-daily" class="bg-transparent backdrop:bg-ink/60 p-4 max-w-6xl w-[calc(100%-1rem)] md:w-full focus:outline-none max-h-[96vh] overflow-y-auto">
+    <div class="bg-paper p-5 md:p-7 rounded-lg border-2 border-gold shadow-2xl relative flex flex-col">
+      <button onclick="closeTeacherDailyModal()" class="absolute top-4 right-4 text-ink/50 hover:text-zhusha text-2xl" aria-label="關閉教師職場版解讀"><i class="fa-solid fa-circle-xmark"></i></button>
+      <div class="flex flex-col md:flex-row md:items-stretch gap-4 mb-5 pr-8">
+        <div class="bg-white border border-gold/30 rounded-lg p-4 md:w-72 text-center shadow-sm">
+          <div class="text-sm text-earth font-bold mb-1">教師職場日曆</div>
+          <div id="teacher-modal-solar" class="text-3xl md:text-4xl font-bold text-zhusha tracking-wider">--</div>
+          <div id="teacher-modal-week" class="text-sm text-ink/60 mt-1">--</div>
+          <div class="mt-3 pt-3 border-t border-gold/20 text-sm leading-relaxed text-ink/75">
+            <div id="teacher-modal-lunar">農曆 --</div>
+            <div id="teacher-modal-jieqi" class="font-bold text-wood">節氣 --</div>
+          </div>
+        </div>
+        <div class="flex-1 bg-white/80 border border-gold/30 rounded-lg p-4 shadow-sm">
+          <h3 class="text-2xl font-bold text-zhusha mb-2"><i class="fa-solid fa-school mr-2"></i>教師版職場解讀</h3>
+          <p class="text-base text-earth/80 leading-relaxed mb-3">依據本命日主，將選定日期的流年、流月、流日天干與地支藏干加權後，轉譯為教師面對行政、學生、同事與教學工作的職場提示。</p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm md:text-base">
+            <div class="bg-paper rounded border border-gold/20 p-2.5">
+              <span class="text-ink/50 block text-xs md:text-sm">三柱干支</span>
+              <span id="teacher-modal-gz" class="font-bold text-ink">--</span>
+            </div>
+            <div class="bg-paper rounded border border-gold/20 p-2.5">
+              <span class="text-ink/50 block text-xs md:text-sm">十神重點</span>
+              <span id="teacher-modal-focus" class="font-bold text-earth">--</span>
+            </div>
+            <div class="bg-paper rounded border border-gold/20 p-2.5">
+              <span class="text-ink/50 block text-xs md:text-sm">今日主象</span>
+              <span id="teacher-modal-main-pattern" class="font-bold text-zhusha">--</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="teacher-reading-panel" class="bg-white/85 rounded-xl border border-gold/30 shadow-sm overflow-hidden">
+        <div class="grid grid-cols-1 md:grid-cols-[13rem_1fr] md:min-h-[440px]">
+          <nav id="teacher-category-tabs" class="bg-[#F5EFE6]/70 border-b md:border-b-0 md:border-r border-gold/25 p-3 flex md:flex-col gap-2" aria-label="教師職場面向切換">
+            <!-- JS 動態寫入：教學工作、對學生、行政應對、同事關係 -->
+          </nav>
+
+          <section class="p-5 md:p-6">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-gold/20">
+              <div>
+                <div class="text-sm text-earth/70 font-bold">目前面向</div>
+                <h4 id="teacher-detail-title" class="text-3xl font-bold text-zhusha tracking-wider">教學工作</h4>
+              </div>
+              <span id="teacher-detail-pattern" class="px-4 py-1.5 rounded-full bg-gold/15 border border-gold/40 text-earth font-bold text-lg">--</span>
+            </div>
+
+            <div class="space-y-3 text-base md:text-lg leading-relaxed">
+              <div class="bg-paper rounded-lg border border-gold/20 px-3.5 py-3">
+                <p class="text-sm md:text-base leading-relaxed text-ink/85">
+                  <span class="font-bold text-earth tracking-wider mr-1 whitespace-nowrap">命理組合：</span><span id="teacher-detail-meaning">--</span>
+                </p>
+              </div>
+
+              <div class="bg-paper rounded-lg border border-gold/20 p-4">
+                <div class="text-sm font-bold tracking-wider text-earth mb-1">教師情境</div>
+                <p id="teacher-detail-context" class="text-ink/85">--</p>
+              </div>
+
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="rounded-lg border border-wood/25 bg-green-50/40 p-4">
+                  <div class="text-sm font-bold tracking-wider text-wood mb-1"><i class="fa-solid fa-circle-check mr-1"></i>宜</div>
+                  <p id="teacher-detail-good" class="text-ink/85">--</p>
+                </div>
+                <div class="rounded-lg border border-zhusha/25 bg-red-50/40 p-4">
+                  <div class="text-sm font-bold tracking-wider text-zhusha mb-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i>忌</div>
+                  <p id="teacher-detail-avoid" class="text-ink/85">--</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
   <!-- 底部古典資訊欄 -->
   <footer class="border-t-2 border-gold/30 bg-[#F5EFE6]/30 py-6 text-center text-sm text-earth/80 leading-relaxed mt-8">
     <div class="max-w-7xl mx-auto px-4">
@@ -659,7 +746,8 @@
       favorableElements: [], // 喜神
       unfavorableElements: [], // 忌神
       initialWuxing: {}, // 先天五行比重
-      modifiedWuxing: {} // 生克後五行比重
+      modifiedWuxing: {}, // 生克後五行比重
+      isTeacher: false // 教師職場版模式
     };
 
     // --- 初始化執行 ---
@@ -999,9 +1087,29 @@
 
       cell.appendChild(midDiv);
 
-      // 綁定點擊事件
-      cell.onclick = function() {
+      // 教師版提示：不干擾單擊選日，只提示可用雙擊打開教師職場日誌
+      if (userProfile.active && userProfile.isTeacher) {
+        const teacherHint = document.createElement('div');
+        teacherHint.className = `mt-1 self-center inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-yellow-100 border border-yellow-400 text-zhusha text-[10px] md:text-xs font-bold shadow-sm`;
+        teacherHint.innerText = '雙擊看教師日誌';
+        midDiv.appendChild(teacherHint);
+      }
+
+      // 綁定點擊事件：單擊維持原本右側今日運勢；雙擊才打開教師職場日誌
+      cell.onclick = function(event) {
         selectCalendarDate(yr, mth, dy);
+        if (event && event.detail >= 2 && shouldOpenTeacherDailyModal()) {
+          openTeacherDailyModal(new Date(yr, mth - 1, dy));
+        }
+      };
+      cell.ondblclick = function(event) {
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        if (shouldOpenTeacherDailyModal()) {
+          openTeacherDailyModal(new Date(yr, mth - 1, dy));
+        }
       };
 
       return cell;
@@ -1209,6 +1317,7 @@
         userProfile.name = name;
         userProfile.birthDate = birthDate;
         userProfile.birthHour = birthHourVal;
+        userProfile.isTeacher = !!document.getElementById('user-is-teacher')?.checked;
         
         // 絕對安全的讀取方式
         userProfile.bazi.year = lunar.getYearInGanZhiExact() || lunar.getYearInGanZhi() || '甲子';
@@ -1254,6 +1363,7 @@
 
     function clearUserProfile() {
       userProfile.active = false;
+      userProfile.isTeacher = false;
       document.getElementById('personal-bazi-section').classList.add('hidden');
       document.getElementById('unregistered-notice-card').classList.remove('hidden');
       document.getElementById('registered-fortune-card').classList.add('hidden');
@@ -1270,6 +1380,8 @@
 
       document.getElementById('user-name').value = '';
       document.getElementById('user-birth-date').value = '1990-01-01';
+      const teacherCheck = document.getElementById('user-is-teacher');
+      if (teacherCheck) teacherCheck.checked = false;
       document.getElementById('input-error-msg').innerText = '';
 
       renderCalendar();
@@ -1644,6 +1756,476 @@
         return dmYY === stemYY ? '七殺' : '正官';
       }
       return '十神';
+    }
+
+
+    // --- 教師職場版四象解讀 ---
+    const TEACHER_FORTUNE_LIBRARY = {
+      "admin": {
+            "label": "行政應對",
+            "icon": "fa-user-tie",
+            "patterns": {
+                  "官印相生": {
+                        "meaning": "正官有力，印星承接。",
+                        "context": "行政端要求較明確，例行交辦、正式文件、制度流程或校內程序較容易被穩定處理。只要準備好必要資料與紀錄，任務推進感會比較強。",
+                        "advice": "宜依法依流程行事，備妥交辦事項與佐證資料；忌情緒衝動、過度同情或臨時改走人情路線。"
+                  },
+                  "殺印相生": {
+                        "meaning": "七殺帶來壓力，印星能夠化殺。",
+                        "context": "今日可能有突發事件、臨時任務或心理壓力；但教師專業、輔導紀錄、教學紀錄、法規依據與處理流程可以成為承接壓力的工具。",
+                        "advice": "宜冷靜行事、梳理脈絡、整理時間線與依據；忌立即情緒反應或在資訊未清楚時先表態。"
+                  },
+                  "傷官見官": {
+                        "meaning": "傷官旺，官星也旺。",
+                        "context": "容易從自己的專業角度看見行政或團隊流程的問題。提出批評未必錯，甚至可能推動學校進步，但場面容易不好看。",
+                        "advice": "宜經過熟慮後再批評，先鋪陳依據、案例與流程；忌當場爆衝或只用一句話把場面炸開。"
+                  },
+                  "官殺混雜": {
+                        "meaning": "正官、七殺並見，壓力來源混雜。",
+                        "context": "主管、行政、家長、教育局或校內流程可能互相干擾，容易出現責任不清、口頭交辦、濫訴壓力或同事甩鍋。",
+                        "advice": "宜要求明確化：誰交辦、何時完成、依據為何、責任到哪裡；忌輕易接受模糊任務，必要時要婉拒或保留紀錄。"
+                  },
+                  "官旺印弱": {
+                        "meaning": "官殺壓力重，印星支撐不足。",
+                        "context": "交辦事項與要求偏多，但資源、支援、說明或正式依據可能不足。容易有責任被放到身上，但保護傘沒有同步打開的感覺。",
+                        "advice": "宜確認權責並留下紀錄自保；忌默默吞下所有要求，尤其不要把模糊任務變成自己的既成責任。"
+                  },
+                  "印旺官弱": {
+                        "meaning": "印星旺，官星不足。",
+                        "context": "今日適合在自己的專業天地中處理備課、資料、紀錄或較不重要的行政事務，但不一定能期待行政快速支持或同事立刻看見。",
+                        "advice": "宜自我進修、整理專業資料、默默把基礎打好；忌開展需要行政拍板的新企劃或太早搬上檯面。"
+                  },
+                  "食神制殺": {
+                        "meaning": "七殺有壓力，食神能制。",
+                        "context": "若遇到突發狀況，穩定表達、清楚說明與教學專業能降低衝突強度。比起反擊，今天更適合把事情說清楚。",
+                        "advice": "宜有條有理地論述、逐步說明處理流程；忌在言語上與對方情緒針鋒相對。"
+                  },
+                  "傷官制殺": {
+                        "meaning": "七殺壓迫，傷官反制。",
+                        "context": "面對不合理要求時，會想直接指出矛盾、漏洞與責任問題。爭取權益是合理的，但談判技巧與人際後果要一起估算。",
+                        "advice": "宜據理力爭、準備證據、把焦點放在制度漏洞；忌衝動發言或讓語氣蓋過論點。"
+                  },
+                  "比劫抗官": {
+                        "meaning": "比劫旺，官殺也旺。",
+                        "context": "基層教師容易感受到行政壓力，也較適合尋求同儕支持或正式協商；若自己是行政，則需整合團隊與派系能量才推得動。",
+                        "advice": "宜找同盟、走團隊協商與正式程序；忌單兵衝鋒或把集體問題扛成個人恩怨。"
+                  }
+            }
+      },
+      "student": {
+            "label": "對學生",
+            "icon": "fa-children",
+            "patterns": {
+                  "食神旺": {
+                        "meaning": "食神有力，教學輸出穩定。",
+                        "context": "今日教學節奏較穩，適合講解新概念、帶活動，或進行循序漸進的班級經營。與學生互動較容易維持溫和與耐心。",
+                        "advice": "宜引導式秩序、探究活動與亦師亦友的互動；忌倉促趕進度或用高壓方式要求課業。"
+                  },
+                  "傷官旺": {
+                        "meaning": "傷官有力，表達犀利、反應快。",
+                        "context": "課堂有張力，適合要求紀律、拆解問題與加強秩序控管；但語氣過銳時，學生可能接不住。",
+                        "advice": "宜在合理範圍內明確管教、清楚訂規則；忌羞辱、標籤化、過度尖銳用語或踩到輔導管教紅線。"
+                  },
+                  "食傷配印": {
+                        "meaning": "食傷有輸出，印星有內容。",
+                        "context": "教育專業容易轉化為學生能吸收的語言，適合深度討論、難題處理、概念教學或公開展示。若只是常態教學，會有點可惜。",
+                        "advice": "宜公開觀課、領域分享、訪視督導、概念教學法；忌躺平過日或把好材料用成例行流水帳。"
+                  },
+                  "傷官佩印": {
+                        "meaning": "傷官旺，但印星能收束。",
+                        "context": "批判力、創意與專業依據並存，適合有深度、有創意的教學設計，也適合拆解學生迷思概念。語氣可以明確，但要讓學生知道目的。",
+                        "advice": "宜 POE 教學、認知衝突、迷思概念澄清、活化課程與生活議題結合；忌只管秩序不說原因，或採用連坐式處理。"
+                  },
+                  "食傷過旺": {
+                        "meaning": "食神、傷官過旺。",
+                        "context": "今日容易一講就停不下來，也可能對學生反應過度忽略或過度解讀。課堂輸出太滿，學生反而沒有消化空間。",
+                        "advice": "宜候答、等待學生完成任務、落實形成性評量追蹤學習狀況；忌延後下課、連續講述或把課堂塞成滿版投影片。"
+                  },
+                  "食傷弱": {
+                        "meaning": "食傷不足，教學輸出能量偏低。",
+                        "context": "今日比較適合複習、整理、學生自學、作品修正或低耗能課程安排。不必每天都開大招。",
+                        "advice": "宜穩定教學、容忍不完美、完成例行工作；忌過度要求自己或硬推額外進度。"
+                  },
+                  "官殺壓食傷": {
+                        "meaning": "官殺旺，食傷受壓。",
+                        "context": "教學容易被秩序、安全、行政要求或突發狀況壓縮，課堂未必能完全照原教案推進。",
+                        "advice": "宜先穩住秩序與安全，再談創意教學；忌太過專注進度而忽略現場風險。"
+                  },
+                  "傷官見殺": {
+                        "meaning": "傷官旺，七殺也旺。",
+                        "context": "學生挑戰與教師強烈反應容易互相撞擊。今天不是不能管，而是要避免讓管教變成情緒互嗆。",
+                        "advice": "宜同理心、SEL 教學、共同討論班規並檢驗合理性；忌回嗆學生或讓一句話變成後續截圖素材。"
+                  }
+            }
+      },
+      "peer": {
+            "label": "同事關係",
+            "icon": "fa-people-group",
+            "patterns": {
+                  "比肩旺": {
+                        "meaning": "比肩有力，同儕主體性強。",
+                        "context": "不同教師的教育專業、教育哲學或職務立場都會很明顯。意見很多不見得是壞事，但不一定適合當下整合。",
+                        "advice": "宜理性討論、領域備課分享；忌需要快速共識的行政會議或高壓審題。"
+                  },
+                  "劫財旺": {
+                        "meaning": "劫財有力，資源與責任容易拉扯。",
+                        "context": "同事間可能牽涉資源、職缺、工作分攤、功勞或責任歸屬。口頭說好，後續未必清楚。",
+                        "advice": "宜隨時紀錄、確認分工；忌只靠口頭答應或一時義氣接下不明任務。"
+                  },
+                  "比劫配印": {
+                        "meaning": "比劫旺，印星穩。",
+                        "context": "適合與同事共同協作任務，彼此發揮特長，兼具工作效能與專業情感。",
+                        "advice": "宜領域會議、學年會議、行政會議與共同備課；若身心狀態許可，適合參與共同討論。"
+                  },
+                  "比劫生食傷": {
+                        "meaning": "比劫帶動食傷。",
+                        "context": "今日容易在同事交流中產生新的課程點子、活動設計或教學說法。腦力激盪容易，但收斂與執行仍是硬功夫。",
+                        "advice": "宜課程發展、領域或學年會議、觀摩公開觀課；忌畫大餅太大，最後讓自己騎虎難下。"
+                  },
+                  "比劫奪財": {
+                        "meaning": "比劫旺，財星受損。",
+                        "context": "同事之間容易碰到工作歸屬、成果歸屬或資源分配問題。誰做事、誰掛名、誰收尾要講清楚。",
+                        "advice": "宜適度幫忙、堅守底線；忌過度吞忍或界線模糊。"
+                  },
+                  "比劫混雜": {
+                        "meaning": "比肩、劫財並旺。",
+                        "context": "同事互動有合作機會，也有暗中比較或立場拉扯。表面一起做事，內部仍需要看清邊界。",
+                        "advice": "宜見機行事、觀察同事與行政的反應；忌分工不清、邊界不明，腦袋要保持清醒。"
+                  },
+                  "財弱逢劫": {
+                        "meaning": "財星弱，劫財旺。",
+                        "context": "容易被凹額外任務，但自己已經自顧不暇。今天不是不能幫人，而是要先看自己還有多少餘裕。",
+                        "advice": "宜減少非必要通訊干擾、保留喘息時間、必要時補休或運動恢復；忌爛好人又讓自己增加任務。"
+                  },
+                  "官殺介入比劫": {
+                        "meaning": "比劫旺，官殺介入。",
+                        "context": "與同事或家長隨口討論的議題，可能上升到行政程序，牽涉申訴、分工、出席會議或制度處理。",
+                        "advice": "宜腦袋清醒、程序化處理、必要時攤在檯面說明；忌隨口說說，導致事情突然發酵。"
+                  }
+            }
+      },
+      "work": {
+            "label": "教學工作",
+            "icon": "fa-briefcase",
+            "patterns": {
+                  "印旺": {
+                        "meaning": "印星旺，專業與資料支撐強。",
+                        "context": "適合備課、讀資料、整理教案、寫計畫、做專業判斷或處理繁雜文書。",
+                        "advice": "宜積極工作、把專業變成可留下的文件；忌想多於做。"
+                  },
+                  "印過旺": {
+                        "meaning": "印星太旺，準備與思考過度。",
+                        "context": "容易資料查太多、準備過度，但行動延後。今天不是沒能力，而是容易卡在細節。",
+                        "advice": "宜適度鬆弛、平穩完成工作；忌過度備課而加班。"
+                  },
+                  "食傷旺": {
+                        "meaning": "食傷旺，教學輸出能量強。",
+                        "context": "適合上課、發表、設計活動、帶學生操作與引導討論。想法容易講得出來，也比較能帶動現場。",
+                        "advice": "宜課堂討論與活動設計；忌只安排複習與考試，浪費輸出能量。"
+                  },
+                  "食傷生財": {
+                        "meaning": "食傷流向財星，教學成果可見。",
+                        "context": "適合將教學轉化為學生作品、課程紀錄、公開分享、成果報告或教案整理。",
+                        "advice": "宜撰寫成果、整理教案、保存作品；忌過度擔心自己言過其實，該肯定成果時要肯定。"
+                  },
+                  "財旺": {
+                        "meaning": "財星旺，成果與資源能見度高。",
+                        "context": "有利於成果呈現、資源整合、對外溝通與讓教學被看見。教師版的財星重點是成果、資源與外部回饋。",
+                        "advice": "宜家長日、親師溝通、投稿教案比賽、領域發表、公開觀課；忌流於浮誇或只有表面效度。"
+                  },
+                  "財旺身弱": {
+                        "meaning": "財星旺，但自身承受力不足。",
+                        "context": "成果不錯，但勞心勞力。外部期待與期限會推著你走，消耗感也比較明顯。",
+                        "advice": "宜下班後休閒、維持身心平衡；忌過度擔心成果或進度。"
+                  },
+                  "官殺旺": {
+                        "meaning": "官殺旺，責任與規範感較重。",
+                        "context": "容易有交辦、期限、規範或安全責任需要處理。今天要先處理必要責任，再談理想設計。",
+                        "advice": "宜分清重要性並排序處理；忌多工並行或用尚未熟悉的新方法抄捷徑，容易適得其反。"
+                  },
+                  "殺印相生": {
+                        "meaning": "七殺生印，壓力轉成專業。",
+                        "context": "危機就是轉機。面對工作挑戰時，可用教育專業、行政資源、法規、公部門資源與流程把問題制度化處理。",
+                        "advice": "宜堅定心智、引用資源、建立流程；忌不花腦袋地拼命死幹。"
+                  },
+                  "印食流通": {
+                        "meaning": "印星生身，身生食傷。",
+                        "context": "專業內容容易轉成學生能理解的課程、提問、實作與活動，是很適合教學轉譯的一天。",
+                        "advice": "宜教案設計、備課、規劃班級活動；忌躺平。"
+                  },
+                  "印旺食傷弱": {
+                        "meaning": "印強，食傷不足。",
+                        "context": "備課在單一方向準備充足，但到了教學現場可能需要大量調整。專業很多，表達與轉換要另外準備。",
+                        "advice": "宜深度備課、預想學生迷思概念與反應；忌只有一個教學方案，需規劃差異化教學或備案。"
+                  },
+                  "食傷旺印弱": {
+                        "meaning": "食傷強，印星不足。",
+                        "context": "教學創意與表達力強，但需要補上資料依據、學生紀錄或課程脈絡。靈感很好，但教育現場還是要留痕。",
+                        "advice": "宜參加研習、補資料、整理紀錄與課程依據；忌光說不練或言過其實。"
+                  }
+            }
+      }
+};
+
+
+    function onTeacherModeToggle() {
+      const checkbox = document.getElementById('user-is-teacher');
+      userProfile.isTeacher = !!checkbox?.checked;
+      if (isLunarLoaded) renderCalendar();
+    }
+
+    function shouldOpenTeacherDailyModal() {
+      const checkbox = document.getElementById('user-is-teacher');
+      return !!(checkbox && checkbox.checked && userProfile.active && isLunarLoaded);
+    }
+
+    function closeTeacherDailyModal() {
+      const modal = document.getElementById('modal-teacher-daily');
+      if (modal) modal.close();
+    }
+
+    function getTenGodWeightsForDate(date) {
+      const ctx = getTransitContextForDate(date);
+      const weights = {
+        '比肩': 0, '劫財': 0, '食神': 0, '傷官': 0, '偏財': 0, '正財': 0,
+        '七殺': 0, '正官': 0, '偏印': 0, '正印': 0
+      };
+      const pillarData = [
+        { gz: ctx.yearGz, weight: 10 },
+        { gz: ctx.monthGz, weight: 50 },
+        { gz: ctx.dayGz, weight: 100 }
+      ];
+      const dm = userProfile.dayMaster || '甲';
+      pillarData.forEach(p => {
+        if (!p.gz || p.gz.length < 2) return;
+        const stem = p.gz[0];
+        const branch = p.gz[1];
+        const stemGod = getTenGod(dm, stem);
+        weights[stemGod] = (weights[stemGod] || 0) + p.weight * 0.40;
+        const hiddens = EARTH_BRANCH_HIDDEN[branch] || [];
+        if (hiddens.length) {
+          hiddens.forEach(h => {
+            const hiddenGod = getTenGod(dm, h.stem);
+            weights[hiddenGod] = (weights[hiddenGod] || 0) + p.weight * 0.60 * (h.ratio / 100);
+          });
+        } else {
+          const branchGod = getTenGod(dm, branch);
+          weights[branchGod] = (weights[branchGod] || 0) + p.weight * 0.60;
+        }
+      });
+      return { ctx, weights };
+    }
+
+    function sumWeights(weights, gods) {
+      return gods.reduce((sum, god) => sum + Number(weights[god] || 0), 0);
+    }
+
+    function pickTeacherPattern(category, weights) {
+      const bi = Number(weights['比肩'] || 0);
+      const jie = Number(weights['劫財'] || 0);
+      const shi = Number(weights['食神'] || 0);
+      const shang = Number(weights['傷官'] || 0);
+      const cai = sumWeights(weights, ['偏財', '正財']);
+      const guan = Number(weights['正官'] || 0);
+      const sha = Number(weights['七殺'] || 0);
+      const yin = sumWeights(weights, ['偏印', '正印']);
+      const guanSha = guan + sha;
+      const shiShang = shi + shang;
+      const biJie = bi + jie;
+
+      if (category === 'admin') {
+        if (guanSha >= 34 && shang >= 18 && yin < 28) return '傷官見官';
+        if (guan >= 16 && sha >= 16) return '官殺混雜';
+        if (sha >= 24 && yin >= 24) return '殺印相生';
+        if (guan >= 24 && yin >= 24) return '官印相生';
+        if (guanSha >= 34 && yin < 20) return '官旺印弱';
+        if (sha >= 24 && shi >= 18) return '食神制殺';
+        if (sha >= 24 && shang >= 18) return '傷官制殺';
+        if (biJie >= 30 && guanSha >= 24) return '比劫抗官';
+        if (yin >= 32 && guanSha < 18) return '印旺官弱';
+        return guanSha >= 24 ? '官印相生' : '印旺官弱';
+      }
+
+      if (category === 'student') {
+        if (shang >= 20 && sha >= 20) return '傷官見殺';
+        if (guanSha >= 34 && shiShang < 24) return '官殺壓食傷';
+        if (shang >= 22 && yin >= 22) return '傷官佩印';
+        if (shiShang >= 34 && yin >= 20) return '食傷配印';
+        if (shiShang >= 42) return '食傷過旺';
+        if (shiShang < 18) return '食傷弱';
+        if (shang >= shi) return '傷官旺';
+        return '食神旺';
+      }
+
+      if (category === 'peer') {
+        if (biJie >= 28 && guanSha >= 24) return '官殺介入比劫';
+        if (jie >= 22 && cai < 18) return '財弱逢劫';
+        if (bi >= 16 && jie >= 16) return '比劫混雜';
+        if (biJie >= 30 && cai >= 18) return '比劫奪財';
+        if (biJie >= 28 && shiShang >= 24) return '比劫生食傷';
+        if (biJie >= 28 && yin >= 22) return '比劫配印';
+        if (jie >= bi) return '劫財旺';
+        return '比肩旺';
+      }
+
+      if (category === 'work') {
+        if (sha >= 24 && yin >= 24) return '殺印相生';
+        if (yin >= 28 && shiShang >= 28) return '印食流通';
+        if (shiShang >= 30 && cai >= 22) return '食傷生財';
+        if (cai >= 34 && biJie + yin < 30) return '財旺身弱';
+        if (guanSha >= 34) return '官殺旺';
+        if (yin >= 42) return '印過旺';
+        if (yin >= 30 && shiShang < 20) return '印旺食傷弱';
+        if (shiShang >= 34 && yin < 20) return '食傷旺印弱';
+        if (cai >= 28) return '財旺';
+        if (shiShang >= 28) return '食傷旺';
+        return '印旺';
+      }
+      return '印旺';
+    }
+
+    function formatTeacherTenGodFocus(weights) {
+      return Object.entries(weights)
+        .filter(([, value]) => value > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([god, value]) => `${god}${Math.round(value)}`)
+        .join('、') || '十神平衡';
+    }
+
+    function getTeacherDateMeta(date) {
+      const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+      const y = date.getFullYear();
+      const m = date.getMonth() + 1;
+      const d = date.getDate();
+      const solar = Solar.fromYmd(y, m, d);
+      const lunar = solar.getLunar();
+      const yearGz = lunar.getYearInGanZhiExact() || lunar.getYearInGanZhi() || '甲子';
+      const monthGz = lunar.getMonthInGanZhiExact() || lunar.getMonthInGanZhi() || '甲子';
+      const dayGz = lunar.getDayInGanZhiExact() || lunar.getDayInGanZhi() || '甲子';
+      const jieqi = lunar.getJieQi();
+      return {
+        solarText: `${y}年${String(m).padStart(2, '0')}月${String(d).padStart(2, '0')}日`,
+        shortSolarText: `${m}/${d}`,
+        weekText: weekDays[date.getDay()],
+        lunarText: `農曆 ${lunar.getMonthInChinese()}月${lunar.getDayInChinese()}`,
+        jieqiText: jieqi ? `節氣：${jieqi}` : `節氣：非交節日｜節氣月令 ${monthGz}月`,
+        gzText: `${yearGz}年｜${monthGz}月｜${dayGz}日`,
+        yearGz, monthGz, dayGz
+      };
+    }
+
+    const TEACHER_CATEGORY_ORDER = ['work', 'student', 'admin', 'peer'];
+    const TEACHER_CATEGORY_LABEL_ALIAS = {
+      work: '教學工作',
+      student: '對學生',
+      admin: '行政應對',
+      peer: '同事關係'
+    };
+
+    let teacherCurrentPatterns = null;
+    let teacherSelectedCategory = 'work';
+
+    function splitTeacherAdvice(advice) {
+      const raw = String(advice || '').trim();
+      let good = raw;
+      let avoid = '依現場狀況調整，不必過度解讀單日提示。';
+      const avoidMatch = raw.match(/忌(.+)$/);
+      if (avoidMatch) {
+        avoid = avoidMatch[1].trim().replace(/[。；;，,]+$/, '。');
+        good = raw.slice(0, avoidMatch.index).trim().replace(/[；;，,。]+$/, '');
+      }
+      good = good.replace(/^宜/, '').trim().replace(/[。；;，,]+$/, '。');
+      if (!good) good = '穩定觀察，依流程處理。';
+      if (!avoid) avoid = '避免衝動反應。';
+      return { good, avoid };
+    }
+
+    function buildTeacherCategoryTabs(patterns) {
+      return TEACHER_CATEGORY_ORDER.map(categoryKey => {
+        const category = TEACHER_FORTUNE_LIBRARY[categoryKey];
+        const patternName = patterns?.[categoryKey] || '--';
+        const label = TEACHER_CATEGORY_LABEL_ALIAS[categoryKey] || category.label;
+        const isActive = categoryKey === teacherSelectedCategory;
+        return `
+          <button type="button"
+            onclick="showTeacherCategory('${categoryKey}')"
+            data-teacher-tab="${categoryKey}"
+            class="teacher-category-tab flex-1 md:flex-none text-left rounded-lg border px-3 py-3 transition ${isActive ? 'bg-zhusha text-white border-zhusha shadow-md' : 'bg-white/80 text-earth border-gold/25 hover:bg-gold/15'}">
+            <div class="flex items-center gap-2 font-bold text-base md:text-lg">
+              <i class="fa-solid ${category.icon}"></i>
+              <span>${label}</span>
+            </div>
+            <div class="mt-1 text-xs md:text-sm ${isActive ? 'text-white/85' : 'text-ink/55'}">${patternName}</div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function renderTeacherTabs() {
+      const tabs = document.getElementById('teacher-category-tabs');
+      if (tabs && teacherCurrentPatterns) {
+        tabs.innerHTML = buildTeacherCategoryTabs(teacherCurrentPatterns);
+      }
+    }
+
+    function showTeacherCategory(categoryKey) {
+      if (!teacherCurrentPatterns || !TEACHER_FORTUNE_LIBRARY[categoryKey]) return;
+      teacherSelectedCategory = categoryKey;
+      const category = TEACHER_FORTUNE_LIBRARY[categoryKey];
+      const patternName = teacherCurrentPatterns[categoryKey];
+      const item = category.patterns[patternName] || Object.values(category.patterns)[0];
+      const advice = splitTeacherAdvice(item.advice);
+      const label = TEACHER_CATEGORY_LABEL_ALIAS[categoryKey] || category.label;
+
+      const setText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = text;
+      };
+      setText('teacher-detail-title', label);
+      setText('teacher-detail-pattern', patternName);
+      setText('teacher-detail-meaning', item.meaning);
+      setText('teacher-detail-context', item.context);
+      setText('teacher-detail-good', advice.good);
+      setText('teacher-detail-avoid', advice.avoid);
+      renderTeacherTabs();
+    }
+
+    function openTeacherDailyModal(date) {
+      if (!userProfile.active || !isLunarLoaded) return;
+      try {
+        const meta = getTeacherDateMeta(date);
+        const { weights } = getTenGodWeightsForDate(date);
+        const patterns = {
+          admin: pickTeacherPattern('admin', weights),
+          student: pickTeacherPattern('student', weights),
+          peer: pickTeacherPattern('peer', weights),
+          work: pickTeacherPattern('work', weights)
+        };
+        teacherCurrentPatterns = patterns;
+        teacherSelectedCategory = 'work';
+        const mainPattern = patterns.work || patterns.admin;
+
+        const setText = (id, text) => {
+          const el = document.getElementById(id);
+          if (el) el.innerText = text;
+        };
+        setText('teacher-modal-solar', meta.shortSolarText);
+        setText('teacher-modal-week', `${meta.solarText}｜${meta.weekText}`);
+        setText('teacher-modal-lunar', meta.lunarText);
+        setText('teacher-modal-jieqi', meta.jieqiText);
+        setText('teacher-modal-gz', meta.gzText);
+        setText('teacher-modal-focus', formatTeacherTenGodFocus(weights));
+        setText('teacher-modal-main-pattern', mainPattern);
+
+        renderTeacherTabs();
+        showTeacherCategory('work');
+
+        const modal = document.getElementById('modal-teacher-daily');
+        if (modal && !modal.open) modal.showModal();
+      } catch (err) {
+        console.error('教師職場版解讀失敗:', err);
+      }
     }
 
     // --- 本日詳解與「流日動態大師批語」 (絕對安全的 Null-Safe 版本) ---
