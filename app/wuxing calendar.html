@@ -1,0 +1,2385 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>五行曆 ｜ 陳民峰‧蜜蜂老師試做</title>
+  
+  <!-- Tailwind CSS 響應式切片排版框架 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome 圖標庫 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- lunar-javascript 核心曆法庫 (精準計算干支、節氣與藏干) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lunar-javascript/1.6.12/lunar.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            paper: '#FDFBF7',     /* 宣紙微黃溫潤底色 */
+            ink: '#1C1C1C',      /* 黛黑徽墨色 */
+            gold: '#C5A880',      /* 描金古雅色 */
+            zhusha: '#A62B2B',    /* 硃砂漆器紅 */
+            'zhusha-dark': '#7F1D1D', /* 深硃砂紅：修正 hover:bg-zhusha-dark 無效 */
+            wood: '#3D5A45',      /* 青苔蒼木綠 */
+            water: '#2C4A6F',     /* 深海玄青藍 */
+            earth: '#7E6B5A',     /* 金絲沉香褐 */
+            metal: '#8E9499',     /* 磬石秋霜金 */
+            pink: '#D36582'       /* 胭脂桃紅 */
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* 強制預設全域字體為標楷體，營造刻碑與手抄古籍之風骨 */
+    body, button, input, select, textarea {
+      font-family: "BiauKai", "DFKai-SB", "KaiTi", "STKaiti", "Microsoft JhengHei", serif;
+    }
+    
+    /* 宣紙紋理與墨韻光影 */
+    .paper-texture {
+      background-color: #FDFBF7;
+      background-image: radial-gradient(#F5EFE6 1px, transparent 0), radial-gradient(#F5EFE6 1px, transparent 0);
+      background-size: 8px 8px;
+      background-position: 0 0, 4px 4px;
+    }
+
+    /* 古風滾動條 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #F4EFE6;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #C5A880;
+      border-radius: 3px;
+    }
+
+
+
+    /* 區塊收納折疊 */
+    .collapse-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.65rem;
+      border: 1px solid rgba(197, 168, 128, 0.45);
+      border-radius: 999px;
+      background: rgba(253, 251, 247, 0.82);
+      color: #7E6B5A;
+      font-size: 0.875rem;
+      font-weight: 700;
+      transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+    }
+    .collapse-toggle:hover {
+      background: rgba(197, 168, 128, 0.18);
+      color: #A62B2B;
+    }
+    .collapse-toggle i {
+      transition: transform 0.18s ease;
+    }
+    .collapse-toggle.is-collapsed i {
+      transform: rotate(-90deg);
+    }
+    .collapsible-content {
+      transition: opacity 0.18s ease;
+    }
+    .collapsible-content.is-collapsed {
+      display: none !important;
+    }
+    .chart-point-clickable {
+      cursor: pointer;
+      outline: none;
+    }
+    .chart-point-clickable:hover {
+      filter: drop-shadow(0 0 4px rgba(166, 43, 43, 0.45));
+    }
+    tr.chart-row-focus {
+      background: rgba(166, 43, 43, 0.10) !important;
+      outline: 2px solid rgba(166, 43, 43, 0.45);
+      outline-offset: -2px;
+    }
+
+    /* 可伸縮雙欄：桌機版可拖曳調整左／右欄比例 */
+    @media (min-width: 1024px) {
+      #app-main-layout {
+        grid-template-columns: minmax(360px, var(--left-pane-width, 58%)) 10px minmax(320px, 1fr);
+        column-gap: 0;
+      }
+      #column-resizer {
+        cursor: col-resize;
+        touch-action: none;
+        display: flex;
+        align-items: stretch;
+        justify-content: center;
+        padding: 0 3px;
+      }
+      #column-resizer::before {
+        content: '';
+        width: 4px;
+        border-radius: 999px;
+        background: rgba(197, 168, 128, 0.35);
+        transition: background 0.15s ease, width 0.15s ease;
+      }
+      #column-resizer:hover::before,
+      body.is-resizing-columns #column-resizer::before {
+        width: 6px;
+        background: rgba(166, 43, 43, 0.55);
+      }
+      body.is-resizing-columns {
+        user-select: none;
+        cursor: col-resize;
+      }
+    }
+
+  </style>
+</head>
+<body class="paper-texture text-ink min-h-screen flex flex-col justify-between antialiased selection:bg-gold selection:text-white">
+
+  <!-- 頂部古典牌匾式頁首 -->
+  <header class="border-b-4 border-double border-gold/40 py-6 px-4 bg-[#F5EFE6]/50 text-center shadow-sm relative">
+    <!-- 離線斷網警告浮水印 (預設隱藏，由 JS 控制顯示) -->
+    <div id="offline-warning" class="hidden absolute top-0 left-0 w-full bg-zhusha text-white text-sm py-1.5 text-center shadow-md z-50">
+      <i class="fa-solid fa-triangle-exclamation mr-1"></i>偵測到曆法庫載入失敗，請確認您的網路連線並重新整理頁面。
+    </div>
+
+    <div class="max-w-7xl mx-auto">
+      <h1 class="text-5xl md:text-6xl font-bold text-zhusha tracking-widest relative inline-block mb-3">
+        五行曆
+        <span class="absolute -bottom-1 left-0 right-0 h-[2px] bg-gold"></span>
+      </h1>
+      <p class="text-base md:text-lg text-earth tracking-wider mt-2">
+        四柱八字生剋曆 ｜ 流日專屬天干地支運勢量測 ｜ 陳民峰‧蜜蜂老師試做
+      </p>
+      <div class="mt-3 text-sm md:text-base text-ink/70 flex flex-wrap justify-center gap-3 items-center" id="realtime-header">
+        <span class="bg-gold/20 px-3 py-1.5 rounded border border-gold/30">
+          <i class="fa-regular fa-clock mr-1"></i>
+          <span id="header-time-str">載入中...</span>
+        </span>
+        <span class="bg-zhusha/10 text-zhusha px-3 py-1.5 rounded border border-zhusha/20 font-bold" id="header-lunar-str">
+          曆法庫連線中...
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主體雙欄排版區 -->
+  <main id="app-main-layout" class="max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 gap-6 lg:gap-0 flex-grow">
+    
+    <!-- 左側欄：個人設定、先天命盤、月曆核心（桌機可拖曳調整寬度） -->
+    <div id="left-pane" class="flex flex-col gap-6 lg:pr-3">
+      
+      <!-- 個人命理設定區：整合個人輸入與先天命局 -->
+      <section id="profile-section" class="collapsible-section bg-white/80 p-5 rounded-lg border border-gold/30 shadow-sm relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-2 h-full bg-zhusha"></div>
+        <h2 class="text-xl font-bold text-zhusha mb-3 flex flex-wrap items-center justify-between gap-2">
+          <span><i class="fa-solid fa-user-gear mr-2"></i>個人專屬開運模組與先天命局</span>
+          <span class="flex flex-wrap items-center gap-2">
+            <span class="text-sm text-earth/80">登錄個人八字（排演專屬運勢）</span>
+            <button type="button" class="collapse-toggle" data-target="profile-section-body" onclick="toggleCollapsibleSection(this)" aria-expanded="true">
+              <i class="fa-solid fa-chevron-down"></i><span>收合</span>
+            </button>
+          </span>
+        </h2>
+        <div id="profile-section-body" class="collapsible-content">
+        
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm text-ink/70 mb-1">姓名 / 雅稱</label>
+            <input type="text" id="user-name" placeholder="例如：玄真子" class="w-full bg-[#FDFBF7] border border-gold/40 rounded px-3 py-2 focus:outline-none focus:border-zhusha text-base">
+          </div>
+          <div>
+            <label class="block text-sm text-ink/70 mb-1">出生日期 (公曆/西元)</label>
+            <input type="date" id="user-birth-date" value="1990-01-01" class="w-full bg-[#FDFBF7] border border-gold/40 rounded px-3 py-2 focus:outline-none focus:border-zhusha text-base">
+          </div>
+          <div>
+            <label class="block text-sm text-ink/70 mb-1">出生時辰</label>
+            <select id="user-birth-hour" class="w-full bg-[#FDFBF7] border border-gold/40 rounded px-3 py-2 focus:outline-none focus:border-zhusha text-base">
+              <option value="0">子時 (23:00-00:59)</option>
+              <option value="1">丑時 (01:00-02:59)</option>
+              <option value="3">寅時 (03:00-04:59)</option>
+              <option value="5">卯時 (05:00-06:59)</option>
+              <option value="7">辰時 (07:00-08:59)</option>
+              <option value="9">巳時 (09:00-10:59)</option>
+              <option value="11">午時 (11:00-12:59)</option>
+              <option value="13">未時 (13:00-14:59)</option>
+              <option value="15">申時 (15:00-16:59)</option>
+              <option value="17">酉時 (17:00-18:59)</option>
+              <option value="19">戌時 (19:00-20:59)</option>
+              <option value="21">亥時 (21:00-22:59)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-gold/20 flex flex-wrap items-center justify-between gap-3">
+          <p class="text-sm text-ink/60 max-w-md leading-relaxed">
+            <i class="fa-solid fa-circle-info mr-1 text-gold"></i>
+            填寫後點選「生成個人命盤」，系統將自動解算您的四柱與先天五行喜忌，隨後即可啟用流日生剋與星級運勢預測！
+            <span id="input-error-msg" class="text-zhusha font-bold block mt-1"></span>
+          </p>
+          <div class="flex gap-2">
+            <button onclick="clearUserProfile()" class="px-4 py-2 bg-earth/10 hover:bg-earth/20 text-earth rounded text-sm transition duration-200">
+              清除設定
+            </button>
+            <button onclick="generateUserProfile()" class="px-5 py-2 bg-zhusha hover:bg-zhusha-dark text-white rounded text-sm font-bold shadow-md hover:shadow-lg transition duration-200">
+              <i class="fa-solid fa-calculator mr-1"></i>生成個人命盤
+            </button>
+          </div>
+        </div>
+
+        <!-- 個人先天四柱與流派切換面板 (預設隱藏，生成後淡入) -->
+        <div id="personal-bazi-section" class="hidden mt-5 bg-white/90 p-5 rounded-lg border-2 border-gold/40 shadow-md relative">
+        <h3 class="text-lg font-bold text-zhusha mb-3 pb-2 border-b border-gold/30 flex items-center justify-between">
+          <span><i class="fa-solid fa-scroll mr-2"></i>【個人先天命局四柱】<span id="user-analysis-dm" class="text-earth font-bold ml-2"></span></span>
+          <!-- 雙流派極致古風切換按鈕 -->
+          <div class="flex bg-gold/15 rounded p-0.5 border border-gold/30 text-sm">
+            <button onclick="switchBaziMode('traditional')" id="btn-mode-traditional" class="px-3 py-1 rounded bg-white text-zhusha font-bold shadow-sm transition">
+              傳統子平法（看原局）
+            </button>
+            <button onclick="switchBaziMode('wuxing')" id="btn-mode-wuxing" class="px-3 py-1 rounded text-ink/70 hover:text-zhusha transition">
+              五行派（看生剋流通）
+            </button>
+          </div>
+        </h3>
+
+        <!-- 四柱古風排盤卡片 -->
+        <div class="grid grid-cols-4 gap-2 text-center mb-4">
+          <div class="bg-paper p-3 rounded border border-gold/20">
+            <div class="text-sm text-ink/50">年柱</div>
+            <div class="text-xl md:text-2xl font-bold text-ink mt-1" id="bazi-year-col">--</div>
+            <div class="text-sm text-gold mt-1" id="bazi-year-rel">--</div>
+          </div>
+          <div class="bg-paper p-3 rounded border border-gold/20">
+            <div class="text-sm text-ink/50">月柱</div>
+            <div class="text-xl md:text-2xl font-bold text-ink mt-1" id="bazi-month-col">--</div>
+            <div class="text-sm text-gold mt-1" id="bazi-month-rel">--</div>
+          </div>
+          <div class="bg-[#F4EFE6]/40 p-3 rounded border-2 border-gold/40 relative">
+            <span class="absolute top-0 right-0 bg-zhusha text-white text-[10px] px-1.5 py-0.5 rounded-bl">日元</span>
+            <div class="text-sm text-zhusha font-bold">日柱</div>
+            <div class="text-xl md:text-2xl font-bold text-zhusha mt-1" id="bazi-day-col">--</div>
+            <div class="text-sm text-gold mt-1" id="bazi-day-rel">--</div>
+          </div>
+          <div class="bg-paper p-3 rounded border border-gold/20">
+            <div class="text-sm text-ink/50">時柱</div>
+            <div class="text-xl md:text-2xl font-bold text-ink mt-1" id="bazi-hour-col">--</div>
+            <div class="text-sm text-gold mt-1" id="bazi-hour-rel">--</div>
+          </div>
+        </div>
+
+        <!-- 模式一：傳統子平法判定面板 -->
+        <div id="panel-traditional-mode" class="text-base space-y-2 text-ink/90">
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span class="font-bold text-earth">先天五行分佈：</span>
+            <!-- 先天五行比率動態徽章容器 -->
+            <span id="user-wuxing-ratios" class="flex flex-wrap gap-1"></span>
+          </div>
+          <div class="pt-2 border-t border-gold/10">
+            <span class="font-bold text-zhusha block mb-1">喜神與忌神：</span>
+            <p id="user-joy-taboo-desc" class="text-sm leading-relaxed bg-[#F4EFE6]/50 p-3 rounded border border-gold/20"></p>
+          </div>
+        </div>
+
+        <!-- 模式二：五行流通生剋面板 -->
+        <div id="panel-wuxing-mode" class="hidden text-base space-y-3 text-ink/90">
+          <!-- 新增：生剋加權比率 -->
+          <div class="flex flex-wrap items-center gap-2 pb-2 border-b border-gold/10">
+            <span class="font-bold text-earth">生剋加權比率：</span>
+            <span id="user-modified-wuxing-ratios" class="flex flex-wrap gap-1"></span>
+          </div>
+
+          <div class="bg-[#F4EFE6]/50 p-3 rounded border border-gold/20 text-sm space-y-1.5">
+            <span class="font-bold text-wood block"><i class="fa-solid fa-diagram-project mr-1"></i>天干流通路徑：</span>
+            <p id="wuxing-sky-flow" class="text-ink/80 pl-5">天干無合衝，純粹流通中...</p>
+            <span class="font-bold text-earth block pt-2"><i class="fa-solid fa-cubes-stacked mr-1"></i>地支流通路徑：</span>
+            <p id="wuxing-ground-flow" class="text-ink/80 pl-5">地支通根互生，静待流通...</p>
+          </div>
+          <div class="pt-1">
+            <span class="font-bold text-zhusha text-sm block mb-1.5">五行派流日預警（今日受傷干支）：</span>
+            <!-- 確保受傷干支預警能確實呈現 -->
+            <p id="wuxing-injured-desc" class="text-sm bg-red-50 text-zhusha/90 p-2.5 rounded border border-red-200/50 min-h-[38px] flex items-center">
+              請登錄命局以推演流日受傷之神。
+            </p>
+          </div>
+        </div>
+        </div>
+        </div>
+      </section>
+
+      <!-- 中國風五行月曆主體 -->
+      <section id="calendar-section" class="collapsible-section bg-white/80 p-5 rounded-lg border border-gold/30 shadow-sm flex-grow flex flex-col animate-fadeIn">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-3 border-b border-gold/20">
+          <h2 class="text-xl font-bold text-zhusha"><i class="fa-solid fa-calendar-days mr-2"></i>五行月曆主體</h2>
+          <button type="button" class="collapse-toggle" data-target="calendar-section-body" onclick="toggleCollapsibleSection(this)" aria-expanded="true">
+            <i class="fa-solid fa-chevron-down"></i><span>收合</span>
+          </button>
+        </div>
+        <div id="calendar-section-body" class="collapsible-content flex-grow flex flex-col">
+        <!-- 月曆操作列 -->
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4 pb-4 border-b border-gold/20">
+          <div class="flex items-center gap-2">
+            <select id="calendar-year-select" onchange="onCalendarYMChange()" class="bg-[#FDFBF7] border border-gold/40 rounded px-3 py-1.5 text-base focus:outline-none focus:border-zhusha"></select>
+            <select id="calendar-month-select" onchange="onCalendarYMChange()" class="bg-[#FDFBF7] border border-gold/40 rounded px-3 py-1.5 text-base focus:outline-none focus:border-zhusha"></select>
+          </div>
+
+          <div class="flex items-center flex-wrap gap-2.5">
+            <!-- 模式切換小下拉框 -->
+            <div class="flex items-center gap-1.5 bg-gold/10 px-3 py-1.5 rounded border border-gold/30 text-sm">
+              <label for="fortune-mode-select" class="text-earth font-bold">模式：</label>
+              <select id="fortune-mode-select" onchange="onFortuneModeChange()" class="bg-transparent font-bold text-zhusha focus:outline-none disabled:opacity-50" disabled>
+                <option value="none">預設 (不顯示)</option>
+                <option value="total">總體運勢</option>
+                <option value="career">事業運</option>
+                <option value="wealth">財運</option>
+                <option value="love">感情運</option>
+              </select>
+            </div>
+
+            <button onclick="showWholeMonthFortune()" id="btn-month-trend" class="px-3 py-1.5 bg-gold/20 hover:bg-gold/30 text-earth text-sm rounded transition font-bold disabled:opacity-40" disabled>整月運勢</button>
+            <button onclick="showWholeYearFortune()" id="btn-year-trend" class="px-3 py-1.5 bg-gold/20 hover:bg-gold/30 text-earth text-sm rounded transition font-bold disabled:opacity-40" disabled>整年運勢</button>
+            <button onclick="jumpToToday()" class="px-3 py-1.5 bg-zhusha text-white text-sm rounded hover:bg-zhusha-dark shadow-sm hover:shadow transition font-bold">回至今日</button>
+          </div>
+        </div>
+
+        <!-- 節氣交節資訊滾動條 -->
+        <div id="jieqi-prompt-bar" class="text-sm text-earth/90 bg-[#F4EFE6]/40 px-4 py-2 rounded border border-gold/20 mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-leaf text-wood animate-pulse"></i>
+          <span id="jieqi-prompt-text">正在推演本月節氣交節時刻...</span>
+        </div>
+
+        <!-- 星期表頭 -->
+        <div class="grid grid-cols-7 gap-1 text-center font-bold text-xs text-earth mb-2">
+          <div class="py-1 bg-red-50/50 rounded text-zhusha">日</div>
+          <div class="py-1 rounded">一</div>
+          <div class="py-1 rounded">二</div>
+          <div class="py-1 rounded">三</div>
+          <div class="py-1 rounded">四</div>
+          <div class="py-1 rounded">五</div>
+          <div class="py-1 bg-red-50/50 rounded text-zhusha">六</div>
+        </div>
+
+        <!-- 月曆日期網格 -->
+        <div id="calendar-days-grid" class="grid grid-cols-7 gap-1.5 flex-grow auto-rows-fr">
+          <!-- JS 動態排版渲染單元格 -->
+        </div>
+        </div>
+      </section>
+
+    </div>
+
+    <div id="column-resizer" class="hidden lg:flex" role="separator" aria-orientation="vertical" aria-label="拖曳調整左右欄寬度" title="拖曳調整左右欄寬度"></div>
+
+    <!-- 右側欄：本日精細能量、藏干、十神與開運批語（桌機可拖曳調整寬度） -->
+    <div id="right-pane" class="flex flex-col gap-6 lg:pl-3">
+      
+      <!-- 本日命理詳解卡片 -->
+      <section id="daily-detail-section" class="collapsible-section bg-white/80 p-5 rounded-lg border border-gold/30 shadow-sm flex flex-col">
+        <h2 class="text-xl font-bold text-zhusha mb-3 pb-2 border-b border-gold/30 flex flex-wrap items-center justify-between gap-2">
+          <span><i class="fa-solid fa-calendar-day mr-2"></i>五行交泰・本日詳解</span>
+          <span class="flex flex-wrap items-center gap-2">
+            <span class="text-sm text-earth animate-pulse" id="selected-solar-date-str">--</span>
+            <button type="button" class="collapse-toggle" data-target="daily-detail-section-body" onclick="toggleCollapsibleSection(this)" aria-expanded="true">
+              <i class="fa-solid fa-chevron-down"></i><span>收合</span>
+            </button>
+          </span>
+        </h2>
+        <div id="daily-detail-section-body" class="collapsible-content flex-grow flex flex-col">
+
+        <!-- 公農曆干支疊加顯示 -->
+        <div class="bg-paper p-4 rounded border border-gold/20 text-center mb-4 relative overflow-hidden">
+          <div class="absolute right-0 bottom-0 text-7xl font-bold text-gold/5 pointer-events-none select-none" id="watermark-animal">卦</div>
+          <div class="text-base text-ink/70" id="selected-lunar-date-str"></div>
+          <div class="text-2xl md:text-3xl font-bold text-zhusha tracking-wider mt-2 animate-pulse" id="selected-gz-str"></div>
+        </div>
+
+        <!-- 三柱比例圖 -->
+        <div class="grid grid-cols-3 gap-2 text-center mb-4">
+          <div class="bg-[#F4EFE6]/30 p-3 rounded border border-gold/10">
+            <span class="text-xs text-ink/50 block">年柱 (10%)</span>
+            <span class="text-3xl font-bold text-ink block mt-1" id="col-year-gz">--</span>
+            <span class="text-sm text-earth/80 block mt-1" id="col-year-elem">--</span>
+          </div>
+          <div class="bg-[#F4EFE6]/30 p-3 rounded border border-gold/10">
+            <span class="text-xs text-ink/50 block">月柱 (50%)</span>
+            <span class="text-3xl font-bold text-ink block mt-1" id="col-month-gz">--</span>
+            <span class="text-sm text-earth/80 block mt-1" id="col-month-elem">--</span>
+          </div>
+          <div class="bg-[#F4EFE6]/40 p-3 rounded border-2 border-gold/30">
+            <span class="text-xs text-zhusha font-bold block">日柱 (100%)</span>
+            <span class="text-3xl font-bold text-zhusha block mt-1" id="col-day-gz">--</span>
+            <span class="text-sm text-zhusha/80 block mt-1" id="col-day-elem">--</span>
+          </div>
+        </div>
+
+        <!-- 地支藏干明細 -->
+        <div class="bg-paper p-4 rounded border border-gold/20 text-sm mb-4">
+          <span class="font-bold text-earth block mb-2"><i class="fa-solid fa-layer-group mr-1"></i>本日地支藏干分佈：</span>
+          <div class="space-y-2 text-ink/80 leading-relaxed" id="selected-canggan-text">
+            點擊月曆日期以取得對應三柱藏干資訊...
+          </div>
+        </div>
+
+        <!-- 專屬流日運勢卡 (未登錄時提示，登錄後顯示) -->
+        <div class="border-t-2 border-dashed border-gold/30 pt-4 flex-grow flex flex-col">
+          <h3 class="text-lg font-bold text-zhusha mb-3 flex items-center justify-between">
+            <span><i class="fa-solid fa-chart-line mr-2"></i>您專屬的「流日運勢感應」</span>
+            <span class="text-sm font-normal text-earth/80">依據命局與流日生剋運算</span>
+          </h3>
+
+          <!-- 未登錄空狀態提示 -->
+          <div id="unregistered-notice-card" class="bg-[#F4EFE6]/40 p-6 rounded-lg border border-gold/20 text-center my-auto flex flex-col items-center justify-center">
+            <i class="fa-solid fa-lock text-4xl text-gold mb-4 animate-bounce"></i>
+            <p class="text-base font-bold text-earth">尚未登錄個人專屬命盤</p>
+            <p class="text-sm text-ink/60 mt-2 max-w-xs leading-relaxed">請於左側輸入您的姓名、出生年月日時，生成個人專屬四柱，以解鎖流日與月曆運勢感應星等！</p>
+          </div>
+
+          <!-- 已登錄運勢感應主板 (預設隱藏) -->
+          <div id="registered-fortune-card" class="hidden space-y-4 flex-grow flex flex-col justify-between">
+            <!-- 雙模式五行比例雷達或進度條切換 -->
+            <div class="bg-[#F4EFE6]/20 p-4 rounded border border-gold/15">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-sm font-bold text-earth">流日交泰五行佔比：</span>
+                <div class="flex gap-1.5 bg-gold/10 p-1 rounded text-xs">
+                  <button onclick="toggleFortuneWuxingMode('initial')" id="btn-fort-wuxing-init" class="px-2 py-1 rounded bg-white text-zhusha font-bold transition">先天五行比重</button>
+                  <button onclick="toggleFortuneWuxingMode('modified')" id="btn-fort-wuxing-modi" class="px-2 py-1 rounded text-ink/70 transition">五行生剋加權</button>
+                </div>
+              </div>
+              <div class="grid grid-cols-5 gap-2 text-center" id="fortune-wuxing-bars">
+                <!-- JS 動態寫入五行進度條 -->
+              </div>
+            </div>
+
+            <!-- 運勢指數與雷達生克大盤 -->
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+              <!-- SVG 圓環運勢分值 -->
+              <div class="sm:col-span-5 flex flex-col items-center justify-center">
+                <span class="text-sm text-ink/60 mb-2">今日專屬運勢指數</span>
+                <div class="relative w-28 h-28">
+                  <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                    <path class="text-gold/10" stroke-width="2.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    <path id="fortune-svg-circle" class="text-zhusha transition-all duration-1000 ease-out" stroke-dasharray="0, 100" stroke-width="2.5" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  </svg>
+                  <div class="absolute inset-0 flex flex-col items-center justify-center">
+                    <span class="text-2xl font-bold text-zhusha" id="fortune-score-text">0%</span>
+                    <span class="text-xs text-earth font-bold mt-0.5" id="fortune-eval-text">待算</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 四大細緻運勢 -->
+              <div class="sm:col-span-7 space-y-2 text-sm">
+                <div class="flex items-center justify-between bg-paper p-2 rounded border border-gold/10">
+                  <span class="text-earth font-bold"><i class="fa-solid fa-coins mr-1 text-yellow-600"></i>今日財運</span>
+                  <span id="stars-wealth" class="text-zhusha font-bold tracking-wider">★★★☆☆</span>
+                </div>
+                <div class="flex items-center justify-between bg-paper p-2 rounded border border-gold/10">
+                  <span class="text-earth font-bold"><i class="fa-solid fa-briefcase mr-1 text-red-700"></i>今日事業</span>
+                  <span id="stars-career" class="text-zhusha font-bold tracking-wider">★★☆☆☆</span>
+                </div>
+                <div class="flex items-center justify-between bg-paper p-2 rounded border border-gold/10">
+                  <span class="text-earth font-bold"><i class="fa-solid fa-heart mr-1 text-pink"></i>今日感情</span>
+                  <span id="stars-love" class="text-zhusha font-bold tracking-wider">★☆☆☆☆</span>
+                </div>
+                <div class="flex items-center justify-between bg-paper p-2 rounded border border-gold/10">
+                  <span class="text-earth font-bold"><i class="fa-solid fa-notes-medical mr-1 text-wood"></i>今日健康</span>
+                  <span id="stars-health" class="text-zhusha font-bold tracking-wider">★★★☆☆</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 開運穿搭與出行 -->
+            <div class="grid grid-cols-2 gap-4 text-sm bg-[#F4EFE6]/40 p-3.5 rounded border border-gold/20">
+              <div>
+                <span class="font-bold text-zhusha block mb-1.5"><i class="fa-solid fa-shirt mr-1"></i>今日開運穿搭：</span>
+                <p id="lucky-colors-text" class="text-ink/80 leading-relaxed">黑、藍、玄青等水屬系</p>
+              </div>
+              <div>
+                <span class="font-bold text-earth block mb-1.5"><i class="fa-solid fa-compass mr-1"></i>今日出行吉位：</span>
+                <p id="lucky-direction-text" class="text-ink/80 leading-relaxed">正北方</p>
+              </div>
+            </div>
+
+            <!-- 玄真大師批語 (動態流日開運心法) -->
+            <div class="bg-paper p-4 rounded border-l-4 border-zhusha border border-gold/20 text-sm">
+              <span class="font-bold text-zhusha block mb-2">
+                <i class="fa-solid fa-feather-pointed mr-1"></i>批語・玄真大師 ｜ 蜜蜂老師 專屬流日命理解析
+              </span>
+              <!-- 核心命理大師智慧，已完美修正，日日連動更新 -->
+              <p id="traditional-remedy-text" class="text-ink/80 leading-relaxed text-justify">
+                天地五行，流轉生克。請先生成您的專屬八字，隨後在此處取得最精準的每日開運與避凶心法指引。
+              </p>
+            </div>
+          </div>
+        </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- 彈出視窗一：整年 24 節氣運勢折線圖 -->
+  <dialog id="modal-year-chart" class="bg-transparent backdrop:bg-ink/60 p-4 max-w-5xl w-full focus:outline-none">
+    <div class="bg-paper p-6 md:p-8 rounded-lg border-2 border-gold shadow-2xl relative max-h-[90vh] overflow-y-auto flex flex-col">
+      <button onclick="closeYearModal()" class="absolute top-4 right-4 text-ink/50 hover:text-zhusha text-2xl"><i class="fa-solid fa-circle-xmark"></i></button>
+      <h3 class="text-3xl font-bold text-zhusha text-center mb-2">24 節氣整年氣運推演圖</h3>
+      <p class="text-center text-sm text-earth/80 mb-6" id="year-modal-subtitle">西元年度 24 節點與本命氣相交之綜合運勢走勢圖</p>
+      
+      <!-- SVG 動態折線圖 -->
+      <div class="w-full bg-white rounded border border-gold/20 p-4 flex justify-center items-center">
+        <svg id="svg-year-line-chart" viewBox="0 0 800 350" class="w-full h-auto text-ink"></svg>
+      </div>
+
+      <!-- 節點解析數據列表 -->
+      <div id="year-table-scroll" class="mt-6 overflow-x-auto">
+        <table class="w-full text-sm text-left border-collapse">
+          <thead>
+            <tr class="bg-gold/10 text-earth border-b border-gold/20">
+              <th class="p-3">節氣</th>
+              <th class="p-3">交節時間 (國曆)</th>
+              <th class="p-3">流月干支</th>
+              <th class="p-3">流月十神</th>
+              <th class="p-3 text-center">綜合運勢分</th>
+              <th class="p-3">玄真氣運批解</th>
+            </tr>
+          </thead>
+          <tbody id="year-table-body" class="divide-y divide-gold/10">
+            <!-- 動態寫入節氣行 -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 彈出視窗二：整月每日運勢折線圖 -->
+  <dialog id="modal-month-chart" class="bg-transparent backdrop:bg-ink/60 p-4 max-w-5xl w-full focus:outline-none">
+    <div class="bg-paper p-6 md:p-8 rounded-lg border-2 border-gold shadow-2xl relative max-h-[90vh] overflow-y-auto flex flex-col">
+      <button onclick="closeMonthModal()" class="absolute top-4 right-4 text-ink/50 hover:text-zhusha text-2xl"><i class="fa-solid fa-circle-xmark"></i></button>
+      <h3 class="text-3xl font-bold text-zhusha text-center mb-2">整月氣運日流轉曲線</h3>
+      <p class="text-center text-sm text-earth/80 mb-6" id="month-modal-subtitle">西元單月每日生克氣運詳細解析走勢圖</p>
+      
+      <!-- SVG 月折線圖 -->
+      <div class="w-full bg-white rounded border border-gold/20 p-4 flex justify-center items-center">
+        <svg id="svg-month-line-chart" viewBox="0 0 800 320" class="w-full h-auto text-ink"></svg>
+      </div>
+
+      <!-- 月數據列表 -->
+      <div id="month-table-scroll" class="mt-6 overflow-y-auto max-h-[35vh]">
+        <table class="w-full text-sm text-left border-collapse">
+          <thead class="sticky top-0 bg-[#F5EFE6] z-10">
+            <tr class="text-earth border-b border-gold/20 bg-[#F5EFE6]">
+              <th class="p-3">日期 (公曆)</th>
+              <th class="p-3">農曆 / 日干支</th>
+              <th class="p-3 text-center">總體</th>
+              <th class="p-3 text-center">事業</th>
+              <th class="p-3 text-center">財運</th>
+              <th class="p-3 text-center">感情</th>
+              <th class="p-3 text-center">幸運色</th>
+              <th class="p-3">當日流星批語</th>
+            </tr>
+          </thead>
+          <tbody id="month-table-body" class="divide-y divide-gold/10">
+            <!-- 動態寫入每日 -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 底部古典資訊欄 -->
+  <footer class="border-t-2 border-gold/30 bg-[#F5EFE6]/30 py-6 text-center text-sm text-earth/80 leading-relaxed mt-8">
+    <div class="max-w-7xl mx-auto px-4">
+      <p class="font-bold">乾坤運轉，天干地支，周而復始 ｜ 子平四柱五行專屬氣運度量儀 © 2026 玄真易道</p>
+      <p class="text-ink/50 mt-1">本工具僅供命理學術交流與傳統民俗文化展示，命運掌握於己，順其自然則安。</p>
+    </div>
+  </footer>
+
+  <!-- ==================== 核心 JavaScript ==================== -->
+  <script>
+    const FIVE_ELEMENT_COLORS = {
+      '木': '#3D5A45', // 蒼木綠
+      '火': '#A62B2B', // 硃砂紅
+      '土': '#7E6B5A', // 沉香褐
+      '金': '#8E9499', // 秋霜金
+      '水': '#2C4A6F'  // 玄青藍
+    };
+
+    const ELEMENTS = {
+      '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土', '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
+      '寅': '木', '卯': '木', '巳': '火', '午': '火', '申': '金', '酉': '金', '亥': '水', '子': '水',
+      '辰': '土', '戌': '土', '丑': '土', '未': '土'
+    };
+
+    const YIN_YANG = {
+      '甲':'陽','丙':'陽','戊':'陽','庚':'陽','壬':'陽',
+      '乙':'陰','丁':'陰','己':'陰','辛':'陰','癸':'陰',
+      '子':'陽','寅':'陽','辰':'陽','午':'陽','申':'陽','戌':'陽',
+      '丑':'陰','卯':'陰','巳':'陰','未':'陰','酉':'陰','亥':'陰'
+    };
+
+    // 地支藏干表（子平正宗比例：本氣、中氣、餘氣）
+    const EARTH_BRANCH_HIDDEN = {
+      '子': [{ stem: '癸', elem: '水', ratio: 100 }],
+      '丑': [{ stem: '己', elem: '土', ratio: 60 }, { stem: '癸', elem: '水', ratio: 30 }, { stem: '辛', elem: '金', ratio: 10 }],
+      '寅': [{ stem: '甲', elem: '木', ratio: 60 }, { stem: '丙', elem: '火', ratio: 30 }, { stem: '戊', elem: '土', ratio: 10 }],
+      '卯': [{ stem: '乙', elem: '木', ratio: 100 }],
+      '辰': [{ stem: '戊', elem: '土', ratio: 60 }, { stem: '乙', elem: '木', ratio: 30 }, { stem: '癸', elem: '水', ratio: 10 }],
+      '巳': [{ stem: '丙', elem: '火', ratio: 60 }, { stem: '庚', elem: '金', ratio: 30 }, { stem: '戊', elem: '土', ratio: 10 }],
+      '午': [{ stem: '丁', elem: '火', ratio: 70 }, { stem: '己', elem: '土', ratio: 30 }],
+      '未': [{ stem: '己', elem: '土', ratio: 60 }, { stem: '丁', elem: '火', ratio: 30 }, { stem: '乙', elem: '木', ratio: 10 }],
+      '申': [{ stem: '庚', elem: '金', ratio: 60 }, { stem: '壬', elem: '水', ratio: 30 }, { stem: '戊', elem: '土', ratio: 10 }],
+      '酉': [{ stem: '辛', elem: '金', ratio: 100 }],
+      '戌': [{ stem: '戊', elem: '土', ratio: 60 }, { stem: '辛', elem: '金', ratio: 30 }, { stem: '丁', elem: '火', ratio: 10 }],
+      '亥': [{ stem: '壬', elem: '水', ratio: 70 }, { stem: '甲', elem: '木', ratio: 30 }]
+    };
+
+    // --- 全域變數定義 ---
+    let currentYear, currentMonth;
+    let selectedDate = new Date();
+    let currentBaziMode = 'traditional'; // 'traditional' | 'wuxing'
+    let currentFortuneWuxingView = 'initial'; // 'initial' | 'modified'
+    let isLunarLoaded = true; // 狀態標記
+
+    // 個人八字基本資料物件
+    let userProfile = {
+      active: false,
+      name: '',
+      gender: '陽',
+      birthDate: null,
+      birthHour: 0,
+      bazi: {
+        year: '', month: '', day: '', hour: ''
+      },
+      dayMaster: '', // 日干
+      isStrong: false, // 身強 or 身弱
+      favorableElements: [], // 喜神
+      unfavorableElements: [], // 忌神
+      initialWuxing: {}, // 先天五行比重
+      modifiedWuxing: {} // 生克後五行比重
+    };
+
+    // --- 初始化執行 ---
+    window.onload = function() {
+      const today = new Date();
+      currentYear = today.getFullYear();
+      currentMonth = today.getMonth() + 1;
+
+      // 初始化下拉選單
+      populateSelects();
+      initResizableColumns();
+      
+      // 更新時鐘與連線偵測
+      updateClock();
+      setInterval(updateClock, 1000);
+
+      if (isLunarLoaded) {
+        // 載入預設的日曆與本日詳解
+        onCalendarYMChange();
+        selectCalendarDate(today.getFullYear(), today.getMonth() + 1, today.getDate());
+      }
+    };
+
+    function initResizableColumns() {
+      const layout = document.getElementById('app-main-layout');
+      const resizer = document.getElementById('column-resizer');
+      if (!layout || !resizer) return;
+
+      let dragging = false;
+
+      const setWidthFromClientX = (clientX) => {
+        const rect = layout.getBoundingClientRect();
+        const rawPercent = ((clientX - rect.left) / rect.width) * 100;
+        const nextPercent = Math.min(72, Math.max(38, rawPercent));
+        layout.style.setProperty('--left-pane-width', `${nextPercent.toFixed(1)}%`);
+      };
+
+      resizer.addEventListener('pointerdown', (event) => {
+        if (window.innerWidth < 1024) return;
+        dragging = true;
+        document.body.classList.add('is-resizing-columns');
+        resizer.setPointerCapture?.(event.pointerId);
+        setWidthFromClientX(event.clientX);
+      });
+
+      window.addEventListener('pointermove', (event) => {
+        if (!dragging) return;
+        setWidthFromClientX(event.clientX);
+      });
+
+      window.addEventListener('pointerup', () => {
+        dragging = false;
+        document.body.classList.remove('is-resizing-columns');
+      });
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const yearStr = now.getFullYear();
+      const monthStr = String(now.getMonth() + 1).padStart(2, '0');
+      const dayStr = String(now.getDate()).padStart(2, '0');
+      const hourStr = String(now.getHours()).padStart(2, '0');
+      const minStr = String(now.getMinutes()).padStart(2, '0');
+      const secStr = String(now.getSeconds()).padStart(2, '0');
+      
+      const timeContainer = document.getElementById('header-time-str');
+      if (timeContainer) {
+        timeContainer.innerText = `${yearStr}年${monthStr}月${dayStr}日 ${hourStr}:${minStr}:${secStr}`;
+      }
+      
+      // 離線防呆：偵測 Solar 物件是否存在 (若斷網則 CDN 載入失敗)
+      if (typeof Solar === 'undefined' || typeof Lunar === 'undefined') {
+        isLunarLoaded = false;
+        const offlineWarn = document.getElementById('offline-warning');
+        const headerLunar = document.getElementById('header-lunar-str');
+        if (offlineWarn) offlineWarn.classList.remove('hidden');
+        if (headerLunar) headerLunar.innerHTML = "<span class='text-red-600'>⚠️ 曆法庫離線，無法推衍</span>";
+        return; // 中止後續所有曆法運算
+      }
+
+      // 計算實時農曆干支 (採用最底層的 Null-Safe 直接讀取法，絕不崩潰)
+      try {
+        const solar = Solar.fromDate(now);
+        const lunar = solar.getLunar();
+        // 直接從 lunar 讀取干支，規避 EightChar 轉換錯誤風險
+        const yGz = lunar.getYearInGanZhiExact() || lunar.getYearInGanZhi() || '未知';
+        const mGz = lunar.getMonthInGanZhiExact() || lunar.getMonthInGanZhi() || '未知';
+        const dGz = lunar.getDayInGanZhiExact() || lunar.getDayInGanZhi() || '未知';
+        const sx = lunar.getShengXiao() || '未知';
+
+        const headerLunar = document.getElementById('header-lunar-str');
+        if (headerLunar) {
+          headerLunar.innerText = `農曆 ${yGz}年(${sx}) ｜ ${mGz}月 ｜ ${dGz}日`;
+        }
+      } catch (e) {
+        console.error("即時農曆更新異常:", e);
+      }
+    }
+
+    function populateSelects() {
+      const yrSel = document.getElementById('calendar-year-select');
+      const mthSel = document.getElementById('calendar-month-select');
+      if (!yrSel || !mthSel) return;
+      
+      yrSel.innerHTML = '';
+      mthSel.innerHTML = '';
+      
+      for (let y = 1900; y <= 2100; y++) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.innerText = `${y} 年`;
+        if (y === currentYear) opt.selected = true;
+        yrSel.appendChild(opt);
+      }
+      for (let m = 1; m <= 12; m++) {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.innerText = `${m} 月`;
+        if (m === currentMonth) opt.selected = true;
+        mthSel.appendChild(opt);
+      }
+    }
+
+    function jumpToToday() {
+      if (!isLunarLoaded) return;
+      const today = new Date();
+      currentYear = today.getFullYear();
+      currentMonth = today.getMonth() + 1;
+      
+      const yrSel = document.getElementById('calendar-year-select');
+      const mthSel = document.getElementById('calendar-month-select');
+      if (yrSel) yrSel.value = currentYear;
+      if (mthSel) mthSel.value = currentMonth;
+      
+      onCalendarYMChange();
+      selectCalendarDate(currentYear, currentMonth, today.getDate());
+    }
+
+    // --- 月曆干支與氣節計算 (精準二十四節氣) ---
+    function onCalendarYMChange() {
+      if (!isLunarLoaded) return;
+      const yrSel = document.getElementById('calendar-year-select');
+      const mthSel = document.getElementById('calendar-month-select');
+      if (yrSel && mthSel) {
+        currentYear = parseInt(yrSel.value);
+        currentMonth = parseInt(mthSel.value);
+      }
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      if (!isLunarLoaded) return;
+      const grid = document.getElementById('calendar-days-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      // 解析目前年份月份的公曆與節氣
+      const firstDay = new Date(currentYear, currentMonth - 1, 1);
+      const startDayOfWeek = firstDay.getDay(); // 0(日) 到 6(六)
+      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+      
+      // 計算前一個月的尾巴天數
+      const prevMonthDays = new Date(currentYear, currentMonth - 1, 0).getDate();
+
+      // 先天節氣提示語 (採用 Null-Safe 保護)
+      try {
+        let promptText = "";
+        const solarFirst = Solar.fromYmd(currentYear, currentMonth, 1);
+        const lunarFirst = solarFirst.getLunar();
+        const monthGzFirst = lunarFirst.getMonthInGanZhiExact() || lunarFirst.getMonthInGanZhi() || '未知';
+
+        const solarEnd = Solar.fromYmd(currentYear, currentMonth, daysInMonth);
+        const lunarEnd = solarEnd.getLunar();
+        const monthGzEnd = lunarEnd.getMonthInGanZhiExact() || lunarEnd.getMonthInGanZhi() || '未知';
+
+        if (monthGzFirst !== monthGzEnd) {
+          // 找出中間是哪天節氣切換的
+          let transitionDay = 1;
+          for (let d = 2; d <= daysInMonth; d++) {
+            const s = Solar.fromYmd(currentYear, currentMonth, d);
+            const mGz = s.getLunar().getMonthInGanZhiExact() || s.getLunar().getMonthInGanZhi();
+            if (mGz === monthGzEnd) {
+              transitionDay = d;
+              break;
+            }
+          }
+          const transSolar = Solar.fromYmd(currentYear, currentMonth, transitionDay);
+          const transJie = transSolar.getLunar().getJieQi();
+          promptText = `本月經歷干支月交替：將在 ${transitionDay}日（${transJie || '節氣'}）完成交節，由 ${monthGzFirst}月 切換為 ${monthGzEnd}月。`;
+        } else {
+          promptText = `本月氣場平穩，完全隸屬於：${monthGzFirst}月氣運主導。`;
+        }
+        const promptBar = document.getElementById('jieqi-prompt-text');
+        if (promptBar) promptBar.innerText = promptText;
+      } catch (err) {
+        console.error("節氣推演防護攔截:", err);
+        const promptBar = document.getElementById('jieqi-prompt-text');
+        if (promptBar) promptBar.innerText = "本月經歷節氣更替，點擊單元格查看詳細氣息。";
+      }
+
+      // 1. 繪製上個月尾部
+      for (let i = startDayOfWeek - 1; i >= 0; i--) {
+        const d = prevMonthDays - i;
+        const tempDate = new Date(currentYear, currentMonth - 2, d);
+        const cell = createDayCell(tempDate, false);
+        grid.appendChild(cell);
+      }
+
+      // 2. 繪製本月天數
+      for (let d = 1; d <= daysInMonth; d++) {
+        const tempDate = new Date(currentYear, currentMonth - 1, d);
+        const cell = createDayCell(tempDate, true);
+        grid.appendChild(cell);
+      }
+
+      // 3. 繪製下個月開頭
+      const totalCells = startDayOfWeek + daysInMonth;
+      const nextMonthCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+      for (let d = 1; d <= nextMonthCells; d++) {
+        const tempDate = new Date(currentYear, currentMonth, d);
+        const cell = createDayCell(tempDate, false);
+        grid.appendChild(cell);
+      }
+    }
+
+    // 建立日曆單元格元件，優化跨平台適應性、星等五角星顯示
+    function createDayCell(date, isCurrentMonth) {
+      const cell = document.createElement('div');
+      
+      const yr = date.getFullYear();
+      const mth = date.getMonth() + 1;
+      const dy = date.getDate();
+
+      // 計算該日干支與節氣 (Null-Safe 守護)
+      let dayGz = '未知', lunarDayName = '--', jieqi = '';
+      if (isLunarLoaded) {
+        try {
+          const solar = Solar.fromYmd(yr, mth, dy);
+          const lunar = solar.getLunar();
+          dayGz = lunar.getDayInGanZhiExact() || lunar.getDayInGanZhi() || '未知';
+          lunarDayName = lunar.getDayInChinese() || '--';
+          jieqi = lunar.getJieQi(); // 當天是否恰逢節氣
+        } catch (e) {
+          console.error("單日渲染異常保護", e);
+        }
+      }
+
+      // 判斷是否為「今天」與「選中日」
+      const today = new Date();
+      const isToday = (yr === today.getFullYear() && mth === today.getMonth() + 1 && dy === today.getDate());
+      const isSelected = (yr === selectedDate.getFullYear() && mth === selectedDate.getMonth() + 1 && dy === selectedDate.getDate());
+
+      // 調整格子高度適應放大的字體
+      cell.className = `paper-texture min-h-[90px] p-2 border border-gold/15 flex flex-col justify-between transition-all duration-150 cursor-pointer text-left relative`;
+      
+      if (!isCurrentMonth) {
+        cell.classList.add('opacity-40');
+      }
+
+      // 選中與今日樣式
+      if (isSelected) {
+        cell.className += ` ring-2 ring-zhusha border-zhusha/80 z-10 shadow-md`;
+      } else if (isToday) {
+        cell.className += ` border-2 border-gold/80 bg-gold/5 z-10`;
+      }
+
+      // 最上方：公曆日期、干支與農曆 (尺寸已優化放大)
+      const topDiv = document.createElement('div');
+      topDiv.className = `flex flex-wrap items-center justify-between gap-1 text-xs text-ink/70 w-full`;
+      
+      // 公曆與節氣提示 (+4級)
+      const dayLabel = document.createElement('span');
+      dayLabel.className = `font-bold text-lg md:text-xl`;
+      dayLabel.innerText = dy;
+      if (jieqi) {
+        const jieBadge = document.createElement('span');
+        jieBadge.className = `ml-1 bg-wood text-white text-[10px] px-1 py-0.5 rounded align-middle`;
+        jieBadge.innerText = jieqi;
+        dayLabel.appendChild(jieBadge);
+      }
+      topDiv.appendChild(dayLabel);
+
+      // 容器：農曆與天干地支 (+2級)
+      const rightMetaDiv = document.createElement('div');
+      rightMetaDiv.className = `flex flex-col items-end text-right`;
+
+      // 天干地支
+      const gzLabel = document.createElement('span');
+      gzLabel.className = `text-xs md:text-sm text-earth font-bold`;
+      gzLabel.innerText = dayGz;
+      rightMetaDiv.appendChild(gzLabel);
+
+      // 農曆
+      const lunarLabel = document.createElement('span');
+      lunarLabel.className = `text-[10px] md:text-xs opacity-80`;
+      lunarLabel.innerText = lunarDayName;
+      rightMetaDiv.appendChild(lunarLabel);
+
+      topDiv.appendChild(rightMetaDiv);
+      cell.appendChild(topDiv);
+
+      // 中間空間：預留給星星或動態調色字體
+      const midDiv = document.createElement('div');
+      midDiv.className = `flex-grow flex flex-col justify-end mt-1`;
+
+      // 判定並套用不同的流日運勢「字體顏色與星等」
+      if (userProfile.active && isLunarLoaded) {
+        const modeSel = document.getElementById('fortune-mode-select');
+        const mode = modeSel ? modeSel.value : 'none';
+        
+        if (mode && mode !== 'none') {
+          const score = calcFortuneScoreForDate(date, mode);
+          const starsHtml = getStarsString(score);
+
+          const starsSpan = document.createElement('span');
+          // 星星也跟著放大
+          starsSpan.className = `text-sm md:text-lg tracking-tighter mt-1 font-bold inline-block block text-center`;
+          starsSpan.innerHTML = starsHtml;
+
+          if (mode === 'total') {
+            cell.classList.add('font-bold');
+            starsSpan.className += ' text-ink';
+          } else if (mode === 'career') {
+            cell.classList.add('text-zhusha');
+            starsSpan.className += ' text-zhusha';
+          } else if (mode === 'wealth') {
+            cell.classList.add('text-earth');
+            starsSpan.className += ' text-earth';
+          } else if (mode === 'love') {
+            cell.classList.add('text-pink');
+            starsSpan.className += ' text-pink';
+          }
+
+          midDiv.appendChild(starsSpan);
+        }
+      }
+
+      cell.appendChild(midDiv);
+
+      // 綁定點擊事件
+      cell.onclick = function() {
+        selectCalendarDate(yr, mth, dy);
+      };
+
+      return cell;
+    }
+
+    // 生成滿星/半星 HTML（四捨五入算法，保證極限五星：★=20分，☆=10分）
+    function getStarsString(score) {
+      const roundedScore = Math.round(score / 10) * 10;
+      const totalStars = roundedScore / 20;
+      let starsStr = '';
+      let fullStars = Math.floor(totalStars);
+      let halfStar = (totalStars % 1 >= 0.5) ? 1 : 0;
+      
+      if (fullStars > 5) { fullStars = 5; halfStar = 0; }
+      if (fullStars === 5) halfStar = 0;
+
+      for (let i = 0; i < fullStars; i++) {
+        starsStr += '★';
+      }
+      if (halfStar) {
+        starsStr += '☆';
+      }
+      return starsStr;
+    }
+
+    // 選定日期處理 (動態觸發連動更新)
+    function selectCalendarDate(y, m, d) {
+      if (!isLunarLoaded) return;
+      selectedDate = new Date(y, m - 1, d);
+      
+      renderCalendar();
+      updateDetailView();
+    }
+
+    // --- 正統八字學術計算演算法 ---
+
+    function getElementOfChar(char) {
+      if (!char) return '土';
+      return ELEMENTS[char] || '土';
+    }
+
+    function calculateAdvancedWuxing(yearGz, monthGz, dayGz, hourGz) {
+      const initial = { '木': 0, '火': 0, '土': 0, '金': 0, '水': 0 };
+      
+      const yGz = yearGz || '甲子';
+      const mGz = monthGz || '甲子';
+      const dGz = dayGz || '甲子';
+      const hGz = hourGz || '甲子';
+
+      const weights = {
+        'yearStem': 8,   'yearBranch': 10,
+        'monthStem': 12,  'monthBranch': 35, // 核心月令
+        'dayStem': 15,   'dayBranch': 12,
+        'hourStem': 4,    'hourBranch': 4
+      };
+
+      initial[getElementOfChar(yGz[0])] += weights.yearStem;
+      initial[getElementOfChar(mGz[0])] += weights.monthStem;
+      initial[getElementOfChar(dGz[0])] += weights.dayStem;
+      initial[getElementOfChar(hGz[0])] += weights.hourStem;
+
+      const branchMapping = [
+        { br: yGz[1] || '子', wt: weights.yearBranch },
+        { br: mGz[1] || '子', wt: weights.monthBranch },
+        { br: dGz[1] || '子', wt: weights.dayBranch },
+        { br: hGz[1] || '子', wt: weights.hourBranch }
+      ];
+
+      branchMapping.forEach(item => {
+        const hiddenArr = EARTH_BRANCH_HIDDEN[item.br] || [];
+        hiddenArr.forEach(h => {
+          const partWt = item.wt * (h.ratio / 100);
+          initial[h.elem || '土'] += partWt;
+        });
+      });
+
+      const sumInit = Object.values(initial).reduce((a, b) => a + b, 0) || 1;
+      const initialRatios = {};
+      for (let k in initial) {
+        initialRatios[k] = parseFloat(((initial[k] / sumInit) * 100).toFixed(1));
+      }
+
+      // 後天五行相生剋流通演算法
+      const modified = { ...initial };
+
+      const flow = ['木', '火', '土', '金', '水'];
+      const generatedAdditions = { '木': 0, '火': 0, '土': 0, '金': 0, '水': 0 };
+      for (let i = 0; i < 5; i++) {
+        const self = flow[i];
+        const next = flow[(i + 1) % 5];
+        const give = initial[self] * 0.25;
+        modified[self] -= give;
+        generatedAdditions[next] += give;
+      }
+      for (let k in modified) {
+        modified[k] += generatedAdditions[k];
+      }
+
+      const clashLoss = { '木': 0, '火': 0, '土': 0, '金': 0, '水': 0 };
+      for (let i = 0; i < 5; i++) {
+        const self = flow[i];
+        const target = flow[(i + 2) % 5];
+        clashLoss[self] += modified[self] * 0.10;
+        clashLoss[target] += modified[self] * 0.30;
+      }
+      for (let k in modified) {
+        modified[k] = Math.max(0, modified[k] - clashLoss[k]);
+      }
+
+      const sumMod = Object.values(modified).reduce((a, b) => a + b, 0) || 1;
+      const modifiedRatios = {};
+      for (let k in modified) {
+        modifiedRatios[k] = parseFloat(((modified[k] / sumMod) * 100).toFixed(1));
+      }
+
+      return { initialRatios, modifiedRatios };
+    }
+
+    function evaluateDayMasterStrength(bazi, dm) {
+      const dmElem = getElementOfChar(dm);
+      let score = 0;
+
+      const mGz = bazi.month || '甲子';
+      const dGz = bazi.day || '甲子';
+      const hGz = bazi.hour || '甲子';
+      const yGz = bazi.year || '甲子';
+
+      const monthBranch = mGz[1] || '子';
+      const monthBranchHiddens = EARTH_BRANCH_HIDDEN[monthBranch] || [];
+      const monthPrimaryHidden = monthBranchHiddens[0]?.elem; 
+      if (monthPrimaryHidden === dmElem) {
+        score += 45; 
+      } else if (isGenerated(monthPrimaryHidden, dmElem)) {
+        score += 35; 
+      }
+
+      const otherBranches = [dGz[1] || '子', hGz[1] || '子', yGz[1] || '子'];
+      otherBranches.forEach(br => {
+        const hiddens = EARTH_BRANCH_HIDDEN[br] || [];
+        hiddens.forEach(h => {
+          if (h.elem === dmElem && h.ratio >= 60) score += 15;
+          else if (h.elem === dmElem) score += 5;
+        });
+      });
+
+      const otherStems = [yGz[0] || '甲', mGz[0] || '甲', hGz[0] || '甲'];
+      otherStems.forEach(st => {
+        const stElem = getElementOfChar(st);
+        if (stElem === dmElem) score += 10;
+        else if (isGenerated(stElem, dmElem)) score += 8;
+      });
+
+      const isStrong = score >= 50;
+      
+      const joy = [];
+      const taboo = [];
+      const wuxingKeys = ['木', '火', '土', '金', '水'];
+
+      wuxingKeys.forEach(w => {
+        if (w === dmElem || isGenerated(w, dmElem)) {
+          isStrong ? taboo.push(w) : joy.push(w);
+        } else {
+          isStrong ? joy.push(w) : taboo.push(w);
+        }
+      });
+
+      return { isStrong, joy, taboo };
+    }
+
+    function isGenerated(source, target) {
+      if (source === '水' && target === '木') return true;
+      if (source === '木' && target === '火') return true;
+      if (source === '火' && target === '土') return true;
+      if (source === '土' && target === '金') return true;
+      if (source === '金' && target === '水') return true;
+      return false;
+    }
+
+    // --- 登錄個人命盤功能 ---
+    function generateUserProfile() {
+      if (!isLunarLoaded) {
+        const errMsg = document.getElementById('input-error-msg');
+        if (errMsg) errMsg.innerText = " ⚠️ 曆法庫未載入，請確認網路連線！";
+        return;
+      }
+      const name = document.getElementById('user-name').value.trim() || '雅士';
+      const birthDateStr = document.getElementById('user-birth-date').value;
+      const birthHourVal = parseInt(document.getElementById('user-birth-hour').value);
+      const errMsg = document.getElementById('input-error-msg');
+      if (!errMsg) return;
+
+      errMsg.innerText = "";
+
+      if (!birthDateStr) {
+        errMsg.innerText = " ⚠️ 請選擇出生日期！";
+        return;
+      }
+
+      try {
+        const birthDate = new Date(birthDateStr);
+        const solar = Solar.fromYmdHms(birthDate.getFullYear(), birthDate.getMonth() + 1, birthDate.getDate(), birthHourVal, 30, 0);
+        const lunar = solar.getLunar();
+
+        userProfile.active = true;
+        userProfile.name = name;
+        userProfile.birthDate = birthDate;
+        userProfile.birthHour = birthHourVal;
+        
+        // 絕對安全的讀取方式
+        userProfile.bazi.year = lunar.getYearInGanZhiExact() || lunar.getYearInGanZhi() || '甲子';
+        userProfile.bazi.month = lunar.getMonthInGanZhiExact() || lunar.getMonthInGanZhi() || '甲子';
+        userProfile.bazi.day = lunar.getDayInGanZhiExact() || lunar.getDayInGanZhi() || '甲子';
+        userProfile.bazi.hour = lunar.getTimeInGanZhi() || '甲子'; 
+
+        userProfile.dayMaster = userProfile.bazi.day[0] || '甲'; 
+
+        const wuxingData = calculateAdvancedWuxing(
+          userProfile.bazi.year, userProfile.bazi.month, userProfile.bazi.day, userProfile.bazi.hour
+        );
+        userProfile.initialWuxing = wuxingData.initialRatios;
+        userProfile.modifiedWuxing = wuxingData.modifiedRatios;
+
+        const strengthData = evaluateDayMasterStrength(
+          { year: userProfile.bazi.year, month: userProfile.bazi.month, day: userProfile.bazi.day, hour: userProfile.bazi.hour },
+          userProfile.dayMaster
+        );
+        userProfile.isStrong = strengthData.isStrong;
+        userProfile.favorableElements = strengthData.joy;
+        userProfile.unfavorableElements = strengthData.taboo;
+
+        document.getElementById('personal-bazi-section').classList.remove('hidden');
+        document.getElementById('unregistered-notice-card').classList.add('hidden');
+        document.getElementById('registered-fortune-card').classList.remove('hidden');
+
+        document.getElementById('fortune-mode-select').disabled = false;
+        document.getElementById('btn-month-trend').disabled = false;
+        document.getElementById('btn-year-trend').disabled = false;
+
+        renderPersonalBaziPanel();
+        
+        // 刷新日曆與詳細面板
+        renderCalendar();
+        updateDetailView();
+
+      } catch (err) {
+        errMsg.innerText = " ⚠️ 曆法推算發生防呆降級，已採用預設干支運算。";
+        console.error("生成命盤異常:", err);
+      }
+    }
+
+    function clearUserProfile() {
+      userProfile.active = false;
+      document.getElementById('personal-bazi-section').classList.add('hidden');
+      document.getElementById('unregistered-notice-card').classList.remove('hidden');
+      document.getElementById('registered-fortune-card').classList.add('hidden');
+      
+      const modeSel = document.getElementById('fortune-mode-select');
+      if (modeSel) {
+        modeSel.value = 'none';
+        modeSel.disabled = true;
+      }
+      const bm = document.getElementById('btn-month-trend');
+      const by = document.getElementById('btn-year-trend');
+      if (bm) bm.disabled = true;
+      if (by) by.disabled = true;
+
+      document.getElementById('user-name').value = '';
+      document.getElementById('user-birth-date').value = '1990-01-01';
+      document.getElementById('input-error-msg').innerText = '';
+
+      renderCalendar();
+      updateDetailView();
+    }
+
+    function renderPersonalBaziPanel() {
+      const userAnalysisDm = document.getElementById('user-analysis-dm');
+      if (userAnalysisDm) {
+        userAnalysisDm.innerText = `日主：${userProfile.dayMaster}${getElementOfChar(userProfile.dayMaster)}（${YIN_YANG[userProfile.dayMaster] || '陽'}）`;
+      }
+      
+      document.getElementById('bazi-year-col').innerText = userProfile.bazi.year;
+      document.getElementById('bazi-month-col').innerText = userProfile.bazi.month;
+      document.getElementById('bazi-day-col').innerText = userProfile.bazi.day;
+      document.getElementById('bazi-hour-col').innerText = userProfile.bazi.hour;
+
+      document.getElementById('bazi-year-rel').innerText = getTenGod(userProfile.dayMaster, userProfile.bazi.year[0]);
+      document.getElementById('bazi-month-rel').innerText = getTenGod(userProfile.dayMaster, userProfile.bazi.month[0]);
+      document.getElementById('bazi-day-rel').innerText = '日主';
+      document.getElementById('bazi-hour-rel').innerText = getTenGod(userProfile.dayMaster, userProfile.bazi.hour[0]);
+
+      // 先天五行分佈：依五行顏色淡雅上色
+      const parentRatios = document.getElementById('user-wuxing-ratios');
+      if (parentRatios) {
+        parentRatios.innerHTML = '';
+        Object.entries(userProfile.initialWuxing).forEach(([k, v]) => {
+          const span = document.createElement('span');
+          span.className = `px-3 py-1 rounded text-sm font-bold mr-1 inline-block`;
+          
+          let bgStyle = '';
+          if (k === '木') bgStyle = 'background-color: rgba(61, 90, 69, 0.12); color: #3D5A45;';
+          else if (k === '火') bgStyle = 'background-color: rgba(166, 43, 43, 0.12); color: #A62B2B;';
+          else if (k === '土') bgStyle = 'background-color: rgba(126, 107, 90, 0.18); color: #7E6B5A;';
+          else if (k === '金') bgStyle = 'background-color: rgba(142, 148, 153, 0.18); color: #5C6266;';
+          else if (k === '水') bgStyle = 'background-color: rgba(44, 74, 111, 0.12); color: #2C4A6F;';
+          
+          span.setAttribute('style', bgStyle);
+          span.innerText = `${k}: ${v}%`;
+          parentRatios.appendChild(span);
+        });
+      }
+
+      // 生剋加權後的五行分佈 (新增於五行派面板)
+      const parentModRatios = document.getElementById('user-modified-wuxing-ratios');
+      if (parentModRatios) {
+        parentModRatios.innerHTML = '';
+        Object.entries(userProfile.modifiedWuxing).forEach(([k, v]) => {
+          const span = document.createElement('span');
+          span.className = `px-3 py-1 rounded text-sm font-bold mr-1 inline-block border border-gold/20 shadow-sm`;
+          
+          let bgStyle = '';
+          if (k === '木') bgStyle = 'background-color: rgba(61, 90, 69, 0.15); color: #3D5A45;';
+          else if (k === '火') bgStyle = 'background-color: rgba(166, 43, 43, 0.15); color: #A62B2B;';
+          else if (k === '土') bgStyle = 'background-color: rgba(126, 107, 90, 0.22); color: #7E6B5A;';
+          else if (k === '金') bgStyle = 'background-color: rgba(142, 148, 153, 0.22); color: #5C6266;';
+          else if (k === '水') bgStyle = 'background-color: rgba(44, 74, 111, 0.15); color: #2C4A6F;';
+          
+          span.setAttribute('style', bgStyle);
+          span.innerText = `${k}: ${v}%`;
+          parentModRatios.appendChild(span);
+        });
+      }
+
+      const strengthText = userProfile.isStrong ? '身強' : '身弱';
+      const joyStr = userProfile.favorableElements.join('、');
+      const tabooStr = userProfile.unfavorableElements.join('、');
+      document.getElementById('user-joy-taboo-desc').innerHTML = `原局判定為「<span class="text-zhusha font-bold">${strengthText}</span>」。<br>本命<span class="text-wood font-bold">喜神為：${joyStr}</span>；<span class="text-red-700 font-bold">忌神為：${tabooStr}</span>。`;
+
+      runWuxingFlowSimulation();
+    }
+
+    function switchBaziMode(mode) {
+      currentBaziMode = mode;
+      const btnTrad = document.getElementById('btn-mode-traditional');
+      const btnWux = document.getElementById('btn-mode-wuxing');
+      const panelTrad = document.getElementById('panel-traditional-mode');
+      const panelWux = document.getElementById('panel-wuxing-mode');
+
+      if (mode === 'traditional') {
+        if (btnTrad) btnTrad.className = "px-3 py-1 rounded bg-white text-zhusha font-bold shadow-sm transition";
+        if (btnWux) btnWux.className = "px-3 py-1 rounded text-ink/70 hover:text-zhusha transition";
+        if (panelTrad) panelTrad.classList.remove('hidden');
+        if (panelWux) panelWux.classList.add('hidden');
+      } else {
+        if (btnWux) btnWux.className = "px-3 py-1 rounded bg-white text-zhusha font-bold shadow-sm transition";
+        if (btnTrad) btnTrad.className = "px-3 py-1 rounded text-ink/70 hover:text-zhusha transition";
+        if (panelWux) panelWux.classList.remove('hidden');
+        if (panelTrad) panelTrad.classList.add('hidden');
+      }
+    }
+
+    function runWuxingFlowSimulation() {
+      const stems = [userProfile.bazi.year[0], userProfile.bazi.month[0], userProfile.bazi.day[0], userProfile.bazi.hour[0]];
+      const branches = [userProfile.bazi.year[1], userProfile.bazi.month[1], userProfile.bazi.day[1], userProfile.bazi.hour[1]];
+
+      let skyPath = stems.map(s => `${s}(${getElementOfChar(s)})`).join(' → ');
+      document.getElementById('wuxing-sky-flow').innerText = skyPath + ` ｜ 天干流通：得印星相生，氣流至日主。`;
+
+      let groundPath = branches.map(b => `${b}(${getElementOfChar(b)})`).join(' → ');
+      document.getElementById('wuxing-ground-flow').innerText = groundPath + ` ｜ 地支流通：地支通根互生，静待流通...`;
+    }
+
+    // 嚴格修正的受傷干支預警
+    function getInjuredStemsForDate(solarDate) {
+      if (!userProfile.active || !isLunarLoaded) return "請先登錄專屬命盤。";
+      try {
+        const lunar = Solar.fromDate(solarDate).getLunar();
+        const flowGz = lunar.getDayInGanZhiExact() || lunar.getDayInGanZhi() || '甲子';
+        const flowStem = flowGz[0] || '甲';
+        const flowBranch = flowGz[1] || '子';
+
+        const flowStemElem = getElementOfChar(flowStem);
+        const dm = userProfile.dayMaster || '甲';
+        const dmElem = getElementOfChar(dm);
+
+        const injured = [];
+
+        // 1. 天干相克 (流日克日主)
+        if (
+          (flowStemElem === '金' && dmElem === '木') ||
+          (flowStemElem === '火' && dmElem === '金') ||
+          (flowStemElem === '水' && dmElem === '火') ||
+          (flowStemElem === '土' && dmElem === '水') ||
+          (flowStemElem === '木' && dmElem === '土')
+        ) {
+          injured.push(`日主「${dm}」受流日「${flowStem}」剋制`);
+        }
+
+        // 2. 地支六沖
+        const pillars = [
+          { name: '年支', val: userProfile.bazi.year[1] },
+          { name: '月支', val: userProfile.bazi.month[1] },
+          { name: '日支', val: userProfile.bazi.day[1] },
+          { name: '時支', val: userProfile.bazi.hour[1] }
+        ];
+
+        pillars.forEach(p => {
+          if (!p.val) return;
+          const pair = [flowBranch, p.val].sort().join('');
+          const clashes = ['子午', '丑未', '寅申', '卯酉', '辰戌', '巳亥'];
+          if (clashes.includes(pair)) {
+            injured.push(`${p.name}「${p.val}」與流日「${flowBranch}」相沖`);
+          }
+        });
+
+        if (injured.length === 0) {
+          return `今日「${flowStem}${flowBranch}」五行順暢，原局無沖剋受傷。`;
+        }
+        return injured.join(' ｜ ');
+      } catch (e) {
+        console.error("受傷解析降級:", e);
+        return "解析安全降級保護中...";
+      }
+    }
+
+    function calcFortuneScoreForGanZhi(flowGz, mode) {
+      if (!userProfile.active || !flowGz) return 60;
+      try {
+        const flowStem = flowGz[0] || '甲';
+        const flowBranch = flowGz[1] || '子';
+        
+        const flowStemElem = getElementOfChar(flowStem);
+        const flowBranchElem = getElementOfChar(flowBranch);
+        const dm = userProfile.dayMaster;
+
+        let base = 70;
+        const tenGod = getTenGod(dm, flowStem);
+        
+        const isStemJoy = userProfile.favorableElements.includes(flowStemElem);
+        const isBranchJoy = userProfile.favorableElements.includes(flowBranchElem);
+
+        if (isStemJoy) base += 12; else base -= 12;
+        if (isBranchJoy) base += 8; else base -= 8;
+
+        if (mode === 'wealth') {
+          if (tenGod.includes('財')) base += 15;
+          if (tenGod.includes('食') || tenGod.includes('傷')) base += 8; 
+          if (tenGod.includes('比') || tenGod.includes('劫')) base -= 10; 
+        } else if (mode === 'career') {
+          if (tenGod.includes('官') || tenGod.includes('殺')) base += 15;
+          if (tenGod.includes('印')) base += 10; 
+          if (tenGod.includes('傷')) base -= 12; 
+        } else if (mode === 'love') {
+          if (userProfile.gender === '陽') { 
+            if (tenGod.includes('財')) base += 15;
+          } else {
+            if (tenGod.includes('官') || tenGod.includes('殺')) base += 15;
+          }
+          const stemComb = checkStemCombination(dm, flowStem);
+          if (stemComb) base += 15;
+        } else if (mode === 'total') {
+          if (isStemJoy && isBranchJoy) base += 5;
+        }
+
+        return Math.min(100, Math.max(10, base));
+      } catch (err) {
+        return 60;
+      }
+    }
+
+    function addGanZhiToTransitScores(scores, gz, pillarWeight) {
+      if (!gz || gz.length < 2) return;
+      const stem = gz[0];
+      const branch = gz[1];
+
+      // 天干明透：佔該柱 40%。
+      const stemElem = getElementOfChar(stem);
+      scores[stemElem] = (scores[stemElem] || 0) + pillarWeight * 0.40;
+
+      // 地支藏干：佔該柱 60%，依本氣／中氣／餘氣比例分配。
+      const hiddens = EARTH_BRANCH_HIDDEN[branch] || [];
+      if (hiddens.length > 0) {
+        hiddens.forEach(h => {
+          scores[h.elem] = (scores[h.elem] || 0) + pillarWeight * 0.60 * (h.ratio / 100);
+        });
+      } else {
+        const branchElem = getElementOfChar(branch);
+        scores[branchElem] = (scores[branchElem] || 0) + pillarWeight * 0.60;
+      }
+    }
+
+    function getTransitContextForDate(date) {
+      const lunar = Solar.fromDate(date).getLunar();
+      const yearGz = lunar.getYearInGanZhiExact() || lunar.getYearInGanZhi() || '甲子';
+      const monthGz = lunar.getMonthInGanZhiExact() || lunar.getMonthInGanZhi() || '甲子';
+      const dayGz = lunar.getDayInGanZhiExact() || lunar.getDayInGanZhi() || '甲子';
+
+      // 與畫面右側「年柱10%／月柱50%／日柱100%」一致：
+      // 今日為主，流月為輔，流年只作背景權重。
+      const rawScores = { '木': 0, '火': 0, '土': 0, '金': 0, '水': 0 };
+      addGanZhiToTransitScores(rawScores, yearGz, 10);
+      addGanZhiToTransitScores(rawScores, monthGz, 50);
+      addGanZhiToTransitScores(rawScores, dayGz, 100);
+
+      const sum = Object.values(rawScores).reduce((a, b) => a + b, 0) || 1;
+      const ratios = {};
+      Object.keys(rawScores).forEach(k => {
+        ratios[k] = rawScores[k] / sum * 100;
+      });
+
+      return { yearGz, monthGz, dayGz, ratios };
+    }
+
+    function calcModeBonusFromTransitContext(ctx, mode) {
+      const dm = userProfile.dayMaster || '甲';
+      const stems = [
+        { stem: ctx.dayGz[0], weight: 1.00 },   // 流日天干仍是事件觸發主因
+        { stem: ctx.monthGz[0], weight: 0.35 }, // 流月天干作中期背景修正
+        { stem: ctx.yearGz[0], weight: 0.10 }   // 流年天干作遠景背景修正
+      ];
+
+      let bonus = 0;
+      stems.forEach(item => {
+        const tenGod = getTenGod(dm, item.stem);
+        const w = item.weight;
+
+        if (mode === 'wealth') {
+          if (tenGod.includes('財')) bonus += 14 * w;
+          if (tenGod.includes('食') || tenGod.includes('傷')) bonus += 6 * w;
+          if (tenGod.includes('比') || tenGod.includes('劫')) bonus -= 8 * w;
+        } else if (mode === 'career') {
+          if (tenGod.includes('官') || tenGod.includes('殺')) bonus += 14 * w;
+          if (tenGod.includes('印')) bonus += 7 * w;
+          if (tenGod.includes('傷')) bonus -= 10 * w;
+        } else if (mode === 'love') {
+          if (userProfile.gender === '陽') {
+            if (tenGod.includes('財')) bonus += 13 * w;
+          } else {
+            if (tenGod.includes('官') || tenGod.includes('殺')) bonus += 13 * w;
+          }
+          if (checkStemCombination(dm, item.stem)) bonus += 8 * w;
+        } else if (mode === 'health') {
+          // 健康不直接等同吉凶，偏向「補身、穩定、少耗洩」。
+          if (tenGod.includes('印') || tenGod.includes('比') || tenGod.includes('劫')) bonus += 5 * w;
+          if (tenGod.includes('傷') || tenGod.includes('財') || tenGod.includes('殺')) bonus -= 4 * w;
+        }
+      });
+
+      if (mode === 'total') {
+        const dayStemElem = getElementOfChar(ctx.dayGz[0]);
+        const dayBranchElem = getElementOfChar(ctx.dayGz[1]);
+        if (userProfile.favorableElements.includes(dayStemElem) && userProfile.favorableElements.includes(dayBranchElem)) {
+          bonus += 5;
+        }
+      }
+
+      return bonus;
+    }
+
+    function calcFortuneScoreForDate(date, mode) {
+      if (!userProfile.active || !isLunarLoaded) return 60;
+      try {
+        const ctx = getTransitContextForDate(date);
+        const ownRatios = (userProfile.modifiedWuxing && Object.keys(userProfile.modifiedWuxing).length)
+          ? userProfile.modifiedWuxing
+          : userProfile.initialWuxing;
+
+        let joyScore = 0;
+        let balanceScore = 0;
+
+        Object.entries(ctx.ratios).forEach(([elem, pct]) => {
+          // 1. 喜忌神：日期五行落在本命喜神則加分，落在忌神則扣分。
+          if (userProfile.favorableElements.includes(elem)) joyScore += pct;
+          else if (userProfile.unfavorableElements.includes(elem)) joyScore -= pct;
+
+          // 2. 本命五行平衡：若本命某元素偏少，該日補足則加分；若本命已偏旺，再遇同氣則扣分。
+          const ownPct = Number(ownRatios?.[elem] ?? 20);
+          const needFactor = Math.max(-1.5, Math.min(1.5, (20 - ownPct) / 20));
+          balanceScore += pct * needFactor;
+        });
+
+        // 基準 60：喜忌主導約 ±28，五行補偏約 ±10，再由各分項十神微調。
+        let base = 60 + joyScore * 0.28 + balanceScore * 0.10;
+        base += calcModeBonusFromTransitContext(ctx, mode);
+
+        return Math.min(100, Math.max(10, Math.round(base)));
+      } catch (err) {
+        console.error('流日／流月／流年交泰評分降級:', err);
+        return 60;
+      }
+    }
+
+    function calcFortuneScoreForSolarMonth(date, mode) {
+      if (!userProfile.active || !isLunarLoaded) return 60;
+      try {
+        const lunar = Solar.fromDate(date).getLunar();
+        const monthGz = lunar.getMonthInGanZhiExact() || lunar.getMonthInGanZhi() || '甲子';
+        return calcFortuneScoreForGanZhi(monthGz, mode);
+      } catch (err) {
+        return 60;
+      }
+    }
+
+    function getSolarMonthGanZhi(date) {
+      try {
+        const lunar = Solar.fromDate(date).getLunar();
+        return lunar.getMonthInGanZhiExact() || lunar.getMonthInGanZhi() || '未知';
+      } catch (e) {
+        return '未知';
+      }
+    }
+
+    function checkStemCombination(s1, s2) {
+      if(!s1 || !s2) return false;
+      const pair = [s1, s2].sort().join('');
+      const combos = ['甲己', '乙庚', '丙辛', '丁壬', '戊癸'];
+      return combos.includes(pair);
+    }
+
+    function getTenGod(dm, stem) {
+      if (!dm || !stem) return '十神';
+      if (dm === stem) return '比肩';
+      const dmElem = getElementOfChar(dm);
+      const stemElem = getElementOfChar(stem);
+      const dmYY = YIN_YANG[dm] || '陽';
+      const stemYY = YIN_YANG[stem] || '陽';
+
+      if (dmElem === stemElem) {
+        return dmYY === stemYY ? '比肩' : '劫財';
+      }
+      if ((dmElem === '木' && stemElem === '火') || (dmElem === '火' && stemElem === '土') || (dmElem === '土' && stemElem === '金') || (dmElem === '金' && stemElem === '水') || (dmElem === '水' && stemElem === '木')) {
+        return dmYY === stemYY ? '食神' : '傷官';
+      }
+      if ((stemElem === '木' && dmElem === '火') || (stemElem === '火' && dmElem === '土') || (stemElem === '土' && dmElem === '金') || (stemElem === '金' && dmElem === '水') || (stemElem === '水' && dmElem === '木')) {
+        return dmYY === stemYY ? '偏印' : '正印';
+      }
+      if ((dmElem === '木' && stemElem === '土') || (dmElem === '土' && stemElem === '水') || (dmElem === '水' && stemElem === '火') || (dmElem === '火' && stemElem === '金') || (dmElem === '金' && stemElem === '木')) {
+        return dmYY === stemYY ? '偏財' : '正財';
+      }
+      if ((stemElem === '木' && dmElem === '土') || (stemElem === '土' && dmElem === '水') || (stemElem === '水' && dmElem === '火') || (stemElem === '火' && dmElem === '金') || (stemElem === '金' && dmElem === '木')) {
+        return dmYY === stemYY ? '七殺' : '正官';
+      }
+      return '十神';
+    }
+
+    // --- 本日詳解與「流日動態大師批語」 (絕對安全的 Null-Safe 版本) ---
+    function updateDetailView() {
+      if (!isLunarLoaded) return;
+      const yr = selectedDate.getFullYear();
+      const mth = selectedDate.getMonth() + 1;
+      const dy = selectedDate.getDate();
+
+      const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+      const solarDateStr = document.getElementById('selected-solar-date-str');
+      if (solarDateStr) {
+        solarDateStr.innerText = `${yr}年${String(mth).padStart(2,'0')}月${String(dy).padStart(2,'0')}日 ${weekDays[selectedDate.getDay()]}`;
+      }
+
+      // 降級保護：若出現極端錯誤，直接填補預設值，不中斷執行
+      let lunarDateStr = '', gzStr = '', shengxiao = '';
+      let yearGz = '甲子', monthGz = '甲子', dayGz = '甲子';
+
+      try {
+        const solar = Solar.fromYmd(yr, mth, dy);
+        const lunar = solar.getLunar();
+        
+        yearGz = lunar.getYearInGanZhiExact() || lunar.getYearInGanZhi() || '甲子';
+        monthGz = lunar.getMonthInGanZhiExact() || lunar.getMonthInGanZhi() || '甲子';
+        dayGz = lunar.getDayInGanZhiExact() || lunar.getDayInGanZhi() || '甲子';
+        shengxiao = lunar.getShengXiao() || '未知';
+
+        // 核心修正：移除 lunar.getYearInChinese() 避免 TypeError 導致 try 區塊崩潰
+        lunarDateStr = `農曆 ${yearGz}年 ${lunar.getMonthInChinese()}月${lunar.getDayInChinese()}`;
+        gzStr = `${yearGz}年 ｜ ${monthGz}月 ｜ ${dayGz}日`;
+      } catch (e) {
+        console.error("日詳解曆法解析降級", e);
+      }
+
+      const lunarDateStrContainer = document.getElementById('selected-lunar-date-str');
+      if (lunarDateStrContainer) lunarDateStrContainer.innerText = lunarDateStr ? `${lunarDateStr}${shengxiao ? ` (屬${shengxiao})` : ''}` : '';
+      
+      const gzStrContainer = document.getElementById('selected-gz-str');
+      if (gzStrContainer) gzStrContainer.innerText = gzStr;
+      
+      const watermarkAnimal = document.getElementById('watermark-animal');
+      if (watermarkAnimal) watermarkAnimal.innerText = shengxiao || '卦';
+
+      const yrElem = getElementOfChar(yearGz[0]);
+      const yrYY = YIN_YANG[yearGz[0]] || '陽';
+      const mthElem = getElementOfChar(monthGz[0]);
+      const mthYY = YIN_YANG[monthGz[0]] || '陽';
+      const dyElem = getElementOfChar(dayGz[0]);
+      const dyYY = YIN_YANG[dayGz[0]] || '陽';
+
+      if (document.getElementById('col-year-gz')) document.getElementById('col-year-gz').innerText = yearGz;
+      if (document.getElementById('col-year-elem')) document.getElementById('col-year-elem').innerText = `${yrElem}屬${yrYY}`;
+      if (document.getElementById('col-month-gz')) document.getElementById('col-month-gz').innerText = monthGz;
+      if (document.getElementById('col-month-elem')) document.getElementById('col-month-elem').innerText = `${mthElem}屬${mthYY}`;
+      if (document.getElementById('col-day-gz')) document.getElementById('col-day-gz').innerText = dayGz;
+      if (document.getElementById('col-day-elem')) document.getElementById('col-day-elem').innerText = `${dyElem}屬${dyYY}`;
+
+      const formatCanggan = (pillarName, branch) => {
+        const b = branch || '子';
+        const hiddens = EARTH_BRANCH_HIDDEN[b] || [];
+        const items = hiddens.map(h => `<span class="font-bold" style="color:${FIVE_ELEMENT_COLORS[h.elem]}">${h.stem}(${h.elem})</span>佔${h.ratio}%`).join('、');
+        return `【${b}】(${pillarName}支) 藏干：${items}`;
+      };
+      
+      const cangganHtml = `
+        <p>${formatCanggan('年', yearGz[1])}</p>
+        <p>${formatCanggan('月', monthGz[1])}</p>
+        <p>${formatCanggan('日', dayGz[1])}</p>
+      `;
+      if (document.getElementById('selected-canggan-text')) document.getElementById('selected-canggan-text').innerHTML = cangganHtml;
+
+      // 無論是否拋出錯誤，都確保 UI 渲染不會斷流
+      if (userProfile.active) {
+        const injuredText = getInjuredStemsForDate(selectedDate);
+        if (document.getElementById('wuxing-injured-desc')) document.getElementById('wuxing-injured-desc').innerText = injuredText;
+        
+        renderFortuneDetailView(selectedDate);
+      }
+    }
+
+    // 核心更新：根據選定日期的干支與日主，動態切換大師批語
+    function renderFortuneDetailView(date) {
+      if (!isLunarLoaded) return;
+      const modeSel = document.getElementById('fortune-mode-select');
+      const mode = modeSel ? modeSel.value : 'none';
+      
+      const scoreTotal = calcFortuneScoreForDate(date, 'total');
+      const scoreCareer = calcFortuneScoreForDate(date, 'career');
+      const scoreWealth = calcFortuneScoreForDate(date, 'wealth');
+      const scoreLove = calcFortuneScoreForDate(date, 'love');
+      const scoreHealth = calcFortuneScoreForDate(date, 'health');
+
+      if (document.getElementById('stars-wealth')) document.getElementById('stars-wealth').innerHTML = getStarsString(scoreWealth);
+      if (document.getElementById('stars-career')) document.getElementById('stars-career').innerHTML = getStarsString(scoreCareer);
+      if (document.getElementById('stars-love')) document.getElementById('stars-love').innerHTML = getStarsString(scoreLove);
+      if (document.getElementById('stars-health')) document.getElementById('stars-health').innerHTML = getStarsString(scoreHealth);
+
+      const svgCircle = document.getElementById('fortune-svg-circle');
+      if (svgCircle) svgCircle.style.strokeDasharray = `${scoreTotal}, 100`;
+      
+      if (document.getElementById('fortune-score-text')) document.getElementById('fortune-score-text').innerText = `${scoreTotal}%`;
+
+      let evalText = "諸事尚吉";
+      if (scoreTotal >= 85) evalText = "大吉大利";
+      else if (scoreTotal >= 70) evalText = "開泰吉順";
+      else if (scoreTotal >= 55) evalText = "行止有度";
+      else if (scoreTotal >= 40) evalText = "謹言慎行";
+      else evalText = "防範波折";
+      if (document.getElementById('fortune-eval-text')) document.getElementById('fortune-eval-text').innerText = evalText;
+
+      let flowStem = '甲', flowBranch = '子';
+      try {
+        const lunar = Solar.fromDate(date).getLunar();
+        const flowGz = lunar.getDayInGanZhiExact() || lunar.getDayInGanZhi() || '甲子';
+        flowStem = flowGz[0];
+        flowBranch = flowGz[1];
+      } catch (e) { console.error(e); }
+      
+      const flowStemElem = getElementOfChar(flowStem);
+      
+      const luckyColors = {
+        '木': '青、蒼木綠、翠綠色系', '火': '紅、硃砂紅、絳紫、暖橙色系',
+        '土': '黃、沉香褐、金絲黃、杏黃色系', '金': '白、磬石秋霜金、銀灰、乳白色系', '水': '黑、玄青、天藍、深海藍色系'
+      };
+      const luckyDirections = { '木': '正東方', '火': '正南方', '土': '中央或西南方', '金': '正西方', '水': '正北方' };
+
+      const primaryJoy = userProfile.favorableElements[0] || '木';
+      if (document.getElementById('lucky-colors-text')) document.getElementById('lucky-colors-text').innerText = luckyColors[primaryJoy];
+      if (document.getElementById('lucky-direction-text')) document.getElementById('lucky-direction-text').innerText = luckyDirections[primaryJoy];
+
+      renderFortuneWuxingProgressBars();
+
+      // ==================== 【命理學核心重頭戲】連動大師流日開運批語 ====================
+      const dm = userProfile.dayMaster || '甲';
+      const isStrong = userProfile.isStrong;
+      const tenGod = getTenGod(dm, flowStem);
+      const isFlowStemJoy = userProfile.favorableElements.includes(flowStemElem);
+      
+      let remedyText = "";
+      if (isStrong) {
+        if (isFlowStemJoy) {
+          remedyText = `今日逢「${flowStem}${flowBranch}」流日，氣運恰逢您喜愛的 【${flowStemElem}】 能量引動。`;
+          if (tenGod.includes('財')) remedyText += ` 且遇「${tenGod}」照命，身強得財，求財機緣大開，適合洽談商機或主動投資。宜多著 ${luckyColors[flowStemElem].split('、')[0]} 以生發祥瑞。`;
+          else if (tenGod.includes('官') || tenGod.includes('殺')) remedyText += ` 值「${tenGod}」臨日，自身元氣充足能任官殺，工作魄力十足，易得主管賞識。`;
+          else if (tenGod.includes('食') || tenGod.includes('傷')) remedyText += ` 為「${tenGod}」洩秀。思維敏銳，靈感源源不絕，特別適合進行創意企劃。`;
+          else remedyText += ` 流日流通甚佳，氣場舒泰。行事可積極主動。`;
+        } else {
+          remedyText = `今日流日為「${flowStem}${flowBranch}」，遇忌神 【${flowStemElem}】 生扶。`;
+          if (tenGod.includes('比') || tenGod.includes('劫')) remedyText += ` 逢「${tenGod}」克財劫祿。身強再逢幫扶，易流於固執急躁或有破財之憂。今日宜守不宜攻，修身養性為上。`;
+          else if (tenGod.includes('印')) remedyText += ` 今日「${tenGod}」主事，元氣過剩反而易生惰性或執迷。不宜做出重大合約決定。`;
+          else remedyText += ` 五行氣息過旺，需防情緒激昂與身邊人產生口角。建議保持溫和。`;
+        }
+      } else {
+        if (isFlowStemJoy) {
+          remedyText = `今日逢「${flowStem}${flowBranch}」流日，氣運恰落您渴求的補益 【${flowStemElem}】 能量。`;
+          if (tenGod.includes('印')) remedyText += ` 得「${tenGod}」滋養。身弱有印，如同枯木逢春，極具長輩緣、貴人緣，利於簽約或學習。`;
+          else if (tenGod.includes('比') || tenGod.includes('劫')) remedyText += ` 得「${tenGod}」扶身。今日有同儕相助，共同承擔工作壓力。適合團隊協作。`;
+          else remedyText += ` 喜神能量環繞，整日元氣滿滿，行事多有助力。`;
+        } else {
+          remedyText = `今日流日為「${flowStem}${flowBranch}」，干支為克洩您的 忌神 【${flowStemElem}】。`;
+          if (tenGod.includes('官') || tenGod.includes('殺')) remedyText += ` 逢「${tenGod}」強大克制。身弱難任官殺，工作壓力沉重，提防口舌糾紛。宜沉穩少言。`;
+          else if (tenGod.includes('財')) remedyText += ` 逢「${tenGod}」消耗元氣。身弱財多反為累贅，切忌投機與情緒化開銷，守緊荷包。`;
+          else if (tenGod.includes('食') || tenGod.includes('傷')) remedyText += ` 逢「${tenGod}」消耗。元氣過洩，容易感到身心疲憊，注意飲食起居。`;
+          else remedyText += ` 今日克洩交加，元神略為虛弱。行事宜穩健低調。`;
+        }
+      }
+
+      if (document.getElementById('traditional-remedy-text')) document.getElementById('traditional-remedy-text').innerText = remedyText;
+    }
+
+    function renderFortuneWuxingProgressBars() {
+      const parent = document.getElementById('fortune-wuxing-bars');
+      if (!parent) return;
+      parent.innerHTML = '';
+
+      const ratios = currentFortuneWuxingView === 'initial' ? userProfile.initialWuxing : userProfile.modifiedWuxing;
+
+      for (let [elem, val] of Object.entries(ratios)) {
+        const item = document.createElement('div');
+        item.className = `flex flex-col items-center`;
+
+        const label = document.createElement('span');
+        label.className = `text-xs font-bold`;
+        label.style.color = FIVE_ELEMENT_COLORS[elem];
+        label.innerText = `${elem} (${val}%)`;
+
+        const track = document.createElement('div');
+        track.className = `w-full bg-gold/10 h-2.5 rounded-full overflow-hidden mt-1.5 border border-gold/10`;
+
+        const bar = document.createElement('div');
+        bar.className = `h-full rounded-full transition-all duration-1000 ease-out`;
+        bar.style.backgroundColor = FIVE_ELEMENT_COLORS[elem];
+        bar.style.width = `${val}%`;
+
+        track.appendChild(bar);
+        item.appendChild(label);
+        item.appendChild(track);
+        parent.appendChild(item);
+      }
+    }
+
+    function toggleFortuneWuxingMode(view) {
+      currentFortuneWuxingView = view;
+      const btnInit = document.getElementById('btn-fort-wuxing-init');
+      const btnModi = document.getElementById('btn-fort-wuxing-modi');
+
+      if (view === 'initial') {
+        if (btnInit) btnInit.className = "px-2 py-1 rounded bg-white text-zhusha font-bold transition";
+        if (btnModi) btnModi.className = "px-2 py-1 rounded text-ink/70 transition";
+      } else {
+        if (btnModi) btnModi.className = "px-2 py-1 rounded bg-white text-zhusha font-bold transition";
+        if (btnInit) btnInit.className = "px-2 py-1 rounded text-ink/70 transition";
+      }
+      renderFortuneWuxingProgressBars();
+    }
+
+    function onFortuneModeChange() {
+      renderCalendar();
+    }
+
+    function getLuckyColorBadge(date) {
+      if (!userProfile.active || !isLunarLoaded) return "無";
+      const primaryJoy = userProfile.favorableElements[0] || '木';
+      const colors = {
+        '木': { name: '青綠色', dot: '🟢', bg: 'bg-wood/10 text-wood' },
+        '火': { name: '紅橙色', dot: '🔴', bg: 'bg-zhusha/10 text-zhusha' },
+        '土': { name: '黃褐色', dot: '🟡', bg: 'bg-earth/15 text-earth' },
+        '金': { name: '白金色', dot: '⚪', bg: 'bg-metal/20 text-ink' },
+        '水': { name: '黑藍色', dot: '🔵', bg: 'bg-water/10 text-water' }
+      };
+      const c = colors[primaryJoy] || { name: '無', dot: '無', bg: 'bg-gray-100' };
+      return `<span class="px-2 py-1 rounded text-xs ${c.bg} font-bold shadow-sm">${c.dot} ${c.name}</span>`;
+    }
+
+
+    // --- 區塊收納折疊與圖表／表格連動 ---
+    function toggleCollapsibleSection(button) {
+      if (!button) return;
+      const targetId = button.getAttribute('data-target');
+      const body = targetId ? document.getElementById(targetId) : null;
+      if (!body) return;
+      const willCollapse = !body.classList.contains('is-collapsed');
+      body.classList.toggle('is-collapsed', willCollapse);
+      button.classList.toggle('is-collapsed', willCollapse);
+      button.setAttribute('aria-expanded', String(!willCollapse));
+      const label = button.querySelector('span');
+      if (label) label.innerText = willCollapse ? '展開' : '收合';
+    }
+
+    function focusTrendTableRow(kind, idx) {
+      const tbodyId = kind === 'year' ? 'year-table-body' : 'month-table-body';
+      const tbody = document.getElementById(tbodyId);
+      if (!tbody) return;
+      const row = tbody.querySelector(`tr[data-chart-index="${idx}"]`);
+      if (!row) return;
+
+      tbody.querySelectorAll('tr.chart-row-focus').forEach(r => r.classList.remove('chart-row-focus'));
+      row.classList.add('chart-row-focus');
+      row.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    }
+
+    function wireChartPoint(node, kind, idx, title) {
+      if (!node) return;
+      node.classList.add('chart-point-clickable');
+      node.setAttribute('tabindex', '0');
+      node.setAttribute('role', 'button');
+      node.setAttribute('aria-label', title || '對應表格資料');
+      node.addEventListener('click', () => focusTrendTableRow(kind, idx));
+      node.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          focusTrendTableRow(kind, idx);
+        }
+      });
+    }
+
+    // ==================== 【整月運勢】折線圖繪製模組（以國曆月份為範圍，週日畫直向虛線） ====================
+    function showWholeMonthFortune() {
+      if (!userProfile.active || !isLunarLoaded) return;
+      
+      const modal = document.getElementById('modal-month-chart');
+      const tbody = document.getElementById('month-table-body');
+      if (!modal || !tbody) return;
+      
+      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+      const selectedInCurrentMonth = (
+        selectedDate.getFullYear() === currentYear &&
+        selectedDate.getMonth() + 1 === currentMonth
+      );
+
+      document.getElementById('month-modal-subtitle').innerText = `西元 ${currentYear}年 ${currentMonth}月每日生克氣運走勢圖（X軸依國曆日序排列，週日為每週虛線）`;
+      tbody.innerHTML = '';
+
+      const scores = [];
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const tempDate = new Date(currentYear, currentMonth - 1, d);
+
+        const score = calcFortuneScoreForDate(tempDate, 'total');
+        const sCareer = calcFortuneScoreForDate(tempDate, 'career');
+        const sWealth = calcFortuneScoreForDate(tempDate, 'wealth');
+        const sLove = calcFortuneScoreForDate(tempDate, 'love');
+        const isFocusDay = selectedInCurrentMonth && d === selectedDate.getDate();
+
+        scores.push({ dayIndex: d, date: tempDate, score: score, isFocus: isFocusDay });
+
+        let lunarStr = '-- ｜ --';
+        try {
+          const lunar = Solar.fromDate(tempDate).getLunar();
+          const dGz = lunar.getDayInGanZhiExact() || lunar.getDayInGanZhi() || '未知';
+          lunarStr = `${lunar.getMonthInChinese()}月${lunar.getDayInChinese()} ｜ ${dGz}`;
+        } catch (e) {}
+
+        let brief = "氣運中和，宜穩妥。";
+        if (score >= 85) brief = "喜用得位，大展鴻圖之日！";
+        else if (score >= 70) brief = "吉星高照，財利亨通。";
+        else if (score < 50) brief = "克洩過重，多休養生息。";
+
+        const row = document.createElement('tr');
+        row.dataset.chartIndex = String(d - 1);
+        row.className = `hover:bg-gold/5 text-center ${isFocusDay ? 'bg-zhusha/5 font-bold border-l-4 border-zhusha' : ''}`;
+        row.innerHTML = `
+          <td class="p-3 text-left text-ink font-bold whitespace-nowrap">${tempDate.getMonth() + 1}月${tempDate.getDate()}日 ${isFocusDay ? '★' : ''}</td>
+          <td class="p-3 text-left text-earth whitespace-nowrap">${lunarStr}</td>
+          <td class="p-3 font-bold text-base">${score}分</td>
+          <td class="p-3 text-zhusha font-bold">${sCareer}分</td>
+          <td class="p-3 text-earth font-bold">${sWealth}分</td>
+          <td class="p-3 text-pink font-bold">${sLove}分</td>
+          <td class="p-3 text-center">${getLuckyColorBadge(tempDate)}</td>
+          <td class="p-3 text-left text-ink/70">${brief}</td>
+        `;
+        tbody.appendChild(row);
+      }
+
+      drawMonthChartSVG(scores);
+      modal.showModal();
+    }
+
+    function closeMonthModal() {
+      const modal = document.getElementById('modal-month-chart');
+      if (modal) modal.close();
+    }
+
+    function drawMonthChartSVG(data) {
+      const svg = document.getElementById('svg-month-line-chart');
+      if (!svg) return;
+      svg.innerHTML = '';
+
+      const width = 800;
+      const height = 320;
+      const padding = 45;
+
+      const xRange = width - padding * 2;
+      const xStep = xRange / (data.length - 1);
+      const yRange = height - padding * 2;
+      const getY = (score) => height - padding - (score / 100) * yRange;
+
+      for (let val = 20; val <= 100; val += 20) {
+        const y = getY(val);
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', padding); line.setAttribute('y1', y);
+        line.setAttribute('x2', width - padding); line.setAttribute('y2', y);
+        line.setAttribute('stroke', '#E8E2D5'); line.setAttribute('stroke-dasharray', '4,4');
+        svg.appendChild(line);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', padding - 10); text.setAttribute('y', y + 4);
+        text.setAttribute('text-anchor', 'end'); text.setAttribute('font-size', '12');
+        text.setAttribute('fill', '#7E6B5A'); text.textContent = val;
+        svg.appendChild(text);
+      }
+
+      // 每週虛線：以國曆星期日作為週界線，讓月圖 X 軸具備週節奏。
+      data.forEach((pt, idx) => {
+        if (pt.date.getDay() !== 0) return;
+        const x = padding + idx * xStep;
+        const vLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        vLine.setAttribute('x1', x); vLine.setAttribute('y1', 20);
+        vLine.setAttribute('x2', x); vLine.setAttribute('y2', height - padding);
+        vLine.setAttribute('stroke', '#C5A880');
+        vLine.setAttribute('stroke-width', '1');
+        vLine.setAttribute('stroke-dasharray', '3,5');
+        svg.appendChild(vLine);
+
+        const weekText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        weekText.setAttribute('x', x + 4);
+        weekText.setAttribute('y', 32);
+        weekText.setAttribute('font-size', '10');
+        weekText.setAttribute('fill', '#7E6B5A');
+        weekText.textContent = '週日';
+        svg.appendChild(weekText);
+      });
+
+      let pathD = "";
+      data.forEach((pt, idx) => {
+        const x = padding + idx * xStep;
+        const y = getY(pt.score);
+        if (idx === 0) pathD = `M ${x} ${y}`;
+        else pathD += ` L ${x} ${y}`;
+      });
+
+      const linePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      linePath.setAttribute('d', pathD); linePath.setAttribute('fill', 'none');
+      linePath.setAttribute('stroke', '#A62B2B'); linePath.setAttribute('stroke-width', '3');
+      linePath.setAttribute('stroke-linecap', 'round'); linePath.setAttribute('stroke-linejoin', 'round');
+      svg.appendChild(linePath);
+
+      const shadowD = `${pathD} L ${padding + (data.length-1)*xStep} ${height - padding} L ${padding} ${height - padding} Z`;
+      const shadowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      shadowPath.setAttribute('d', shadowD); shadowPath.setAttribute('fill', 'rgba(166, 43, 43, 0.05)');
+      svg.appendChild(shadowPath);
+
+      data.forEach((pt, idx) => {
+        const x = padding + idx * xStep;
+        const y = getY(pt.score);
+        const isCurrentFocus = !!pt.isFocus;
+
+        if (isCurrentFocus) {
+          const focusLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          focusLine.setAttribute('x1', x); focusLine.setAttribute('y1', 20);
+          focusLine.setAttribute('x2', x); focusLine.setAttribute('y2', height - padding);
+          focusLine.setAttribute('stroke', '#A62B2B'); focusLine.setAttribute('stroke-width', '1.5');
+          focusLine.setAttribute('stroke-dasharray', '3,3');
+          svg.appendChild(focusLine);
+
+          const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+          arrow.setAttribute('points', `${x},20 ${x-6},10 ${x+6},10`);
+          arrow.setAttribute('fill', '#A62B2B');
+          svg.appendChild(arrow);
+
+          const arrowText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          arrowText.setAttribute('x', x); arrowText.setAttribute('y', 8);
+          arrowText.setAttribute('text-anchor', 'middle'); arrowText.setAttribute('font-size', '12');
+          arrowText.setAttribute('font-weight', 'bold'); arrowText.setAttribute('fill', '#A62B2B');
+          arrowText.textContent = "當前位置";
+          svg.appendChild(arrowText);
+
+          const bigCirc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          bigCirc.setAttribute('cx', x); bigCirc.setAttribute('cy', y);
+          bigCirc.setAttribute('r', '7'); bigCirc.setAttribute('fill', '#A62B2B');
+          bigCirc.setAttribute('stroke', '#FDFBF7'); bigCirc.setAttribute('stroke-width', '2');
+          wireChartPoint(bigCirc, 'month', idx, `${pt.date.getMonth() + 1}月${pt.date.getDate()}日，點擊定位表格列`);
+          svg.appendChild(bigCirc);
+        } else {
+          const circ = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circ.setAttribute('cx', x); circ.setAttribute('cy', y);
+          circ.setAttribute('r', '4.5'); circ.setAttribute('fill', '#FDFBF7');
+          circ.setAttribute('stroke', '#A62B2B'); circ.setAttribute('stroke-width', '1.5');
+          wireChartPoint(circ, 'month', idx, `${pt.date.getMonth() + 1}月${pt.date.getDate()}日，點擊定位表格列`);
+          svg.appendChild(circ);
+        }
+
+        if (idx % 2 === 0 || idx === data.length - 1) {
+          const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          text.setAttribute('x', x); text.setAttribute('y', height - padding + 18);
+          text.setAttribute('text-anchor', 'middle'); text.setAttribute('font-size', '11');
+          text.setAttribute('fill', isCurrentFocus ? '#A62B2B' : '#1C1C1C');
+          if (isCurrentFocus) text.setAttribute('font-weight', 'bold');
+          text.textContent = `${pt.date.getMonth() + 1}/${pt.date.getDate()}`;
+          svg.appendChild(text);
+        }
+      });
+    }
+
+    // ==================== 【整年 24 節氣運勢】折線圖繪製模組（今日在 X 軸左起 1/3，節氣點依國曆日期比例定位；評分採流月干支） ====================
+    function showWholeYearFortune() {
+      if (!userProfile.active || !isLunarLoaded) return;
+
+      const modal = document.getElementById('modal-year-chart');
+      const tbody = document.getElementById('year-table-body');
+      if (!modal || !tbody) return;
+
+      const range = getRollingYearViewRange();
+      const rangeStartStr = formatSolarDateShort(range.viewStart, true);
+      const rangeEndStr = formatSolarDateShort(range.viewEnd, true);
+      document.getElementById('year-modal-subtitle').innerText = `滾動年度視窗：${rangeStartStr} 至 ${rangeEndStr}。今日位於 X 軸左起約 1/3；節氣點依國曆日期定位，評分採該節氣所在流月干支。`;
+      tbody.innerHTML = '';
+
+      const yearJqList = get24JieQiDaysInDateRange(range.viewStart, range.viewEnd);
+      if (!yearJqList.length) return;
+
+      let closestIdx = 0, minDiff = Infinity;
+      yearJqList.forEach((jq, idx) => {
+        const diff = Math.abs(stripTime(jq.date) - range.today);
+        if (diff < minDiff) { minDiff = diff; closestIdx = idx; }
+      });
+
+      const chartScores = [];
+
+      yearJqList.forEach((jq, idx) => {
+        const date = jq.date;
+        const monthGz = getSolarMonthGanZhi(date);
+        const score = calcFortuneScoreForGanZhi(monthGz, 'total');
+        const isFocusJq = (idx === closestIdx);
+        chartScores.push({ index: idx, name: jq.name, score: score, date: jq.date, monthGz: monthGz, isFocus: isFocusJq });
+
+        let tenGod = '未知', remedy = '中規中矩，謹守本分。';
+        try {
+          tenGod = getTenGod(userProfile.dayMaster, monthGz[0]);
+          const monthElem = getElementOfChar(monthGz[0]);
+          const isJoy = userProfile.favorableElements.includes(monthElem);
+          if (isJoy) remedy = `流月逢 【${monthElem}】 喜神，十神現「${tenGod}」，此一節氣月令可作為布局推進點。`;
+          else remedy = `流月臨 【${monthElem}】 忌神。逢「${tenGod}」牽動，宜降低衝動決策，採守勢調節。`;
+        } catch(e) {}
+
+        const dateStr = formatSolarDateShort(date, date.getFullYear() !== range.today.getFullYear());
+        
+        const row = document.createElement('tr');
+        row.dataset.chartIndex = String(idx);
+        row.className = `hover:bg-gold/5 ${isFocusJq ? 'bg-[#3D5A45]/5 font-bold border-l-4 border-wood' : ''}`;
+        row.innerHTML = `
+          <td class="p-3 font-bold text-zhusha whitespace-nowrap">${jq.name} ${isFocusJq ? '★' : ''}</td>
+          <td class="p-3 text-ink/80 whitespace-nowrap">${dateStr}</td>
+          <td class="p-3 text-earth font-bold">${monthGz}</td>
+          <td class="p-3 font-bold text-wood">${tenGod}</td>
+          <td class="p-3 text-center font-bold text-zhusha text-base">${score}分</td>
+          <td class="p-3 text-ink/70">${remedy}</td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      drawYearChartSVG(chartScores);
+      modal.showModal();
+    }
+
+    function closeYearModal() {
+      const modal = document.getElementById('modal-year-chart');
+      if (modal) modal.close();
+    }
+
+    function stripTime(date) {
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    }
+
+    function addDays(date, days) {
+      const copy = stripTime(date);
+      copy.setDate(copy.getDate() + days);
+      return copy;
+    }
+
+    function getRollingYearViewRange() {
+      const today = stripTime(new Date());
+      const totalDays = 365;
+      const pastDays = Math.round(totalDays / 3);
+      const viewStart = addDays(today, -pastDays);
+      const viewEnd = addDays(viewStart, totalDays);
+      return { today, viewStart, viewEnd };
+    }
+
+    function formatSolarDateShort(date, withYear = false) {
+      const prefix = withYear ? `${date.getFullYear()}年` : '';
+      return `${prefix}${date.getMonth() + 1}月${date.getDate()}日`;
+    }
+
+    function get24JieQiDaysInDateRange(startDate, endDate) {
+      if (!isLunarLoaded) return [];
+      const result = [];
+      const jqNames = [
+        "立春", "雨水", "驚蟄", "春分", "清明", "穀雨", "立夏", "小滿", "芒種", "夏至", "小暑", "大暑", 
+        "立秋", "處暑", "白露", "秋分", "寒露", "霜降", "立冬", "小雪", "大雪", "冬至", "小寒", "大寒"
+      ];
+
+      let cursor = stripTime(startDate);
+      const finalDay = stripTime(endDate);
+      while (cursor <= finalDay) {
+        try {
+          const y = cursor.getFullYear();
+          const m = cursor.getMonth() + 1;
+          const d = cursor.getDate();
+          const lunar = Solar.fromYmd(y, m, d).getLunar();
+          const jq = lunar.getJieQi();
+          if (jq && jqNames.includes(jq)) {
+            result.push({ name: jq, date: new Date(y, m - 1, d) });
+          }
+        } catch (e) {}
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      result.sort((a, b) => a.date - b.date);
+      return result;
+    }
+
+    function getXBySolarDateInRange(date, rangeStart, rangeEnd, padding, xRange) {
+      const ratio = (stripTime(date) - stripTime(rangeStart)) / (stripTime(rangeEnd) - stripTime(rangeStart));
+      return padding + ratio * xRange;
+    }
+
+    function drawYearChartSVG(data) {
+      const svg = document.getElementById('svg-year-line-chart');
+      if (!svg) return;
+      svg.innerHTML = '';
+      if (!data || data.length === 0) return;
+
+      const width = 800;
+      const height = 350;
+      const padding = 50;
+      const chartTop = 35;
+      const chartBottom = height - padding - 40;
+      const range = getRollingYearViewRange();
+
+      const xRange = width - padding * 2;
+      const yRange = height - padding * 2 - 30; 
+      const getY = (score) => height - padding - 40 - (score / 100) * yRange;
+      const getX = (date) => getXBySolarDateInRange(date, range.viewStart, range.viewEnd, padding, xRange);
+
+      for (let val = 20; val <= 100; val += 20) {
+        const y = getY(val);
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', padding); line.setAttribute('y1', y);
+        line.setAttribute('x2', width - padding); line.setAttribute('y2', y);
+        line.setAttribute('stroke', '#E8E2D5'); line.setAttribute('stroke-dasharray', '4,4');
+        svg.appendChild(line);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', padding - 10); text.setAttribute('y', y + 4);
+        text.setAttribute('text-anchor', 'end'); text.setAttribute('font-size', '12');
+        text.setAttribute('fill', '#7E6B5A'); text.textContent = val;
+        svg.appendChild(text);
+      }
+
+      // 國曆月份虛線：改用滾動 365 日視窗，每個國曆月 1 日精準定位，可跨年度。
+      let monthCursor = new Date(range.viewStart.getFullYear(), range.viewStart.getMonth(), 1);
+      if (monthCursor < range.viewStart) monthCursor.setMonth(monthCursor.getMonth() + 1);
+      while (monthCursor <= range.viewEnd) {
+        const x = getX(monthCursor);
+        const vLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        vLine.setAttribute('x1', x); vLine.setAttribute('y1', chartTop);
+        vLine.setAttribute('x2', x); vLine.setAttribute('y2', chartBottom);
+        vLine.setAttribute('stroke', '#C5A880'); vLine.setAttribute('stroke-width', '1.1');
+        vLine.setAttribute('stroke-dasharray', '3,5');
+        svg.appendChild(vLine);
+
+        const mText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        mText.setAttribute('x', x + 4); mText.setAttribute('y', chartTop + 10);
+        mText.setAttribute('font-size', '11'); mText.setAttribute('fill', '#7E6B5A');
+        mText.setAttribute('font-weight', 'bold');
+        const labelNeedsYear = monthCursor.getMonth() === 0 || monthCursor.getFullYear() !== range.today.getFullYear();
+        mText.textContent = labelNeedsYear ? `${monthCursor.getFullYear()}/${monthCursor.getMonth() + 1}月` : `${monthCursor.getMonth() + 1}月`;
+        svg.appendChild(mText);
+        monthCursor.setMonth(monthCursor.getMonth() + 1);
+      }
+
+      // 今日線：固定在左起約 1/3，讓過去只保留一小段，未來保留較長規劃視窗。
+      const todayX = getX(range.today);
+      const todayLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      todayLine.setAttribute('x1', todayX); todayLine.setAttribute('y1', 22);
+      todayLine.setAttribute('x2', todayX); todayLine.setAttribute('y2', chartBottom);
+      todayLine.setAttribute('stroke', '#A62B2B'); todayLine.setAttribute('stroke-width', '1.8');
+      todayLine.setAttribute('stroke-dasharray', '2,3');
+      svg.appendChild(todayLine);
+
+      const todayText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      todayText.setAttribute('x', todayX); todayText.setAttribute('y', 16);
+      todayText.setAttribute('text-anchor', 'middle'); todayText.setAttribute('font-size', '12');
+      todayText.setAttribute('font-weight', 'bold'); todayText.setAttribute('fill', '#A62B2B');
+      todayText.textContent = '今日';
+      svg.appendChild(todayText);
+
+      let pathD = "";
+      data.forEach((pt, idx) => {
+        const x = getX(pt.date);
+        const y = getY(pt.score);
+        if (idx === 0) pathD = `M ${x} ${y}`;
+        else pathD += ` L ${x} ${y}`;
+      });
+
+      const baseline = height - padding - 40;
+      const shadowD = `${pathD} L ${getX(data[data.length-1].date)} ${baseline} L ${getX(data[0].date)} ${baseline} Z`;
+      const shadowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      shadowPath.setAttribute('d', shadowD); shadowPath.setAttribute('fill', 'rgba(61, 90, 69, 0.05)');
+      svg.appendChild(shadowPath);
+
+      const linePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      linePath.setAttribute('d', pathD); linePath.setAttribute('fill', 'none');
+      linePath.setAttribute('stroke', '#3D5A45'); linePath.setAttribute('stroke-width', '3');
+      linePath.setAttribute('stroke-linecap', 'round'); linePath.setAttribute('stroke-linejoin', 'round');
+      svg.appendChild(linePath);
+
+      data.forEach((pt) => {
+        const x = getX(pt.date);
+        const y = getY(pt.score);
+        const isFocusJq = !!pt.isFocus;
+
+        if (isFocusJq) {
+          const focusLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          focusLine.setAttribute('x1', x); focusLine.setAttribute('y1', 25);
+          focusLine.setAttribute('x2', x); focusLine.setAttribute('y2', baseline);
+          focusLine.setAttribute('stroke', '#3D5A45'); focusLine.setAttribute('stroke-width', '1.5');
+          focusLine.setAttribute('stroke-dasharray', '3,3');
+          svg.appendChild(focusLine);
+
+          const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+          arrow.setAttribute('points', `${x},25 ${x-6},15 ${x+6},15`);
+          arrow.setAttribute('fill', '#3D5A45');
+          svg.appendChild(arrow);
+
+          const arrowText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          arrowText.setAttribute('x', x); arrowText.setAttribute('y', 11);
+          arrowText.setAttribute('text-anchor', 'middle'); arrowText.setAttribute('font-size', '12');
+          arrowText.setAttribute('font-weight', 'bold'); arrowText.setAttribute('fill', '#3D5A45');
+          arrowText.textContent = "最接近今日";
+          svg.appendChild(arrowText);
+
+          const bigCirc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          bigCirc.setAttribute('cx', x); bigCirc.setAttribute('cy', y);
+          bigCirc.setAttribute('r', '7'); bigCirc.setAttribute('fill', '#3D5A45');
+          bigCirc.setAttribute('stroke', '#FDFBF7'); bigCirc.setAttribute('stroke-width', '2');
+          wireChartPoint(bigCirc, 'year', pt.index, `${pt.name}，點擊定位表格列`);
+          svg.appendChild(bigCirc);
+        } else {
+          const circ = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circ.setAttribute('cx', x); circ.setAttribute('cy', y);
+          circ.setAttribute('r', '4.5'); circ.setAttribute('fill', '#FDFBF7');
+          circ.setAttribute('stroke', '#3D5A45'); circ.setAttribute('stroke-width', '1.5');
+          wireChartPoint(circ, 'year', pt.index, `${pt.name}，點擊定位表格列`);
+          svg.appendChild(circ);
+        }
+
+        // 節氣名稱直書：點位仍嚴格貼合國曆日期，文字只作標籤。
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', x); text.setAttribute('y', height - padding - 22);
+        text.setAttribute('text-anchor', 'middle'); text.setAttribute('writing-mode', 'vertical-rl'); 
+        text.setAttribute('font-size', '13'); text.setAttribute('font-weight', isFocusJq ? 'bold' : 'normal');
+        text.setAttribute('fill', isFocusJq ? '#3D5A45' : '#1C1C1C'); text.setAttribute('style', 'letter-spacing: 2px;');
+        text.textContent = pt.name;
+        svg.appendChild(text);
+
+        const dateText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        dateText.setAttribute('x', x); dateText.setAttribute('y', height - padding + 22);
+        dateText.setAttribute('text-anchor', 'middle'); dateText.setAttribute('font-size', '11');
+        dateText.setAttribute('fill', '#7E6B5A');
+        dateText.textContent = `${pt.date.getMonth() + 1}/${pt.date.getDate()}`;
+        svg.appendChild(dateText);
+      });
+    }
+
+  </script>
+</body>
+</html>
