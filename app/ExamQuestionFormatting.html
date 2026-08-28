@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>教師動態出題排版系統 V3.3</title>
+  <title>教師動態出題排版系統 V3.4 穩定檢查版</title>
   <style>
     :root {
       --primary: #4A90E2;
@@ -576,6 +576,28 @@
     .material-editor-panel textarea { min-height: 120px; }
     .ai-import-textarea { min-height: 300px; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 13px; line-height: 1.5; }
     .ai-import-prompt { min-height: 180px; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 12px; line-height: 1.5; }
+
+    .ai-import-modal-body { grid-template-columns: 1fr 1fr; }
+    @media (max-width: 820px) {
+      body { padding: 8px; }
+      h1 { font-size: 1.45rem; }
+      .subtitle { font-size: 13px; margin-bottom: 14px; }
+      .card { padding: 12px; border-radius: 12px; }
+      .toolbar { padding: 8px; gap: 6px; }
+      .toolbar button, .toolbar select { flex: 1 1 120px; min-width: 120px; }
+      .row.two { flex-direction: column; align-items: stretch; }
+      .row.two > * { width: 100%; flex: auto; }
+      .preview-shell { padding: 10px; max-height: 64vh; }
+      .preview-pages { gap: 12px; }
+      .modal-backdrop { padding: 10px; }
+      .modal-window { border-radius: 12px; }
+      .modal-head, .modal-foot { flex-wrap: wrap; padding: 12px; }
+      .modal-foot button { flex: 1 1 120px; }
+      .modal-body, .ai-import-modal-body { grid-template-columns: 1fr !important; padding: 12px; }
+      .ai-import-prompt { min-height: 140px; }
+      .ai-import-textarea { min-height: 220px; }
+      .material-list-panel, .material-editor-panel { padding: 10px; }
+    }
     .mini-table-editor { overflow: auto; border: 1px solid #e1e6ed; border-radius: 10px; background: #fff; padding: 8px; }
     .mini-table-editor table { border-collapse: collapse; width: 100%; min-width: 520px; }
     .mini-table-editor td { border: 1px solid #cfd6df; padding: 4px; }
@@ -678,8 +700,8 @@
   </style>
 </head>
 <body>
-  <h1>📝 教師動態出題排版系統 V3.3</h1>
-  <p class="subtitle">V3.3：新增多頁預覽，內容超過單頁時會自動延伸為第 2 頁、第 3 頁。</p>
+  <h1>📝 教師動態出題排版系統 V3.4 穩定檢查版</h1>
+  <p class="subtitle">V3.4：穩定檢查版，修正版本號、平板介面、AI 匯入視窗響應式與題目子材料初始化。</p>
 
   <div class="container">
     <section class="card">
@@ -1007,7 +1029,7 @@
         <h3>AI 題庫貼上匯入</h3>
         <button type="button" class="secondary btn-sm" onclick="closeAiImportModal()">關閉</button>
       </div>
-      <div class="modal-body" style="grid-template-columns: 1fr 1fr;">
+      <div class="modal-body ai-import-modal-body">
         <div class="material-list-panel">
           <label for="ai-import-prompt">給生成式 AI 的提示詞</label>
           <textarea id="ai-import-prompt" class="ai-import-prompt" readonly></textarea>
@@ -1062,7 +1084,7 @@
   const MATERIAL_TYPE_NAMES = { text: '閱讀短文', wordbank: '選填字庫', table: '表格', imagePlaceholder: '圖片框' };
   const MATCH_LEFT_LABELS = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
   let examData = {
-    version: 3.2,
+    version: 3.4,
     settings: { paperSize: 'B4', orientation: 'portrait', writingMode: 'horizontal', previewColumns: 1, previewMode: 'student', wordMargin: 'medium', sectionFontSize: 14, questionFontSize: 12 },
     sections: []
   };
@@ -1173,7 +1195,8 @@
       id: uid('q'), type: 'question', qType: type, stem: '',
       answer: { value: '' },
       content: { options: ['選項一','選項二','選項三','選項四'], matchingPairs: [{left:'', right:'', answer:'A'}], wordBankBlockId: '' },
-      layout: { optionColumns: 1, labelType: 'ABC', spacePolicy: 'trim', shortLines: 3, blankWidth: 6, showAnswerAsCode: true }
+      layout: { optionColumns: 1, labelType: 'ABC', spacePolicy: 'trim', shortLines: 3, blankWidth: 6, showAnswerAsCode: true },
+      children: []
     };
   }
   function makeMaterialBlock(type='text', overrides={}) {
@@ -1214,7 +1237,7 @@
   function normalizeData(data) {
     const fallback = { version: 3, settings: { paperSize: 'B4', orientation: 'portrait', writingMode: 'horizontal', previewColumns: 1, previewMode: 'student', wordMargin: 'medium', sectionFontSize: 14, questionFontSize: 12 }, sections: [] };
     data = Object.assign(fallback, data || {});
-    data.version = 3.2;
+    data.version = 3.4;
     data.settings = Object.assign(fallback.settings, data.settings || {});
     data.sections = Array.isArray(data.sections) ? data.sections : [];
     data.sections.forEach(sec => {
@@ -2827,7 +2850,7 @@
   }
 
   function getAiImportPromptText() {
-    return `你是一位熟悉台灣國小命題格式的助理。請把我提供的題庫或教材內容轉換成「教師動態出題排版系統 V3.3」可匯入的 JSON。\n\n只輸出 JSON，不要輸出解釋、Markdown 標題或額外文字。\n\nJSON 格式如下：\n{\n  "sections": [\n    {\n      "title": "是非題",\n      "instruction": "正確的打 O，錯誤的打 X。",\n      "scorePerQuestion": 2,\n      "questions": [\n        { "type": "tf", "stem": "水會受熱蒸發。", "answer": "O" }\n      ]\n    },\n    {\n      "title": "選擇題",\n      "instruction": "請選出最適合的答案。",\n      "scorePerQuestion": 2,\n      "questions": [\n        { "type": "mc", "stem": "下列何者是沉水性植物？", "options": ["荷花", "睡蓮", "金魚藻", "布袋蓮"], "answer": "C" }\n      ]\n    },\n    {\n      "title": "填充題",\n      "instruction": "請將正確答案填入括號或空格中。",\n      "scorePerQuestion": 2,\n      "questions": [\n        { "type": "fill", "stem": "水在常溫下多為（）。", "answer": "液體" }\n      ]\n    }\n  ]\n}\n\n規則：\n1. type 只使用 tf、mc、fill 三種。\n2. 是非題 answer 使用 O 或 X。\n3. 選擇題 options 必須是陣列，answer 可用 A/B/C/D 或 1/2/3/4。\n4. 填充題若題幹已有「（）」請保留；系統會自動依答案長度產生學生版空格。\n5. 題目文字不要自行加題號。\n\n以下是我要轉換的題庫／教材內容：\n`;
+    return `你是一位熟悉台灣國小命題格式的助理。請把我提供的題庫或教材內容轉換成「教師動態出題排版系統 V3.4 穩定檢查版」可匯入的 JSON。\n\n只輸出 JSON，不要輸出解釋、Markdown 標題或額外文字。\n\nJSON 格式如下：\n{\n  "sections": [\n    {\n      "title": "是非題",\n      "instruction": "正確的打 O，錯誤的打 X。",\n      "scorePerQuestion": 2,\n      "questions": [\n        { "type": "tf", "stem": "水會受熱蒸發。", "answer": "O" }\n      ]\n    },\n    {\n      "title": "選擇題",\n      "instruction": "請選出最適合的答案。",\n      "scorePerQuestion": 2,\n      "questions": [\n        { "type": "mc", "stem": "下列何者是沉水性植物？", "options": ["荷花", "睡蓮", "金魚藻", "布袋蓮"], "answer": "C" }\n      ]\n    },\n    {\n      "title": "填充題",\n      "instruction": "請將正確答案填入括號或空格中。",\n      "scorePerQuestion": 2,\n      "questions": [\n        { "type": "fill", "stem": "水在常溫下多為（）。", "answer": "液體" }\n      ]\n    }\n  ]\n}\n\n規則：\n1. type 只使用 tf、mc、fill 三種。\n2. 是非題 answer 使用 O 或 X。\n3. 選擇題 options 必須是陣列，answer 可用 A/B/C/D 或 1/2/3/4。\n4. 填充題若題幹已有「（）」請保留；系統會自動依答案長度產生學生版空格。\n5. 題目文字不要自行加題號。\n\n以下是我要轉換的題庫／教材內容：\n`;
   }
   function openAiImportModal() {
     const modal = document.getElementById('ai-import-modal');
@@ -2941,7 +2964,7 @@
         sectionCount++;
       });
       if (!sectionCount || !questionCount) throw new Error('沒有可匯入的大題或題目。');
-      examData.version = 3.2;
+      examData.version = 3.4;
       syncSettingsToUi(); resetForm(); afterMutation(); closeAiImportModal();
       alert(`已匯入 ${sectionCount} 個大題、${questionCount} 題。`);
     } catch (err) {
@@ -2950,8 +2973,8 @@
   }
 
   function exportMD() {
-    examData.version = 3.2;
-    const content = `# 試卷資料 V3.3
+    examData.version = 3.4;
+    const content = `# 試卷資料 V3.4
 
 \`\`\`text
 ${renderPlainText('student')}
@@ -2961,7 +2984,7 @@ ${renderPlainText('student')}
 ${JSON.stringify(examData)}
 EXAM_SYSTEM_DATA_V3_END -->
 `;
-    downloadBlob(content, '試卷資料_V3_3.md', 'text/markdown;charset=utf-8');
+    downloadBlob(content, '試卷資料_V3_4.md', 'text/markdown;charset=utf-8');
   }
   function importMD(event) {
     const file = event.target.files[0]; if (!file) return;
@@ -2979,7 +3002,7 @@ EXAM_SYSTEM_DATA_V3_END -->
   function exportWordCompat() {
     const mode = document.getElementById('preview-mode').value || 'student';
     const doc = getWordDocumentHtml(mode);
-    downloadBlob('\ufeff' + doc, '試卷_V3_3_Word相容檔.doc', 'application/msword;charset=utf-8');
+    downloadBlob('\ufeff' + doc, '試卷_V3_4_Word相容檔.doc', 'application/msword;charset=utf-8');
   }
   function downloadBlob(content, filename, type) {
     const blob = new Blob([content], { type });
