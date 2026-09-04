@@ -56,12 +56,13 @@
         // --- 設定資料 ---
         // 完整的時間表
         const SCHEDULE = [
-            { type: 'break', start: '08:30', end: '08:40', label: '準備' },
-            { type: 'exam',  start: '08:40', end: '09:20', label: '第一節' },
-            { type: 'break', start: '09:20', end: '09:30', label: '下課' },
-            { type: 'exam',  start: '09:30', end: '10:10', label: '第二節' },
-            { type: 'break', start: '10:10', end: '10:30', label: '下課 (大)' },
-            { type: 'exam',  start: '10:30', end: '11:10', label: '第三節' },
+            { type: 'break', start: '08:15', end: '08:45', label: '自習' },
+            { type: 'exam',  start: '08:45', end: '08:55', label: '下課' },
+            { type: 'exam',  start: '08:55', end: '09:55', label: '英文' },
+            { type: 'break', start: '09:55', end: '10:05', label: '下課' },
+            { type: 'exam',  start: '10:05', end: '10:35', label: '自習' },
+            { type: 'break', start: '10:35', end: '10:45', label: '下課' },
+            { type: 'exam',  start: '10:45', end: '11:45', label: '社會' },
             { type: 'break', start: '11:10', end: '11:20', label: '收卷' }
         ];
 
@@ -129,7 +130,7 @@
                     return parsed;
                 }
                 return {
-                    subjects: ["國語", "數學", "英文"],
+                    subjects: ["英語", "社會", "數學"],
                     shouldArrive: "",
                     actualArrive: "",
                     absentList: ""
