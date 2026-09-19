@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>蜂巢作業檢核系統｜雙桌機安全同步・分數與進階催繳版</title>
+<style>
+:root{
+  --bg:#f4f7fb;--panel:#fff;--panel-2:#f8fafc;--line:#dbe3ee;--line-2:#cbd5e1;
+  --text:#1e293b;--muted:#64748b;--muted-2:#94a3b8;--blue:#2563eb;--blue-2:#dbeafe;
+  --green:#22c55e;--green-dark:#16a34a;--amber:#f59e0b;--yellow:#fde047;--orange:#f97316;
+  --rose:#ef4444;--rose-2:#fff1f2;--violet:#7c3aed;--shadow:0 8px 30px rgba(15,23,42,.08);
+  --radius:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Inter,"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;color:var(--text);background:var(--bg)}
+button,input,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.45}
+.hidden{display:none!important}.app{min-height:100vh;display:flex;flex-direction:column}
+.topbar{
+  background:linear-gradient(315deg,rgba(255,254,247,.94) 0%,rgba(255,252,240,.94) 52%,rgba(255,247,226,.98) 100%);
+  border-bottom:1px solid #fcf1db;box-shadow:0 3px 18px rgba(180,83,9,.025);padding:12px 16px;position:relative;z-index:30;overflow:hidden;isolation:isolate
+}
+.topbar::before{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='42' height='36.4' viewBox='0 0 42 36.4'%3E%3Cg fill='none' stroke='%23f7d5ad' stroke-width='1.15' stroke-opacity='.18'%3E%3Cpath d='M10.5 0h21L42 18.2 31.5 36.4h-21L0 18.2z'/%3E%3C/g%3E%3C/svg%3E");
+  background-size:42px 36.4px;background-position:0 0;opacity:.9;
+  -webkit-mask-image:linear-gradient(315deg,rgba(0,0,0,.40) 0%,rgba(0,0,0,.52) 42%,rgba(0,0,0,.78) 72%,rgba(0,0,0,1) 100%);
+  mask-image:linear-gradient(315deg,rgba(0,0,0,.40) 0%,rgba(0,0,0,.52) 42%,rgba(0,0,0,.78) 72%,rgba(0,0,0,1) 100%)
+}
+.topbar::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(280deg,rgba(255,255,255,.11) 0%,rgba(255,255,255,.045) 46%,rgba(255,255,255,0) 78%)}
+.topbar-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;position:relative;z-index:1}
+.brand{display:flex;align-items:center;gap:12px;min-width:320px}.brand-icon{width:40px;height:40px;clip-path:polygon(25% 6.7%,75% 6.7%,100% 50%,75% 93.3%,25% 93.3%,0 50%);border-radius:0;background:linear-gradient(145deg,#f59e0b,#d97706);display:grid;place-items:center;color:#fff;font-weight:900;box-shadow:0 6px 18px rgba(180,83,9,.24);font-size:17px}
+.brand h1{margin:0;font-size:19px;line-height:1.1;color:#713f12;text-shadow:0 1px 0 rgba(255,255,255,.65)}.legend{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:5px;font-size:11px;color:#6b4f2a}.dot{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:3px;vertical-align:-1px}.save-status{font-size:10px;color:#8a6736;margin-top:4px}
+.topbar .btn{background:rgba(255,255,255,.86);border-color:rgba(180,110,25,.24);backdrop-filter:blur(3px)}
+.topbar .btn:hover{background:rgba(255,255,255,.97);border-color:rgba(180,83,9,.38)}
+.topbar .btn.primary{background:#2563eb;border-color:#2563eb;color:#fff}.topbar .btn.amber{background:#d97706;border-color:#d97706;color:#fff}.topbar .btn.violet{background:#7c3aed;border-color:#7c3aed;color:#fff}.topbar .btn.soft-blue{background:rgba(239,246,255,.94);border-color:#bfdbfe;color:#1d4ed8}
+.dev-info-card{border:1px solid #fde7ad;background:linear-gradient(145deg,#fffdf4,#fff7d6);border-radius:13px;padding:14px 15px;color:#66451c;line-height:1.7;font-size:13px}
+.dev-info-card p{margin:0 0 12px}.dev-info-card p:last-child{margin-bottom:0}.dev-profile{border-top:1px solid #f5d889;padding-top:12px}.dev-profile strong{color:#92400e}.dev-email{color:#b45309;font-weight:800;text-decoration:none}.dev-email:hover{text-decoration:underline}
+.toolbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.divider{width:1px;height:26px;background:var(--line);margin:0 2px}
+.btn{border:1px solid var(--line);background:#fff;color:#475569;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:700;transition:.15s;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:5px}.btn:hover{background:#f8fafc;border-color:#cbd5e1}.btn.primary{background:var(--blue);border-color:var(--blue);color:white}.btn.primary:hover{background:#1d4ed8}.btn.amber{background:var(--amber);border-color:var(--amber);color:white}.btn.violet{background:var(--violet);border-color:var(--violet);color:white}.btn.dark{background:#1e293b;border-color:#1e293b;color:white}.btn.green{background:var(--green-dark);border-color:var(--green-dark);color:white}.btn.soft-blue{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}.btn.soft-amber{background:#fffbeb;border-color:#fde68a;color:#b45309}.btn.rose{color:#dc2626;background:#fff;border-color:#fecaca}.btn.icon{padding:5px 8px}.btn.active-mode{background:#7c3aed;color:#fff;border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.12)}.btn.score-active{background:#0369a1;color:#fff;border-color:#0369a1;box-shadow:0 0 0 3px rgba(3,105,161,.12)}
+.contact-panel{background:#fff;border-bottom:1px solid var(--line);padding:8px 12px;z-index:20}.contact-inner{display:flex;gap:10px;align-items:center}.contact-label{min-width:175px;padding-right:10px;border-right:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:7px}.contact-title-line{display:flex;align-items:center;gap:6px}.contact-label h2{font-size:13px;margin:0}.hint{font-size:10px;color:var(--muted-2);line-height:1.45}.info-wrap{position:relative;display:inline-flex}.info-btn{width:20px;height:20px;border:1px solid #cbd5e1;border-radius:50%;background:#f8fafc;color:#64748b;font-size:12px;font-family:Georgia,serif;font-weight:900;display:grid;place-items:center;padding:0;line-height:1}.info-btn:hover,.info-btn:focus{background:#eff6ff;color:#2563eb;border-color:#93c5fd;outline:none}.info-popover{display:none;position:absolute;left:0;top:26px;width:255px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;color:#64748b;font-size:10px;line-height:1.55;box-shadow:0 10px 25px rgba(15,23,42,.14);z-index:60}.info-wrap.open .info-popover{display:block}.contact-actions{display:flex;gap:4px}.mini-btn{border:1px solid var(--line);background:#fff;border-radius:7px;font-size:10px;font-weight:800;padding:4px 6px;color:#2563eb}.mini-btn.danger{color:#e11d48;border-color:#ffe4e6}.student-chips{display:flex;align-items:center;gap:clamp(2px,.28vw,6px);flex-wrap:wrap;flex:1;min-width:0}.student-chip{position:relative;width:clamp(31px,2.42vw,40px);height:clamp(31px,2.42vw,40px);border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;background:#f8fafc;color:#475569;font-size:clamp(12px,1vw,16px);font-weight:900;user-select:none;transition:.12s;flex:0 0 auto}.student-chip:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(15,23,42,.08)}.student-chip.checked{background:var(--green);border-color:var(--green-dark);color:white}.student-chip.absent{background:#f43f5e;border-color:#e11d48;color:white}.student-chip.special::after{content:"特";position:absolute;right:-3px;bottom:-3px;width:15px;height:15px;border-radius:50%;background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd;font-size:8px;display:grid;place-items:center;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.workspace{display:flex;flex:1;min-height:0}.sidebar{width:190px;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}.sidebar-head{padding:10px 11px;border-bottom:1px solid #eef2f7;background:#fbfdff;display:flex;justify-content:space-between;align-items:center}.sidebar-title{font-size:10px;color:var(--muted-2);font-weight:800;letter-spacing:.08em}.link-btn{border:0;background:transparent;color:#2563eb;font-size:10px;font-weight:800;padding:3px}.subject-list{overflow:auto;padding:8px;display:flex;flex-direction:column;gap:4px}.subject-btn{width:100%;border:1px solid transparent;background:#fff;color:#475569;text-align:left;border-radius:8px;padding:7px 9px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:6px}.subject-btn:hover{background:#f8fafc}.subject-btn.active{background:#2563eb;color:#fff;box-shadow:0 4px 10px rgba(37,99,235,.16)}.pullout-badge{font-size:9px;border-radius:999px;background:#ede9fe;color:#6d28d9;padding:1px 5px}.subject-btn.active .pullout-badge{background:rgba(255,255,255,.2);color:#fff}
+.main{flex:1;padding:10px 12px;overflow:auto;min-width:0}.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 4px 15px rgba(15,23,42,.04)}.subject-control{padding:7px 9px;margin-bottom:8px}.subject-compact-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:30px}.subject-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}.subject-name{font-size:13px;font-weight:900;white-space:nowrap}.field-label{font-size:10px;color:var(--muted)}.compact-tool{border:1px solid var(--line);background:#f8fafc;color:#475569;border-radius:7px;padding:4px 7px;font-size:10px;font-weight:800;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.compact-tool:hover{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}.item-count{font-size:9px;color:#94a3b8;font-weight:800}.items-editor-panel{border-top:1px solid #eef2f7;margin-top:7px;padding-top:7px}.items-input{width:100%;min-height:34px;max-height:68px;resize:vertical;border:1px solid var(--line-2);border-radius:8px;padding:6px 8px;font-size:11px;color:#334155;background:#fff;outline:none}.items-input:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(59,130,246,.12)}.control-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end}.check-pill{display:inline-flex;align-items:center;gap:5px;border:1px solid #ddd6fe;background:#f5f3ff;color:#5b21b6;border-radius:999px;padding:4px 7px;font-size:10px;font-weight:800;white-space:nowrap}.check-pill input{accent-color:#7c3aed;margin:0}.subject-control .info-popover{left:auto;right:0;width:265px}.subject-control .btn.icon{padding:4px 6px;font-size:10px;border-radius:7px}
+.table-card{overflow:hidden}.table-container{max-height:62vh;overflow:auto;position:relative}.checker-table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;background:white}.checker-table th,.checker-table td{border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0}.checker-table th{min-width:64px;max-width:72px;background:#f1f5f9;font-size:10px;white-space:nowrap;padding:5px 4px;text-align:center;position:sticky;top:0;z-index:7;user-select:none}.checker-table th.item-head{cursor:grab}.checker-table th.item-head:active{cursor:grabbing}.checker-table .sticky-col{position:sticky;left:0;z-index:8;min-width:54px;width:54px;background:#f8fafc;border-right:2px solid #cbd5e1}.checker-table th.sticky-col{z-index:10}.checker-table td.sticky-col{text-align:center;font-size:10px;font-weight:900;color:#64748b}.row-height{height:22px}.cell{height:22px;min-width:64px;cursor:pointer;transition:filter .08s,outline .08s;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;overflow:hidden;text-overflow:ellipsis;padding:0 2px;white-space:nowrap}.cell:hover{filter:brightness(.97)}.cell-none{background:#fff}.cell-submitted{background:var(--yellow)}.cell-done{background:var(--green);color:#fff}.cell-pending{background:var(--orange);color:#fff}.cell.page-target{outline:2px solid #7c3aed;outline-offset:-2px;cursor:zoom-in}.cell.page-muted{opacity:.72;cursor:default}.cell-page{max-width:60px;overflow:hidden;text-overflow:ellipsis}.score-mode .cell{background:#eff6ff!important;color:#0c4a6e!important;opacity:1!important;cursor:text}.score-mode .cell.score-target{outline:1px solid #7dd3fc;outline-offset:-1px}.cell-score{font-size:10px;font-weight:900;color:#075985}.cell-score.empty{color:#94a3b8;font-weight:700}.long-press-ready{outline:2px solid #f97316!important;outline-offset:-2px;filter:brightness(.98)}.item-name{max-width:62px;margin:0 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.date-mini{font-size:9px;color:#2563eb;font-weight:600;margin-top:2px}.date-mini.empty{color:#94a3b8}.pin{position:absolute;top:3px;right:3px;font-size:9px}.item-head{position:relative}.edit-mode-banner{display:none;padding:7px 10px;background:#f5f3ff;color:#5b21b6;border-bottom:1px solid #ddd6fe;font-size:11px;font-weight:800}.edit-mode .edit-mode-banner{display:block}
+.summary-card{max-width:980px;margin:0 auto;padding:18px}.summary-title{display:flex;justify-content:space-between;align-items:end;gap:10px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:14px}.summary-title h2{font-size:19px;margin:0}.summary-block{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:12px;background:#fff}.summary-head{padding:10px 12px;background:#f8fafc;display:flex;justify-content:space-between;gap:10px;align-items:center;border-bottom:1px solid var(--line)}.summary-head h3{margin:0;font-size:15px}.summary-meta{font-size:10px;color:var(--muted)}.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}.summary-cell{padding:12px}.summary-cell+ .summary-cell{border-left:1px solid var(--line)}.summary-label{font-size:10px;font-weight:900;letter-spacing:.04em;margin-bottom:5px}.summary-label.missing{color:#e11d48}.summary-label.pending{color:#ea580c}.number-list{min-height:36px;border:1px solid #eef2f7;background:#fbfdff;border-radius:8px;padding:8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.55}.all-clear{color:#94a3b8;font-style:italic}.empty-state{text-align:center;color:#94a3b8;padding:42px 20px;line-height:1.7}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:80;display:flex;align-items:center;justify-content:center;padding:18px}.modal-box{width:min(520px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:16px;box-shadow:0 25px 70px rgba(15,23,42,.25);border:1px solid rgba(255,255,255,.5)}.modal-head{padding:16px 18px 10px}.modal-head h3{margin:0;font-size:17px}.modal-body{padding:0 18px 16px}.modal-footer{padding:12px 18px 16px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid #eef2f7}.form-group{margin:10px 0 14px}.form-label{display:block;font-size:12px;font-weight:800;color:#475569;margin-bottom:5px}.form-input,.form-textarea{width:100%;border:1px solid var(--line-2);border-radius:9px;padding:8px 9px;outline:none}.form-input:focus,.form-textarea:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(59,130,246,.1)}.form-help{font-size:10px;color:#94a3b8;margin-top:4px;line-height:1.5}.notice-box{width:min(1120px,98vw)}.notice-preview{padding:0 18px 18px;overflow:auto;background:#eef2f7}.notice-paper{width:210mm;min-height:297mm;margin:0 auto;background:#fff;padding:10mm;box-shadow:0 6px 24px rgba(15,23,42,.12)}.notice-sheet{width:100%;border-collapse:collapse;table-layout:fixed}.notice-slot{width:50%;vertical-align:top;padding:2.2mm;border:0}.notice-slip{width:100%;border:1px solid #475569;border-collapse:collapse;page-break-inside:avoid;background:#fff}.notice-slip-title{border-bottom:1px solid #475569;padding:2.1mm 2.5mm;font-size:10.5pt;font-weight:800;line-height:1.25;text-align:left}.notice-line-label{width:13mm;border-right:1px solid #94a3b8;border-bottom:1px solid #cbd5e1;padding:1.45mm 1.6mm;font-size:9.5pt;font-weight:800;vertical-align:top;text-align:center;white-space:nowrap}.notice-line-content{border-bottom:1px solid #cbd5e1;padding:1.45mm 1.8mm;font-size:9.5pt;line-height:1.25;vertical-align:top}.notice-slip tr:last-child .notice-line-label,.notice-slip tr:last-child .notice-line-content{border-bottom:0}.notice-empty{padding:20mm;text-align:center;color:#64748b;font-size:12pt}.notice-note{font-size:8.5pt;color:#64748b;margin:3mm 2mm 0}.page-entry-current{background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;padding:8px 10px;font-size:12px;color:#9a3412;margin-top:8px}.score-entry-current{background:#f0f9ff;border:1px solid #bae6fd;border-radius:9px;padding:8px 10px;font-size:12px;color:#075985;margin-top:8px}.notice-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0 14px}.notice-option{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:#f8fafc;border-radius:9px;padding:8px 9px;font-size:11px;font-weight:800;color:#475569}.notice-option input{accent-color:#2563eb}.priority-box{border:1px solid var(--line);border-radius:10px;background:#fbfdff;max-height:310px;overflow:auto}.priority-subject{border-bottom:1px solid #eef2f7}.priority-subject:last-child{border-bottom:0}.priority-subject-title{position:sticky;top:0;background:#f8fafc;padding:7px 9px;font-size:11px;font-weight:900;color:#334155;border-bottom:1px solid #eef2f7;z-index:1}.priority-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:7px 9px}.priority-item{display:flex;gap:6px;align-items:flex-start;font-size:10px;color:#475569}.priority-item input{margin-top:2px;accent-color:#f59e0b}.priority-star{color:#b45309;font-weight:900}.notice-config-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:5px 0 8px}.notice-config-actions .btn{padding:5px 8px;font-size:10px}@media(max-width:650px){.notice-options{grid-template-columns:1fr}.priority-items{grid-template-columns:1fr}}
+.lock-screen{position:fixed;inset:0;background:rgba(15,23,42,.94);backdrop-filter:blur(5px);z-index:100;display:flex;align-items:center;justify-content:center;color:white}.lock-card{text-align:center;width:min(350px,90vw)}.lock-icon{font-size:42px}.lock-card h2{margin:10px 0 3px}.lock-card p{color:#cbd5e1;font-size:12px}.lock-input{width:220px;max-width:100%;border:0;border-radius:9px;padding:9px 11px;text-align:center;margin:8px 0;color:#111827}.error{color:#fda4af;font-size:11px}
+.toast{position:fixed;right:18px;bottom:18px;background:#0f172a;color:white;border-radius:10px;padding:9px 12px;font-size:12px;z-index:120;box-shadow:0 10px 30px rgba(0,0,0,.18);opacity:0;transform:translateY(8px);pointer-events:none;transition:.2s}.toast.show{opacity:1;transform:translateY(0)}
+@media(max-width:900px){.contact-inner{align-items:flex-start;flex-direction:column}.contact-label{width:100%;border-right:0;border-bottom:1px solid var(--line);padding:0 0 8px}.sidebar{width:150px}.subject-control{grid-template-columns:1fr}.control-actions{justify-content:flex-start}.summary-grid{grid-template-columns:1fr}.summary-cell+.summary-cell{border-left:0;border-top:1px solid var(--line)}}
+@media(max-width:650px){.workspace{display:block}.sidebar{width:100%;height:auto;border-right:0;border-bottom:1px solid var(--line)}.subject-list{flex-direction:row;overflow-x:auto}.subject-btn{width:auto;min-width:max-content}.main{padding:9px}.toolbar{gap:5px}.divider{display:none}.brand{min-width:0}.contact-panel{padding:8px}.student-chip{width:35px;height:35px;font-size:13px}.notice-paper{width:190mm;padding:8mm}}
+
+.help-box{width:min(900px,97vw)}
+.help-intro{margin:0 0 12px;padding:10px 12px;border:1px solid #fde68a;border-radius:10px;background:#fffbeb;color:#78350f;font-size:11px;line-height:1.65}
+.help-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.help-item{display:flex;gap:9px;align-items:flex-start;border:1px solid #e2e8f0;border-radius:10px;background:#fff;padding:9px 10px;min-width:0}
+.help-num{flex:0 0 23px;height:23px;border-radius:7px;background:#fff7ed;border:1px solid #fed7aa;color:#c2410c;display:grid;place-items:center;font-size:10px;font-weight:900}
+.help-copy{font-size:11px;line-height:1.58;color:#475569;min-width:0}.help-copy strong{color:#1e293b}.help-copy p{margin:2px 0 0}
+.help-kbd{display:inline-block;padding:1px 5px;border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:5px;background:#f8fafc;color:#334155;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9px;font-weight:900;vertical-align:1px}
+.help-tag{display:inline-block;margin-right:4px;padding:1px 5px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:9px;font-weight:900}
+.help-warn{margin-top:10px;padding:8px 10px;border-radius:9px;background:#f8fafc;border:1px solid #e2e8f0;color:#64748b;font-size:10px;line-height:1.55}
+@media(max-width:720px){.help-grid{grid-template-columns:1fr}}
+@media print{
+  body *{visibility:hidden!important}.modal.notice-print,.modal.notice-print *{visibility:visible!important}.modal.notice-print{position:absolute;inset:0;background:#fff;padding:0;display:block}.modal.notice-print .modal-box{box-shadow:none;border:0;width:100%;max-width:none;max-height:none}.modal.notice-print .modal-head,.modal.notice-print .modal-footer{display:none!important}.notice-preview{padding:0;background:#fff;overflow:visible}.notice-paper{width:auto;min-height:0;margin:0;padding:0;box-shadow:none}.notice-slot{padding:2mm}.notice-slip-title{font-size:10pt}.notice-line-label,.notice-line-content{font-size:9pt}.notice-note{font-size:8pt;color:#333}@page{size:A4 portrait;margin:10mm}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">蜂</div>
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <h1>蜂巢作業檢核系統</h1>
+            <div class="legend">
+              <span><i class="dot" style="background:#fde047"></i>左1：有交</span>
+              <span><i class="dot" style="background:#22c55e"></i>左2：通過</span>
+              <span title="右鍵或觸控長按"><i class="dot" style="background:#f97316"></i>右：沒訂正</span>
+            </div>
+          </div>
+          <div id="saveStatus" class="save-status" title="雙桌機版會讓每台電腦各寫自己的同步日誌，再自動合併另一台的更新。">資料初始化中…</div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button id="viewToggleBtn" class="btn amber" type="button">查看未交總覽</button>
+        <button id="noticeBtn" class="btn primary" type="button">作業催繳單</button>
+        <button id="pageEditBtn" class="btn violet" type="button" title="快捷鍵：Shift">訂正頁碼模式</button>
+        <button id="scoreEditBtn" class="btn soft-blue" type="button" title="快捷鍵：Ctrl（單獨按下）">分數模式</button>
+        <button id="exportScoresBtn" class="btn" type="button">匯出成績表</button>
+        <button id="undoBtn" class="btn" type="button" disabled>↶ 回復上一步</button>
+        <span class="divider"></span>
+        <button id="exportBtn" class="btn" type="button">匯出</button>
+        <button id="importBtn" class="btn" type="button">匯入</button>
+        <input id="importInput" type="file" accept=".json,application/json" class="hidden">
+        <span class="divider"></span>
+        <button id="manualSyncBtn" class="btn soft-blue hidden" type="button">手動更新</button>
+        <button id="syncDirBtn" class="btn" type="button"><span id="syncDirIndicator" class="dot" style="background:#ef4444;margin:0"></span><span id="syncDirText">設定同步目錄</span></button>
+        <button id="helpBtn" class="btn" type="button">使用說明</button>
+        <button id="devInfoBtn" class="btn soft-amber" type="button">開發資訊</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="contact-panel">
+    <div class="contact-inner">
+      <div class="contact-label">
+        <div class="contact-title-line">
+          <h2>今日聯絡簿檢查</h2>
+          <span id="contactInfoWrap" class="info-wrap">
+            <button id="contactInfoBtn" class="info-btn" type="button" aria-label="聯絡簿檢查操作說明" aria-expanded="false">i</button>
+            <span class="info-popover">左鍵／輕觸：已交（綠）／右鍵或觸控長按：請假、沒來（紅）。<br>紅色學生不列入當日作業缺交統計；「特」徽章僅標示特教生，不影響聯絡簿檢查。</span>
+          </span>
+        </div>
+        <div class="contact-actions">
+          <button id="editStudentsBtn" class="mini-btn" type="button">編輯／特教生</button>
+          <button id="resetContactBtn" class="mini-btn danger" type="button">清空</button>
+        </div>
+      </div>
+      <div id="contactBookContainer" class="student-chips"></div>
+    </div>
+  </section>
+
+  <div class="workspace">
+    <aside class="sidebar">
+      <div class="sidebar-head"><span class="sidebar-title">科目清單</span><button id="addSubjectBtn" class="link-btn" type="button">＋新增科目</button></div>
+      <nav id="subjectList" class="subject-list"></nav>
+    </aside>
+
+    <main class="main">
+      <section id="tableView">
+        <div class="card subject-control">
+          <div class="subject-compact-row">
+            <div class="subject-meta">
+              <span id="currentSubjectTitle" class="subject-name">--</span>
+              <button id="toggleItemsEditorBtn" class="compact-tool" type="button" aria-expanded="false">欄位 <span id="itemCount" class="item-count">0</span></button>
+              <span id="fieldsInfoWrap" class="info-wrap">
+                <button id="fieldsInfoBtn" class="info-btn" type="button" aria-label="檢核欄位說明" aria-expanded="false">i</button>
+                <span class="info-popover">按「欄位」可展開或收合小節設定。小節以「/」分隔；表格表頭可拖曳排序。欄名過長時會省略顯示，滑鼠停留可查看完整名稱。</span>
+              </span>
+              <button id="resetSubjectBtn" class="btn icon" type="button" title="重設此科">↻</button>
+              <button id="deleteSubjectBtn" class="btn icon rose" type="button" title="刪除此科">🗑</button>
+            </div>
+            <div class="control-actions">
+              <label class="check-pill">
+                <input id="specialEdPulloutCheckbox" type="checkbox"> 抽班
+              </label>
+              <span id="pulloutInfoWrap" class="info-wrap">
+                <button id="pulloutInfoBtn" class="info-btn" type="button" aria-label="抽班說明" aria-expanded="false">i</button>
+                <span id="pulloutInfoText" class="info-popover">勾選後，本科檢核表、未交總覽與催繳單會排除特教生名單；不影響今日聯絡簿檢查。</span>
+              </span>
+              <span id="pulloutHint" class="hidden"></span>
+            </div>
+          </div>
+          <div id="itemsEditorPanel" class="items-editor-panel hidden">
+            <textarea id="itemsInput" class="items-input" rows="2" aria-label="檢核欄位設定"></textarea>
+          </div>
+        </div>
+
+        <div id="tableCard" class="card table-card">
+          <div class="edit-mode-banner">訂正頁碼模式：雙擊橘色儲存格輸入頁碼；為避免誤觸，本模式不改變作業狀態。</div>
+          <div class="table-container">
+            <table id="mainTable" class="checker-table">
+              <thead id="tableHead"></thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="summaryView" class="hidden">
+        <div class="card summary-card">
+          <div class="summary-title"><div><h2>未交作業統計清單</h2><div class="hint">同一科目的所有追蹤小節已合併為一個大項。</div></div><span class="hint">僅統計已設定日期且勾選追蹤的項目</span></div>
+          <div id="summaryContent"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- 日期/追蹤 -->
+<div id="dateModal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="modal-head"><h3>設定檢核日期</h3></div>
+    <div class="modal-body">
+      <div id="modalItemName" class="hint"></div>
+      <div class="form-group"><label class="form-label" for="dateInput">檢核日期</label><input id="dateInput" class="form-input" type="date"></div>
+      <label class="check-pill" style="border-radius:9px"><input id="trackCheckbox" type="checkbox"> 📌 追蹤此項目</label>
+      <div class="form-help">打勾後才會納入「未交總覽」與「作業催繳單」。</div>
+    </div>
+    <div class="modal-footer"><button class="btn" data-close="dateModal">取消</button><button id="confirmDateBtn" class="btn primary">確定儲存</button></div>
+  </div>
+</div>
+
+<!-- 班級/特教生 -->
+<div id="studentsModal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="modal-head"><h3>設定班級座號與特教生</h3></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label" for="studentsInput">需要檢核的學生座號</label><textarea id="studentsInput" class="form-textarea" rows="3"></textarea><div class="form-help">以逗號或頓號分隔；不在此名單的座號會完全隱藏。</div></div>
+      <div class="form-group"><label class="form-label" for="specialEdInput">特教生座號</label><textarea id="specialEdInput" class="form-textarea" rows="2" placeholder="例如：4, 11"></textarea><div class="form-help">特教生仍會出現在今日聯絡簿。若某科勾選「抽班」，該科作業檢核與統計才排除這些座號。</div></div>
+    </div>
+    <div class="modal-footer"><button class="btn" data-close="studentsModal">取消</button><button id="saveStudentsBtn" class="btn primary">套用並儲存</button></div>
+  </div>
+</div>
+
+<!-- 新增科目 -->
+<div id="newSubjectModal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-box" style="width:min(400px,96vw)">
+    <div class="modal-head"><h3>新增科目</h3></div>
+    <div class="modal-body"><input id="newSubjectInput" class="form-input" type="text" placeholder="例如：暑假作業"></div>
+    <div class="modal-footer"><button class="btn" data-close="newSubjectModal">取消</button><button id="confirmAddSubjectBtn" class="btn primary">新增</button></div>
+  </div>
+</div>
+
+<!-- 訂正頁碼 -->
+<div id="correctionModal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-box" style="width:min(440px,96vw)">
+    <div class="modal-head"><h3>輸入訂正頁數</h3></div>
+    <div class="modal-body">
+      <div id="correctionContext" class="page-entry-current"></div>
+      <div class="form-group"><label class="form-label" for="correctionInput">訂正頁數</label><input id="correctionInput" class="form-input" type="text" placeholder="例如：12、15-16 或 p.12"></div>
+      <div class="form-help">可自由輸入頁碼或簡短備註。作業狀態改為「通過（綠）」後會自動清除此欄。</div>
+    </div>
+    <div class="modal-footer"><button class="btn" data-close="correctionModal">取消</button><button id="clearCorrectionBtn" class="btn rose">清空頁碼</button><button id="saveCorrectionBtn" class="btn primary">儲存</button></div>
+  </div>
+</div>
+
+<!-- 分數輸入 -->
+<div id="scoreModal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-box" style="width:min(420px,96vw)">
+    <div class="modal-head"><h3>輸入分數</h3></div>
+    <div class="modal-body">
+      <div id="scoreContext" class="score-entry-current"></div>
+      <div class="form-group"><label class="form-label" for="scoreInput">分數（0–100）</label><input id="scoreInput" class="form-input" type="number" min="0" max="100" step="0.5" inputmode="decimal" placeholder="例如：85、92.5"></div>
+      <div class="form-help">分數與作業繳交狀態分開儲存；清空後該格在成績表中留白。</div>
+    </div>
+    <div class="modal-footer"><button class="btn" data-close="scoreModal">取消</button><button id="clearScoreBtn" class="btn rose">清空分數</button><button id="saveScoreBtn" class="btn primary">儲存</button></div>
+  </div>
+</div>
+
+<!-- 催繳單設定 -->
+<div id="noticeSettingsModal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-box" style="width:min(720px,96vw)">
+    <div class="modal-head"><h3>設定今日催繳單</h3><div class="hint">選擇輸出內容，並可標記今日主力催繳項目。主力項目會以 ★ 置頂顯示，其他追蹤項目仍保留。</div></div>
+    <div class="modal-body">
+      <div class="notice-options">
+        <label class="notice-option"><input id="noticeShowMissing" type="checkbox" checked> 顯示缺交</label>
+        <label class="notice-option"><input id="noticeShowPending" type="checkbox" checked> 顯示訂正</label>
+        <label class="notice-option"><input id="noticeShowPages" type="checkbox" checked> 顯示訂正頁數</label>
+      </div>
+      <div class="form-label">今日主力催繳</div>
+      <div class="notice-config-actions"><button id="prioritySelectAllBtn" class="btn" type="button">全選主力</button><button id="priorityClearBtn" class="btn" type="button">清除主力</button><span class="hint">僅列出目前已設定日期且勾選「追蹤」的項目。</span></div>
+      <div id="priorityItemsContainer" class="priority-box"></div>
+    </div>
+    <div class="modal-footer"><button class="btn" data-close="noticeSettingsModal">取消</button><button id="confirmNoticeSettingsBtn" class="btn primary">產生 A4 催繳單</button></div>
+  </div>
+</div>
+
+<!-- 催繳單 -->
+<div id="noticeModal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-box notice-box">
+    <div class="modal-head"><h3>作業催繳與訂正通知預覽</h3><div class="hint">A4 直式雙欄；每名學生 5 行以內占一欄，超過 5 行自動跨兩欄。主力催繳以 ★ 標示，可直接複製到 Word。</div></div>
+    <div id="noticePreview" class="notice-preview"></div>
+    <div class="modal-footer"><button class="btn" data-close="noticeModal">關閉</button><button id="copyNoticeBtn" class="btn soft-blue">複製到 Word</button><button id="printNoticeBtn" class="btn primary">列印／A4 PDF</button></div>
+  </div>
+</div>
+
+<!-- 使用說明 -->
+<div id="helpModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+  <div class="modal-box help-box">
+    <div class="modal-head"><h3 id="helpTitle">使用說明｜蜂巢作業檢核系統</h3></div>
+    <div class="modal-body">
+      <div class="help-intro"><strong>建議第一次使用先完成班級座號、科目與同步目錄設定。</strong>日常檢核主要靠滑鼠／觸控點格操作；較進階的訂正頁碼、分數、催繳與雙機同步則可依需要使用。</div>
+      <div class="help-grid">
+        <div class="help-item"><div class="help-num">1</div><div class="help-copy"><strong>基礎作業檢核</strong><p>一般模式下，第一次左鍵／輕觸格子會變<strong>黃色＝已交、待檢查</strong>；第二次會變<strong>綠色＝已批改且通過</strong>。右鍵或觸控長按會變<strong>橘色＝已交、待訂正</strong>。再次操作可依既有循環調整狀態。</p></div></div>
+        <div class="help-item"><div class="help-num">2</div><div class="help-copy"><strong>最上欄：今日聯絡簿檢查</strong><p>空白代表尚未確認，左鍵／輕觸後為綠色已交；右鍵或觸控長按為紅色「請假／沒來」。紅色學生當日不會列入作業缺交總覽與催繳單。按「編輯／特教生」可設定班級座號與潛能班／特教抽班學生座號。</p></div></div>
+        <div class="help-item"><div class="help-num">3</div><div class="help-copy"><strong>科目清單</strong><p>班導師可依實際任教科目、作業簿本、小考或回條自行新增科目，不必受預設科目限制。每一科會保存自己的欄位、日期、成績與檢核紀錄。</p></div></div>
+        <div class="help-item"><div class="help-num">4</div><div class="help-copy"><strong>抽班</strong><p>某科勾選「抽班」後，該科的檢核表、未交總覽與催繳單會排除已設定的潛能班／特教抽班學生；但學生仍保留在「今日聯絡簿檢查」中。</p></div></div>
+        <div class="help-item"><div class="help-num">5</div><div class="help-copy"><strong>查看未交總覽</strong><p>將各科已設定日期並勾選追蹤的作業彙整成大項，分別顯示<strong>尚未繳交</strong>與<strong>已交但尚未訂正完成</strong>的學生，方便導師快速巡查全班進度。</p></div></div>
+        <div class="help-item"><div class="help-num">6</div><div class="help-copy"><strong>作業催繳單</strong><p>可選擇只列「缺交」、只列「訂正」、兩者皆列，以及是否顯示訂正頁碼；也能指定當日「主力催繳」項目。預覽以 A4 直式雙欄排版，可列印／另存 PDF 或複製到 Word，再裁切貼於聯絡簿。建議教師依校內規範適度留存催繳紀錄，作為作業追蹤與親師溝通歷程的佐證之一。</p></div></div>
+        <div class="help-item"><div class="help-num">7</div><div class="help-copy"><strong>訂正頁碼模式</strong><p>按按鈕或單獨按 <span class="help-kbd">Shift</span> 切換。進入後，橘色待訂正格可<strong>雙擊</strong>輸入頁碼或簡短備註；該格之後轉為綠色通過時，訂正頁碼會自動清除。</p></div></div>
+        <div class="help-item"><div class="help-num">8</div><div class="help-copy"><strong>分數模式</strong><p>按按鈕或單獨按 <span class="help-kbd">Ctrl</span> 切換（與訂正頁碼模式互斥）。進入後點選格子即可輸入 0–100 分；分數輸入視窗中按 <span class="help-kbd">Enter</span> 可直接確認。當游標正在輸入框、文字區或彈出視窗內時，快捷鍵不會誤觸模式切換。分數與黃／綠／橘作業狀態分開保存。</p></div></div>
+        <div class="help-item"><div class="help-num">9</div><div class="help-copy"><strong>匯出成績表</strong><p>匯出目前科目的各欄位成績為 CSV 表格，可直接使用 Excel 開啟，適合再做平均、加權或登錄成績。若該科設定抽班，匯出時會依本科設定排除抽班學生。</p></div></div>
+        <div class="help-item"><div class="help-num">10</div><div class="help-copy"><strong>回復上一步</strong><p>用於處理自己或學生幹部的誤觸，可依序復原近期操作。若系統剛合併另一台電腦的新資料，為避免把遠端更新一起回復，Undo 紀錄可能會重新開始計算。</p></div></div>
+        <div class="help-item"><div class="help-num">11</div><div class="help-copy"><strong>匯出／匯入</strong><p>這裡的匯出是系統自己的 JSON 備份格式，用來完整保存班級、科目、作業紀錄、頁碼與分數；日後可用「匯入」重新讀回。它和「匯出成績表」用途不同。</p></div></div>
+        <div class="help-item"><div class="help-num">12</div><div class="help-copy"><strong>立即合併</strong><p>兩台電腦共用同一同步資料夾時，可按「立即合併」立刻讀取其他裝置的暫存／裝置日誌並合併。平常系統也會週期性自動合併。例如：教室桌機由學生幹部勾選繳交狀況，同時教師在辦公室桌機批改另一份作業、登記分數，兩邊修改不同欄位時可並存。</p></div></div>
+        <div class="help-item"><div class="help-num">13</div><div class="help-copy"><strong>設定同步目錄（根目錄）</strong><p><span class="help-tag">多機使用最優先</span>兩台電腦第一次使用時，都要把雲端硬碟（如 Google Drive、OneDrive）的<strong>同一個本機同步資料夾</strong>設為同步目錄。設定後系統會把根目錄 Handle 保存在該瀏覽器中，之後重新開啟網頁會沿用上次設定；若瀏覽器重新要求檔案權限，只需按「恢復根目錄／恢復同步連線」，<strong>不必重新選擇資料夾</strong>。每台電腦會寫自己的裝置日誌再合併；請勿讓其中一台同時使用不支援此機制的舊版本。</p></div></div>
+        <div class="help-item"><div class="help-num">14</div><div class="help-copy"><strong>作業欄位與拖曳排序</strong><p>點目前科目旁的「欄位」即可展開設定。各項以半形 <span class="help-kbd">/</span> 分隔，例如「第一課/第二課/第三課」。若實際批改順序與畫面位置不一致，可直接拖曳表頭整欄移動，讓正在批改的項目靠近前方，減少滑動距離。</p></div></div>
+      </div>
+      <div class="help-warn"><strong>雙機同步提醒：</strong>本系統採「本機立即保存＋雲端同步資料夾交換裝置日誌」方式運作，合併速度仍受 Google Drive／OneDrive 本機同步速度影響；「立即合併」可要求網頁立刻重新讀取已抵達本機同步資料夾的資料，但無法加速雲端服務本身尚未下載完成的檔案。</div>
+    </div>
+    <div class="modal-footer"><button class="btn primary" data-close="helpModal">知道了</button></div>
+  </div>
+</div>
+
+<!-- 開發資訊 -->
+<div id="devInfoModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="devInfoTitle">
+  <div class="modal-box" style="width:min(620px,96vw)">
+    <div class="modal-head"><h3 id="devInfoTitle">開發資訊</h3></div>
+    <div class="modal-body">
+      <div class="dev-info-card">
+        <p>本作業檢核系統由 <strong>陳民峰老師</strong> 非營利用途開發，若系統進行修改發表，應注重著作版權並附上參考來源。</p>
+        <p class="dev-profile"><strong>陳民峰</strong><br>新北市北大國小教師 / 新北市國小自然輔導團兼任團員 / 翰林自然教科書編輯委員 / 防災士種子教師<br>使用推廣、AI相關研習邀約請洽 <a class="dev-email" href="mailto:cmf.com@gmail.com">cmf.com@gmail.com</a></p>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn" data-close="devInfoModal">關閉</button></div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+'use strict';
+const STORAGE_KEY = 'hw_pro_state_v8'; // 沿用舊 key，確保既有瀏覽器資料可直接升級
+const LEGACY_SYNC_FILENAME = 'hw_checker_data.json'; // 舊版共同檔：新版只拿來建立同步基準，不再自動覆寫
+const SYNC_BASE_FILENAME = 'hw_shared_base_v1.json';
+const DEVICE_ID_KEY = 'hw_pro_device_id_v1';
+const DEVICE_NAME_KEY = 'hw_pro_device_name_v1';
+const LOCAL_JOURNAL_KEY = 'hw_pro_local_journal_v1';
+const JOURNAL_PREFIX = 'hw_device_';
+const JOURNAL_SUFFIX = '.json';
+const SYNC_POLL_MS = 4000;
+const SYNC_WRITE_DELAY_MS = 1000;
+const MAX_UNDO = 30;
+const defaultSubjectsList = [
+  '國語甲本','國語乙本','國語習作','小日記','作文','數學習作','數學練習本','自然習作','社會習作',
+  '開學回條１','期中回條２','國語圈詞考','國語小考','數學小考','自然小考','社會小考'
+];
+function getDefaultItems(sub){
+  const map={
+    '國語甲本':'一/三/五/七/九/十一/十三','國語乙本':'二/四/六/八/十/十二/十四',
+    '國語習作':'一/二/三/四/五/六/七/八/九/十/十一/十二/十三/十四',
+    '作文':'第一篇/第二篇/第三篇/第四篇/寒假一/寒假二',
+    '數學習作':'1-1/1-2/1綜合/2-1/2-2/2-3/2-4/2綜合/3-1/3-2/3-3/3綜合/4-1/4-2/4綜合/5-1/5-2/5綜合/上學期總綜合/6-1/6-2/6-3/7-1/7-2/7-3/7-4/8-1/8-2/8-3/9-1/9-2/9-3/下學期總綜合',
+    '自然習作':'一/二/三/四','社會習作':'一/二/三/四'
+  };return map[sub]||'';
+}
+const defaultStudents=()=>Array.from({length:30},(_,i)=>i+1);
+let state={currentSubject:'數學習作',currentView:'table',subjects:[...defaultSubjectsList],activeStudents:defaultStudents(),specialEdStudents:[],contactBook:{},data:{}};
+let syncDirectoryHandle=null, activeDateItem=null, correctionTarget=null, scoreTarget=null, pageEditMode=false, scoreEditMode=false;
+let noticeOptions={showMissing:true,showPending:true,showPages:true,priorityKeys:new Set()};
+let draggedColIdx=null, isDraggingCol=false, undoStack=[], syncWriteTimer=null;
+let syncBaseState=null, localJournal=null, syncReady=false, syncPollTimer=null, syncReadInProgress=false;
+let syncDiffBefore=null, syncOfflineDirty=false, remoteRenderPending=false, lastKnownDeviceCount=0, maxSeenPatchTime=0, localPatchSeq=0;
+let deviceId=null, deviceName=null;
+
+const $=id=>document.getElementById(id);
+const clone=obj=>JSON.parse(JSON.stringify(obj));
+function uniqueSortedNumbers(text){return [...new Set(String(text||'').split(/[,、，\s]+/).map(s=>parseInt(s.trim(),10)).filter(Number.isFinite))].sort((a,b)=>a-b)}
+function itemList(subjectData){return String(subjectData?.items||'').split('/').map(s=>s.trim()).filter(Boolean)}
+function formatDisplayDate(v){if(!v)return'';const p=v.split('-');return p.length===3?`${p[1]}/${p[2]}`:v}
+function todayString(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function showToast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._timer);t._timer=setTimeout(()=>t.classList.remove('show'),1800)}
+function openModal(id){$(id).classList.remove('hidden')}
+function closeModal(id){$(id).classList.add('hidden')}
+let suppressTouchGeneratedUntil=0;
+function suppressTouchGeneratedEvent(e){
+  if(Date.now()>=suppressTouchGeneratedUntil)return false;
+  e.preventDefault?.();e.stopImmediatePropagation?.();e.stopPropagation?.();return true
+}
+function armTouchSyntheticSuppression(ms=420){suppressTouchGeneratedUntil=Math.max(suppressTouchGeneratedUntil,Date.now()+ms)}
+function bindTouchLongPress(el,callback,delay=550){
+  let timer=null,active=false,armed=false,pointerId=null,startX=0,startY=0;
+  const clearTimer=()=>{if(timer){clearTimeout(timer);timer=null}};
+  const reset=()=>{clearTimer();active=false;armed=false;pointerId=null;el.classList.remove('long-press-ready')};
+  el.addEventListener('pointerdown',e=>{
+    if(e.pointerType!=='touch'&&e.pointerType!=='pen')return;
+    active=true;armed=false;pointerId=e.pointerId;startX=e.clientX;startY=e.clientY;clearTimer();
+    timer=setTimeout(()=>{
+      timer=null;if(!active)return;armed=true;el.classList.add('long-press-ready');
+      if(navigator.vibrate)try{navigator.vibrate(18)}catch(_){ }
+    },delay)
+  });
+  el.addEventListener('pointermove',e=>{
+    if(!active||e.pointerId!==pointerId)return;
+    if(Math.abs(e.clientX-startX)>12||Math.abs(e.clientY-startY)>12)reset()
+  });
+  // Mobile browsers can emit a native contextmenu while the finger is still down.
+  // Swallow it here; the callback is executed exactly once on pointerup.
+  el.addEventListener('contextmenu',e=>{if(active||armed){e.preventDefault();e.stopImmediatePropagation()}},true);
+  el.addEventListener('pointerup',e=>{
+    if(!active||e.pointerId!==pointerId)return;
+    clearTimer();const fire=armed;active=false;armed=false;pointerId=null;el.classList.remove('long-press-ready');
+    if(!fire)return;
+    e.preventDefault();e.stopPropagation();armTouchSyntheticSuppression();callback(e)
+  },true);
+  el.addEventListener('pointercancel',reset,true);
+  el.addEventListener('pointerleave',e=>{if(active&&e.pointerId===pointerId&&!armed)reset()},true)
+}
+
+function migrateAndEnsureState(){
+  if(!state||typeof state!=='object') state={};
+  if(!Array.isArray(state.subjects)||!state.subjects.length) state.subjects=[...defaultSubjectsList];
+  if(!Array.isArray(state.activeStudents)||!state.activeStudents.length) state.activeStudents=defaultStudents();
+  state.activeStudents=[...new Set(state.activeStudents.map(Number).filter(Number.isFinite))].sort((a,b)=>a-b);
+  if(!Array.isArray(state.specialEdStudents)) state.specialEdStudents=[];
+  state.specialEdStudents=[...new Set(state.specialEdStudents.map(Number).filter(n=>Number.isFinite(n)&&state.activeStudents.includes(n)))].sort((a,b)=>a-b);
+  if(!state.contactBook||typeof state.contactBook!=='object') state.contactBook={};
+  if(!state.data||typeof state.data!=='object') state.data={};
+  state.subjects.forEach(sub=>{
+    if(!state.data[sub]||typeof state.data[sub]!=='object') state.data[sub]={items:getDefaultItems(sub),dates:{},tracked:{},records:{},correctionPages:{},scores:{},specialEdPullout:false};
+    const d=state.data[sub];
+    if(typeof d.items!=='string') d.items=getDefaultItems(sub);
+    if(!d.dates) d.dates={}; if(!d.tracked) d.tracked={}; if(!d.records) d.records={};
+    if(!d.correctionPages) d.correctionPages={}; if(!d.scores) d.scores={}; if(typeof d.specialEdPullout!=='boolean') d.specialEdPullout=false;
+  });
+  if(!state.subjects.includes(state.currentSubject)) state.currentSubject=state.subjects[0];
+  if(!['table','summary'].includes(state.currentView)) state.currentView='table';
+}
+
+function pushUndo(label='操作'){
+  syncDiffBefore=clone(state);
+  undoStack.push({label,state:clone(state)}); if(undoStack.length>MAX_UNDO) undoStack.shift(); updateUndoButton();
+}
+function updateUndoButton(){const b=$('undoBtn');b.disabled=undoStack.length===0;b.title=undoStack.length?`回復：${undoStack[undoStack.length-1].label}`:'沒有可回復的操作'}
+function undoLastAction(){
+  if(!undoStack.length)return;
+  const before=clone(state),last=undoStack.pop();
+  state=last.state;migrateAndEnsureState();syncDiffBefore=before;saveState();renderAll();updateUndoButton();showToast(`已回復：${last.label}`)
+}
+
+function loadFromLocalStorage(){
+  try{const saved=localStorage.getItem(STORAGE_KEY);if(saved)state=JSON.parse(saved)}catch(e){console.error('localStorage 讀取失敗',e)}
+  migrateAndEnsureState();
+  ensureDeviceIdentity();
+  loadLocalJournalCache();
+}
+function saveState(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){console.error('localStorage 儲存失敗',e)}
+  if(syncDiffBefore){
+    if(syncReady){recordStateDiff(syncDiffBefore,state);queueJournalWrite()}
+    else if(syncDirectoryHandle)syncOfflineDirty=true;
+    syncDiffBefore=null;
+  }
+  if(syncReady)$('saveStatus').textContent=`本機已儲存｜${deviceName}｜等待雙機同步…`;
+  else if(syncDirectoryHandle)$('saveStatus').textContent='本機已儲存｜同步尚未連線';
+  else $('saveStatus').textContent='已本機儲存 '+new Date().toLocaleTimeString();
+}
+
+function randomDeviceId(){
+  try{return 'd_'+crypto.randomUUID().replaceAll('-','').slice(0,16)}catch(e){return 'd_'+Math.random().toString(36).slice(2,12)+Date.now().toString(36)}
+}
+function ensureDeviceIdentity(){
+  try{deviceId=localStorage.getItem(DEVICE_ID_KEY)||randomDeviceId();localStorage.setItem(DEVICE_ID_KEY,deviceId)}catch(e){deviceId=deviceId||randomDeviceId()}
+  try{deviceName=localStorage.getItem(DEVICE_NAME_KEY)||`桌機-${deviceId.slice(-4).toUpperCase()}`;localStorage.setItem(DEVICE_NAME_KEY,deviceName)}catch(e){deviceName=deviceName||`桌機-${deviceId.slice(-4).toUpperCase()}`}
+}
+function emptyJournal(){return{schema:'hw-pro-device-journal-v1',deviceId,deviceName,updatedAt:0,patches:{}}}
+function loadLocalJournalCache(){
+  try{const raw=localStorage.getItem(LOCAL_JOURNAL_KEY),j=raw?JSON.parse(raw):null;if(j?.deviceId===deviceId&&j?.patches)localJournal=j;else localJournal=emptyJournal()}catch(e){localJournal=emptyJournal()}
+}
+function persistLocalJournalCache(){try{localStorage.setItem(LOCAL_JOURNAL_KEY,JSON.stringify(localJournal))}catch(e){console.warn('同步日誌本機快取失敗',e)}}
+function mergeOwnJournalCopies(disk,cache){
+  const out=emptyJournal(),sources=[disk,cache].filter(j=>j?.deviceId===deviceId&&j?.patches);
+  sources.forEach(j=>Object.values(j.patches).forEach(p=>{if(!Array.isArray(p.path)||!p.stamp)return;const k=pathKey(p.path),old=out.patches[k];if(!old||compareStamp(old.stamp,p.stamp)<0)out.patches[k]=p}));
+  out.updatedAt=Math.max(...sources.map(j=>Number(j.updatedAt||0)),0);out.deviceName=deviceName;return out
+}
+function canonicalSyncState(src=state){return{subjects:clone(src.subjects||[]),activeStudents:clone(src.activeStudents||[]),specialEdStudents:clone(src.specialEdStudents||[]),contactBook:clone(src.contactBook||{}),data:clone(src.data||{})}}
+function sharedToRuntime(shared,oldRuntime=state){
+  const next={...clone(shared),currentSubject:oldRuntime?.currentSubject||'',currentView:oldRuntime?.currentView||'table'};
+  state=next;migrateAndEnsureState();return state
+}
+function isPlainObject(v){return v!==null&&typeof v==='object'&&!Array.isArray(v)}
+function sameValue(a,b){if(a===b)return true;try{return JSON.stringify(a)===JSON.stringify(b)}catch(e){return false}}
+function collectStateDiff(before,after,path=[],out=[]){
+  if(path.length===1&&(path[0]==='currentSubject'||path[0]==='currentView'))return out;
+  if(sameValue(before,after))return out;
+  const bo=isPlainObject(before),ao=isPlainObject(after);
+  if(bo&&ao){const keys=new Set([...Object.keys(before),...Object.keys(after)]);keys.forEach(k=>collectStateDiff(before[k],after[k],[...path,k],out));return out}
+  if(before===undefined&&ao){const keys=Object.keys(after);if(!keys.length)out.push({path,deleted:false,value:{}});else keys.forEach(k=>collectStateDiff(undefined,after[k],[...path,k],out));return out}
+  if(after===undefined){out.push({path,deleted:true});return out}
+  out.push({path,deleted:false,value:clone(after)});return out
+}
+function nextPatchStamp(){const now=Date.now();maxSeenPatchTime=Math.max(now,maxSeenPatchTime+1);localPatchSeq+=1;return{time:maxSeenPatchTime,seq:localPatchSeq,deviceId}}
+function pathKey(path){return JSON.stringify(path)}
+function recordStateDiff(before,after){
+  if(!localJournal)localJournal=emptyJournal();
+  const diffs=collectStateDiff(before,after);
+  diffs.forEach(d=>{if(!d.path.length)return;const stamp=nextPatchStamp();localJournal.patches[pathKey(d.path)]={path:d.path,deleted:!!d.deleted,...(!d.deleted?{value:d.value}:{}),stamp}});
+  if(diffs.length){localJournal.updatedAt=Date.now();localJournal.deviceName=deviceName;persistLocalJournalCache()}
+  return diffs.length
+}
+function compareStamp(a={},b={}){const ta=Number(a.time||0),tb=Number(b.time||0);if(ta!==tb)return ta-tb;const da=String(a.deviceId||''),db=String(b.deviceId||'');if(da!==db)return da.localeCompare(db);return Number(a.seq||0)-Number(b.seq||0)}
+function setAtPath(root,path,value){let cur=root;for(let i=0;i<path.length-1;i++){const k=path[i];if(!isPlainObject(cur[k])&&!Array.isArray(cur[k]))cur[k]={};cur=cur[k]}cur[path[path.length-1]]=clone(value)}
+function deleteAtPath(root,path){let cur=root;for(let i=0;i<path.length-1;i++){cur=cur?.[path[i]];if(cur==null)return}if(cur&&typeof cur==='object')delete cur[path[path.length-1]]}
+function mergeFromJournals(base,journals){
+  const merged=clone(base),patches=[];
+  Object.values(journals).forEach(j=>Object.values(j?.patches||{}).forEach(p=>{if(Array.isArray(p.path)&&p.path.length&&p.stamp){patches.push(p);maxSeenPatchTime=Math.max(maxSeenPatchTime,Number(p.stamp.time||0))}}));
+  patches.sort((a,b)=>compareStamp(a.stamp,b.stamp));
+  patches.forEach(p=>p.deleted?deleteAtPath(merged,p.path):setAtPath(merged,p.path,p.value));
+  return merged
+}
+function isTextEditing(){const e=document.activeElement;return !!e&&(['INPUT','TEXTAREA'].includes(e.tagName))&&e.type!=='checkbox'}
+function renderRemoteIfSafe(){if(remoteRenderPending&&!isTextEditing()){remoteRenderPending=false;renderAll();updateUndoButton()}}
+
+function openDatabase(){return new Promise((resolve,reject)=>{const req=indexedDB.open('HWCheckerDB',1);req.onupgradeneeded=e=>{const db=e.target.result;if(!db.objectStoreNames.contains('settings'))db.createObjectStore('settings')};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
+function saveDirectoryHandle(db,handle){return new Promise((resolve,reject)=>{const tx=db.transaction(['settings'],'readwrite');const req=tx.objectStore('settings').put(handle,'syncDirectoryHandle');req.onsuccess=()=>resolve();req.onerror=()=>reject(req.error)})}
+function getDirectoryHandle(db){return new Promise(resolve=>{const tx=db.transaction(['settings'],'readonly');const req=tx.objectStore('settings').get('syncDirectoryHandle');req.onsuccess=()=>resolve(req.result);req.onerror=()=>resolve(null)})}
+async function readJsonFromDirectory(name){
+  try{const fh=await syncDirectoryHandle.getFileHandle(name);const f=await fh.getFile(),text=await f.text();if(!text)return null;return JSON.parse(text)}catch(e){if(e?.name!=='NotFoundError')console.warn(`讀取 ${name} 失敗`,e);return null}
+}
+async function writeJsonToDirectory(name,obj){const fh=await syncDirectoryHandle.getFileHandle(name,{create:true});const w=await fh.createWritable();await w.write(JSON.stringify(obj));await w.close()}
+async function ensureSyncBase(){
+  let payload=await readJsonFromDirectory(SYNC_BASE_FILENAME);
+  if(payload?.state?.data){syncBaseState=canonicalSyncState(payload.state);return syncBaseState}
+  const legacy=await readJsonFromDirectory(LEGACY_SYNC_FILENAME);
+  const base=legacy?.data?canonicalSyncState(legacy):canonicalSyncState(state);
+  payload={schema:'hw-pro-shared-base-v1',createdAt:new Date().toISOString(),createdBy:deviceId,state:base};
+  try{await writeJsonToDirectory(SYNC_BASE_FILENAME,payload)}catch(e){console.error('建立雙機同步基準失敗',e)}
+  syncBaseState=base;return base
+}
+async function readAllDeviceJournals(){
+  const journals={};
+  try{
+    for await(const [name,handle] of syncDirectoryHandle.entries()){
+      if(handle.kind!=='file'||!name.startsWith(JOURNAL_PREFIX)||!name.endsWith(JOURNAL_SUFFIX))continue;
+      try{const f=await handle.getFile(),text=await f.text();if(!text)continue;const j=JSON.parse(text);if(j?.deviceId&&j?.patches)journals[j.deviceId]=j}catch(e){console.warn('略過尚未同步完成的裝置日誌',name)}
+    }
+  }catch(e){console.error('掃描裝置日誌失敗',e)}
+  return journals
+}
+function journalFilename(){return `${JOURNAL_PREFIX}${deviceId}${JOURNAL_SUFFIX}`}
+async function initializeMultiDeviceSync({mergeOffline=false}={}){
+  if(!syncDirectoryHandle)return false;
+  syncReady=false;
+  const localBefore=canonicalSyncState(state);
+  await ensureSyncBase();
+  const journals=await readAllDeviceJournals();
+  if(journals[deviceId]){localJournal=mergeOwnJournalCopies(journals[deviceId],localJournal);persistLocalJournalCache()}
+  else if(!localJournal||localJournal.deviceId!==deviceId)localJournal=emptyJournal();
+  journals[deviceId]=localJournal;
+  let merged=mergeFromJournals(syncBaseState,journals);
+  if(mergeOffline){recordStateDiff(merged,localBefore);journals[deviceId]=localJournal;merged=mergeFromJournals(syncBaseState,journals)}
+  const oldRuntime={currentSubject:state.currentSubject,currentView:state.currentView};
+  sharedToRuntime(merged,oldRuntime);
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){}
+  syncReady=true;syncOfflineDirty=false;lastKnownDeviceCount=Object.keys(journals).length;
+  await writeLocalJournal();
+  startSyncPolling();updateConnectedStatus();return true
+}
+async function restoreSavedSyncDirectory(){
+  if(!syncDirectoryHandle)return false;
+  try{
+    let perm=await syncDirectoryHandle.queryPermission({mode:'readwrite'});
+    if(perm!=='granted')perm=await syncDirectoryHandle.requestPermission({mode:'readwrite'});
+    if(perm!=='granted'){updateSyncUI(false,true);return false}
+    updateSyncUI(true);await initializeMultiDeviceSync({mergeOffline:syncOfflineDirty});renderAll();return true
+  }catch(e){console.error('恢復上次同步根目錄失敗',e);updateSyncUI(false,true);return false}
+}
+async function handleSyncDirectoryButton(){
+  // If the browser still has the previously selected FileSystemDirectoryHandle,
+  // restore permission to that same folder instead of opening a new picker.
+  if(syncDirectoryHandle&&!syncReady){await restoreSavedSyncDirectory();return}
+  await setupSyncDirectory()
+}
+async function initSyncAndData(){
+  loadFromLocalStorage();
+  if(!('showDirectoryPicker' in window)){updateSyncUI(false);return}
+  try{
+    const db=await openDatabase(),savedHandle=await getDirectoryHandle(db);
+    if(savedHandle){
+      syncDirectoryHandle=savedHandle;const perm=await savedHandle.queryPermission({mode:'readwrite'});
+      if(perm==='granted'){updateSyncUI(true);await initializeMultiDeviceSync();return}
+      // The directory handle itself is remembered. A browser may require one click
+      // after restart to restore permission, but the teacher does not re-select the folder.
+      updateSyncUI(false,true)
+    }else updateSyncUI(false)
+  }catch(e){console.error(e);updateSyncUI(false)}
+}
+async function setupSyncDirectory(){
+  if(!window.showDirectoryPicker){alert('此瀏覽器不支援目錄同步。請使用最新版 Chrome / Edge，或使用匯出備份。');return}
+  try{
+    const h=await window.showDirectoryPicker({mode:'readwrite'});syncDirectoryHandle=h;const db=await openDatabase();await saveDirectoryHandle(db,h);updateSyncUI(true);await initializeMultiDeviceSync();renderAll();
+    alert(`雙桌機安全同步已啟用。\n\n本機裝置：${deviceName}\n之後每台電腦只寫自己的裝置日誌，不再共同覆寫 hw_checker_data.json。\n\n請讓兩台電腦都改用這個新版。`)
+  }catch(e){if(e.name!=='AbortError')console.error(e)}
+}
+function updateConnectedStatus(extra=''){
+  if(!$('saveStatus'))return;const deviceText=lastKnownDeviceCount?`｜已偵測 ${lastKnownDeviceCount} 台`:'',tail=extra?`｜${extra}`:'';
+  $('saveStatus').textContent=`雙機安全同步｜${deviceName}${deviceText}${tail}`
+}
+function updateSyncUI(connected,needsPermission=false){
+  const ind=$('syncDirIndicator'),txt=$('syncDirText'),manual=$('manualSyncBtn');
+  if(connected){ind.style.background='#22c55e';txt.textContent='重新設定目錄';manual.classList.remove('hidden','soft-amber');manual.classList.add('soft-blue');manual.textContent='立即合併';manual.onclick=manualSyncUpdate;$('syncDirBtn').title='雙機安全同步：根目錄會記住於此瀏覽器；每台桌機各寫自己的裝置日誌，再合併其他裝置更新';updateConnectedStatus('連線中')}
+  else if(needsPermission){
+    ind.style.background='#f59e0b';txt.textContent='恢復根目錄';manual.classList.remove('hidden','soft-blue');manual.classList.add('soft-amber');manual.textContent='恢復同步連線';
+    manual.onclick=restoreSavedSyncDirectory;
+    $('syncDirBtn').title='已沿用上次設定的同步根目錄；瀏覽器若在重新開啟後要求權限，點此恢復即可，無須重新選資料夾';
+    $('saveStatus').textContent='已記住上次同步根目錄｜等待恢復瀏覽器存取權限'
+  }else{ind.style.background='#ef4444';txt.textContent='設定同步目錄';manual.classList.add('hidden');$('saveStatus').textContent='資料自動儲存於瀏覽器'}
+}
+function queueJournalWrite(){if(!syncReady)return;clearTimeout(syncWriteTimer);syncWriteTimer=setTimeout(()=>writeLocalJournal(),SYNC_WRITE_DELAY_MS)}
+async function writeLocalJournal(){
+  if(!syncDirectoryHandle||!localJournal)return false;
+  localJournal.updatedAt=Date.now();localJournal.deviceName=deviceName;persistLocalJournalCache();
+  try{await writeJsonToDirectory(journalFilename(),localJournal);updateConnectedStatus('已送出 '+new Date().toLocaleTimeString());return true}
+  catch(e){console.error('裝置日誌寫入失敗',e);$('saveStatus').textContent=`本機已儲存｜${deviceName}｜同步寫入失敗`;return false}
+}
+async function mergeRemoteNow({feedback=false}={}){
+  if(!syncReady||!syncDirectoryHandle||syncReadInProgress)return false;
+  syncReadInProgress=true;
+  try{
+    const journals=await readAllDeviceJournals();journals[deviceId]=localJournal||emptyJournal();lastKnownDeviceCount=Object.keys(journals).length;
+    const merged=mergeFromJournals(syncBaseState,journals),current=canonicalSyncState(state),changed=!sameValue(current,merged);
+    if(changed){
+      const runtime={currentSubject:state.currentSubject,currentView:state.currentView};sharedToRuntime(merged,runtime);try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){}
+      undoStack=[];updateUndoButton();remoteRenderPending=true;
+      if(feedback)showToast('已合併另一台桌機的最新修改')
+    }
+    renderRemoteIfSafe();updateConnectedStatus(changed?'已合併更新':'資料一致');return changed
+  }catch(e){console.error('雙機合併失敗',e);return false}finally{syncReadInProgress=false}
+}
+function startSyncPolling(){clearInterval(syncPollTimer);syncPollTimer=setInterval(()=>mergeRemoteNow(),SYNC_POLL_MS)}
+async function manualSyncUpdate(){if(!syncReady){alert('同步尚未就緒。');return}await writeLocalJournal();const changed=await mergeRemoteNow({feedback:true});if(!changed)showToast('兩台資料已一致')}
+
+async function exportData(){
+  const stamp=new Date().toTimeString().slice(0,8).replaceAll(':',''),dataStr=JSON.stringify(state,null,2),name=`作業備份_${todayString().replaceAll('-','')}_${stamp}_${deviceId?deviceId.slice(-4):'local'}.json`;
+  if(syncDirectoryHandle){try{const fh=await syncDirectoryHandle.getFileHandle(name,{create:true});const w=await fh.createWritable();await w.write(dataStr);await w.close();alert(`已匯出至同步目錄：\n${name}`);return}catch(e){console.error(e)}}
+  const blob=new Blob([dataStr],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)
+}
+async function triggerImport(){
+  if(syncDirectoryHandle&&window.showOpenFilePicker){try{const [fh]=await window.showOpenFilePicker({startIn:syncDirectoryHandle,types:[{description:'JSON 備份檔',accept:{'application/json':['.json']}}]});const f=await fh.getFile();await processImportText(await f.text());return}catch(e){if(e.name==='AbortError')return}}
+  $('importInput').click();
+}
+async function processImportText(text){
+  try{const imported=JSON.parse(text);if(!imported.data||!Array.isArray(imported.subjects))throw new Error('檔案格式不正確');pushUndo('匯入資料');state=imported;migrateAndEnsureState();saveState();renderAll();showToast('匯入完成')}catch(e){alert('讀取失敗：'+e.message)}
+}
+
+function renderAll(){renderSubjectList();renderContactBook();syncSubjectControls();if(state.currentView==='summary')renderSummary();else renderTable()}
+function syncSubjectControls(){
+  const d=state.data[state.currentSubject];$('currentSubjectTitle').textContent=state.currentSubject;$('itemsInput').value=d?.items||'';$('specialEdPulloutCheckbox').checked=!!d?.specialEdPullout;
+  const count=itemList(d).length;$('itemCount').textContent=`${count}項`;
+  $('pulloutHint').textContent=d?.specialEdPullout?(state.specialEdStudents.length?`本科隱藏：${state.specialEdStudents.join('、')}`:'尚未設定特教生'):'本科不排除特教生';
+  $('pulloutInfoText').innerHTML=d?.specialEdPullout
+    ?(state.specialEdStudents.length?`已啟用抽班，本科排除：<strong>${state.specialEdStudents.join('、')}</strong>。<br>未交總覽與催繳單也會同步排除；今日聯絡簿不受影響。`:'已啟用抽班，但尚未設定特教生座號。<br>請至「編輯／特教生」設定名單。')
+    :'勾選後，本科檢核表、未交總覽與催繳單會排除特教生名單；不影響今日聯絡簿檢查。';
+}
+function toggleItemsEditor(){
+  const panel=$('itemsEditorPanel'),btn=$('toggleItemsEditorBtn'),open=panel.classList.contains('hidden');
+  panel.classList.toggle('hidden',!open);btn.setAttribute('aria-expanded',open?'true':'false');
+  if(open)setTimeout(()=>$('itemsInput').focus(),30);
+}
+function bindInfoPopover(buttonId,wrapId){
+  const btn=$(buttonId),wrap=$(wrapId);if(!btn||!wrap)return;
+  btn.addEventListener('click',e=>{e.stopPropagation();const willOpen=!wrap.classList.contains('open');document.querySelectorAll('.info-wrap.open').forEach(w=>w.classList.remove('open'));document.querySelectorAll('.info-btn[aria-expanded="true"]').forEach(b=>b.setAttribute('aria-expanded','false'));wrap.classList.toggle('open',willOpen);btn.setAttribute('aria-expanded',willOpen?'true':'false')});
+}
+function renderSubjectList(){
+  const list=$('subjectList');list.replaceChildren();
+  state.subjects.forEach(sub=>{const b=document.createElement('button');b.type='button';b.className='subject-btn'+(sub===state.currentSubject?' active':'');const span=document.createElement('span');span.textContent=sub;b.appendChild(span);if(state.data[sub]?.specialEdPullout){const tag=document.createElement('span');tag.className='pullout-badge';tag.textContent='抽班';b.appendChild(tag)}b.addEventListener('click',()=>switchSubject(sub));list.appendChild(b)})
+}
+function switchSubject(name){if(!state.data[name])return;state.currentSubject=name;renderSubjectList();syncSubjectControls();renderTable();saveState()}
+
+function openStudentsModal(){ $('studentsInput').value=state.activeStudents.join(', ');$('specialEdInput').value=state.specialEdStudents.join(', ');openModal('studentsModal');$('studentsInput').focus() }
+function saveStudents(){
+  const active=uniqueSortedNumbers($('studentsInput').value),special=uniqueSortedNumbers($('specialEdInput').value);
+  if(!active.length){alert('請至少輸入一個有效座號。');return}
+  const invalid=special.filter(n=>!active.includes(n));if(invalid.length){alert(`以下特教生座號不在班級名單中：${invalid.join('、')}`);return}
+  pushUndo('修改班級／特教生名單');state.activeStudents=active;state.specialEdStudents=special;saveState();renderAll();closeModal('studentsModal')
+}
+function renderContactBook(){
+  const c=$('contactBookContainer');c.replaceChildren();
+  state.activeStudents.forEach(no=>{const status=Number(state.contactBook[no]||0),b=document.createElement('button');b.type='button';b.className='student-chip'+(status===1?' checked':status===2?' absent':'')+(state.specialEdStudents.includes(no)?' special':'');b.textContent=no;b.title=state.specialEdStudents.includes(no)?`${no}號（特教生）`:`${no}號`;b.addEventListener('click',()=>toggleContactBook(no));b.addEventListener('contextmenu',e=>toggleContactBookAbsent(e,no));bindTouchLongPress(b,e=>toggleContactBookAbsent({preventDefault:()=>{}},no));c.appendChild(b)})
+}
+function toggleContactBook(no){pushUndo(`聯絡簿 ${no} 號`);state.contactBook[no]=Number(state.contactBook[no]||0)===1?0:1;saveState();renderContactBook();if(state.currentView==='summary')renderSummary()}
+function toggleContactBookAbsent(e,no){e.preventDefault();pushUndo(`聯絡簿 ${no} 號缺席`);state.contactBook[no]=Number(state.contactBook[no]||0)===2?0:2;saveState();renderContactBook();if(state.currentView==='summary')renderSummary()}
+function resetContactBook(){if(confirm('確定要清空今天的聯絡簿檢查紀錄嗎？')){pushUndo('清空聯絡簿');state.contactBook={};saveState();renderContactBook();if(state.currentView==='summary')renderSummary()}}
+
+function openNewSubjectModal(){$('newSubjectInput').value='';openModal('newSubjectModal');setTimeout(()=>$('newSubjectInput').focus(),50)}
+function confirmAddSubject(){const name=$('newSubjectInput').value.trim();if(!name)return;if(state.subjects.includes(name)){alert('此科目已存在。');return}pushUndo('新增科目');state.subjects.push(name);state.data[name]={items:getDefaultItems(name),dates:{},tracked:{},records:{},correctionPages:{},scores:{},specialEdPullout:false};state.currentSubject=name;saveState();renderAll();closeModal('newSubjectModal')}
+function deleteCurrentSubject(){if(state.subjects.length<=1){alert('請至少保留一個科目。');return}if(confirm(`確定刪除「${state.currentSubject}」及其所有紀錄？`)){pushUndo('刪除科目');const old=state.currentSubject;state.subjects=state.subjects.filter(s=>s!==old);delete state.data[old];state.currentSubject=state.subjects[0];saveState();renderAll()}}
+function resetCurrentSubject(){if(confirm(`確定清除「${state.currentSubject}」的所有紀錄、日期、訂正頁碼與分數，並恢復預設小節？`)){pushUndo('重設目前科目');state.data[state.currentSubject]={items:getDefaultItems(state.currentSubject),dates:{},tracked:{},records:{},correctionPages:{},scores:{},specialEdPullout:state.data[state.currentSubject].specialEdPullout||false};saveState();renderAll()}}
+function updateItems(){const d=state.data[state.currentSubject],v=$('itemsInput').value;if(v===d.items)return;pushUndo('修改檢核小節');d.items=v;saveState();renderTable()}
+function toggleSpecialEdPullout(){const d=state.data[state.currentSubject];pushUndo('切換抽班');d.specialEdPullout=$('specialEdPulloutCheckbox').checked;saveState();syncSubjectControls();renderTable();if(state.currentView==='summary')renderSummary()}
+function getStudentsForSubject(subjectName,{excludeAbsent=true}={}){const d=state.data[subjectName];return state.activeStudents.filter(no=>!(excludeAbsent&&Number(state.contactBook[no]||0)===2)&&!(d?.specialEdPullout&&state.specialEdStudents.includes(no)))}
+
+function handleDragStart(e,idx){if(pageEditMode){e.preventDefault();return}isDraggingCol=true;draggedColIdx=idx;e.dataTransfer.effectAllowed='move';e.currentTarget.style.opacity='.55'}
+function handleDragOver(e){if(!pageEditMode){e.preventDefault();e.dataTransfer.dropEffect='move'}}
+function handleDrop(e,targetIdx){e.preventDefault();if(pageEditMode)return;if(draggedColIdx!==null&&draggedColIdx!==targetIdx){const d=state.data[state.currentSubject],arr=itemList(d);pushUndo('調整小節順序');const moved=arr.splice(draggedColIdx,1)[0];arr.splice(targetIdx,0,moved);d.items=arr.join('/');$('itemsInput').value=d.items;saveState();renderTable()}draggedColIdx=null;return false}
+function handleDragEnd(e){e.currentTarget.style.opacity='';draggedColIdx=null;setTimeout(()=>isDraggingCol=false,50)}
+
+function renderTable(){
+  const d=state.data[state.currentSubject];if(!d)return;const items=itemList(d),dates=d.dates||{},tracked=d.tracked||{},students=getStudentsForSubject(state.currentSubject,{excludeAbsent:false});
+  const thead=$('tableHead'),tbody=$('tableBody');thead.replaceChildren();tbody.replaceChildren();
+  const hr=document.createElement('tr'),hNo=document.createElement('th');hNo.className='sticky-col';hNo.textContent='座號';hr.appendChild(hNo);
+  items.forEach((item,index)=>{const th=document.createElement('th');th.className='item-head';th.draggable=!(pageEditMode||scoreEditMode);const name=document.createElement('div');name.className='item-name';name.textContent=item;name.title=item;th.title=item;th.appendChild(name);const date=document.createElement('div');date.className='date-mini'+(dates[item]?'':' empty');date.textContent=dates[item]?formatDisplayDate(dates[item]):'設日期';th.appendChild(date);if(tracked[item]===true){const pin=document.createElement('span');pin.className='pin';pin.textContent='📌';pin.title='追蹤中';th.appendChild(pin)}th.addEventListener('click',()=>{if(!isDraggingCol&&!pageEditMode&&!scoreEditMode)openDateModal(item)});th.addEventListener('dragstart',e=>handleDragStart(e,index));th.addEventListener('dragover',handleDragOver);th.addEventListener('drop',e=>handleDrop(e,index));th.addEventListener('dragend',handleDragEnd);hr.appendChild(th)});thead.appendChild(hr);
+  students.forEach(no=>{const tr=document.createElement('tr');tr.className='row-height';const tdNo=document.createElement('td');tdNo.className='sticky-col';tdNo.textContent=no;if(state.specialEdStudents.includes(no))tdNo.title='特教生';tr.appendChild(tdNo);
+    items.forEach(item=>{const td=document.createElement('td'),cell=document.createElement('div'),key=`${no}_${item}`,status=Number(d.records[key]||0),pages=String(d.correctionPages[key]||''),score=d.scores?.[key];cell.className='cell '+(status===3?'cell-submitted':status===1?'cell-done':status===2?'cell-pending':'cell-none');if(pageEditMode)cell.classList.add(status===2?'page-target':'page-muted');if(scoreEditMode){cell.classList.add('score-target');const s=document.createElement('span');s.className='cell-score'+((score===undefined||score===null||score==='')?' empty':'');s.textContent=(score===undefined||score===null||score==='')?'＋':score;cell.appendChild(s);cell.title='點一下輸入分數'}else if(status===2&&pages){const s=document.createElement('span');s.className='cell-page';s.textContent=pages;cell.appendChild(s);cell.title=`訂正：${pages}`}else cell.title=pageEditMode?(status===2?'雙擊輸入訂正頁碼':'頁碼模式僅編輯橘色格'):'左鍵／輕觸切換狀態；右鍵／觸控長按標示未訂正';cell.addEventListener('click',()=>handleLeftClick(no,item));cell.addEventListener('contextmenu',e=>handleRightClick(e,no,item));bindTouchLongPress(cell,e=>handleRightClick({preventDefault:()=>{}},no,item));cell.addEventListener('dblclick',e=>{e.preventDefault();if(pageEditMode&&status===2)openCorrectionModal(no,item)});td.appendChild(cell);tr.appendChild(td)});tbody.appendChild(tr)
+  });
+  $('tableCard').classList.toggle('edit-mode',pageEditMode);
+  $('tableCard').classList.toggle('score-mode',scoreEditMode);
+}
+function handleLeftClick(no,item){if(pageEditMode)return;if(scoreEditMode){openScoreModal(no,item);return}const d=state.data[state.currentSubject],key=`${no}_${item}`,cur=Number(d.records[key]||0);pushUndo(`${state.currentSubject} ${no}號 ${item}`);let next=0;if(cur===0||cur===2)next=3;else if(cur===3)next=1;else if(cur===1)next=0;d.records[key]=next;if(next===1||next===0)delete d.correctionPages[key];saveState();renderTable()}
+function handleRightClick(e,no,item){e.preventDefault();if(pageEditMode||scoreEditMode)return;const d=state.data[state.currentSubject],key=`${no}_${item}`,cur=Number(d.records[key]||0);pushUndo(`${state.currentSubject} ${no}號 未訂正`);d.records[key]=cur===2?0:2;if(d.records[key]!==2)delete d.correctionPages[key];saveState();renderTable()}
+function exitScoreMode(silent=true){if(!scoreEditMode)return;scoreEditMode=false;$('scoreEditBtn').classList.remove('score-active');$('scoreEditBtn').textContent='分數模式';if(!silent)showToast('已回到一般檢核模式')}
+function exitPageEditMode(silent=true){if(!pageEditMode)return;pageEditMode=false;$('pageEditBtn').classList.remove('active-mode');$('pageEditBtn').textContent='訂正頁碼模式';if(!silent)showToast('已回到一般檢核模式')}
+function togglePageEditMode(){const next=!pageEditMode;if(next)exitScoreMode(true);pageEditMode=next;$('pageEditBtn').classList.toggle('active-mode',pageEditMode);$('pageEditBtn').textContent=pageEditMode?'結束訂正頁碼模式':'訂正頁碼模式';renderTable();showToast(pageEditMode?'雙擊橘色格輸入頁碼':'已回到一般檢核模式')}
+function toggleScoreEditMode(){const next=!scoreEditMode;if(next)exitPageEditMode(true);scoreEditMode=next;$('scoreEditBtn').classList.toggle('score-active',scoreEditMode);$('scoreEditBtn').textContent=scoreEditMode?'結束分數模式':'分數模式';renderTable();showToast(scoreEditMode?'點格子即可輸入分數':'已回到一般檢核模式')}
+function shortcutBlocked(e){const target=e?.target;const isInteractive=target&&(target.matches?.('input,textarea,select,button,a,[contenteditable="true"]')||target.closest?.('[contenteditable="true"]'));return !!(isInteractive||document.querySelector('.modal:not(.hidden)'))}
+function handlePageEditShortcut(e){if(e.key!=='Shift'||e.repeat||shortcutBlocked(e))return;e.preventDefault();togglePageEditMode()}
+let ctrlSoloCandidate=false;
+function handleScoreShortcutDown(e){
+  if(e.key==='Control'){
+    if(e.repeat||shortcutBlocked(e)){ctrlSoloCandidate=false;return}
+    ctrlSoloCandidate=true;return
+  }
+  if(ctrlSoloCandidate)ctrlSoloCandidate=false
+}
+function handleScoreShortcutUp(e){
+  if(e.key!=='Control')return;
+  const shouldToggle=ctrlSoloCandidate&&!shortcutBlocked(e);
+  ctrlSoloCandidate=false;
+  if(!shouldToggle)return;
+  e.preventDefault();toggleScoreEditMode()
+}
+function openScoreModal(no,item){if(!scoreEditMode)return;const d=state.data[state.currentSubject],key=`${no}_${item}`;scoreTarget={subject:state.currentSubject,no,item,key};$('scoreContext').textContent=`${state.currentSubject}｜${no} 號｜${item}`;$('scoreInput').value=d.scores?.[key]??'';openModal('scoreModal');setTimeout(()=>$('scoreInput').focus(),40)}
+function saveScore(clear=false){if(!scoreTarget)return;const {subject,key}=scoreTarget,d=state.data[subject];const raw=clear?'':$('scoreInput').value.trim();if(raw!==''){const value=Number(raw);if(!Number.isFinite(value)||value<0||value>100){alert('請輸入 0 到 100 之間的分數。');return}}pushUndo('修改分數');if(raw==='')delete d.scores[key];else d.scores[key]=Number(raw);saveState();renderTable();closeModal('scoreModal');scoreTarget=null}
+function csvEscape(v){const s=String(v??'');return (s.includes(',')||s.includes('"')||s.includes('\n')||s.includes('\r'))?`"${s.replaceAll('"','""')}"`:s}
+function exportScoreTable(){
+  const sub=state.currentSubject,d=state.data[sub],items=itemList(d),students=getStudentsForSubject(sub,{excludeAbsent:false});
+  const rows=[['座號',...items],...students.map(no=>[no,...items.map(item=>d.scores?.[`${no}_${item}`]??'')])];
+  const csv='\uFEFF'+rows.map(r=>r.map(csvEscape).join(',')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`${sub}_成績_${todayString().replaceAll('-','')}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);showToast(`已匯出「${sub}」成績表`)
+}
+function openCorrectionModal(no,item){const d=state.data[state.currentSubject],key=`${no}_${item}`;if(Number(d.records[key]||0)!==2)return;correctionTarget={subject:state.currentSubject,no,item,key};$('correctionContext').textContent=`${state.currentSubject}｜${no} 號｜${item}`;$('correctionInput').value=d.correctionPages[key]||'';openModal('correctionModal');setTimeout(()=>$('correctionInput').focus(),50)}
+function saveCorrection(clear=false){if(!correctionTarget)return;const {subject,key}=correctionTarget,d=state.data[subject];pushUndo('修改訂正頁碼');const val=clear?'':$('correctionInput').value.trim();if(val)d.correctionPages[key]=val;else delete d.correctionPages[key];saveState();renderTable();closeModal('correctionModal');correctionTarget=null}
+
+function openDateModal(item){if(isDraggingCol||pageEditMode||scoreEditMode)return;activeDateItem=item;const d=state.data[state.currentSubject];$('modalItemName').textContent=`檢核項目：${item}`;$('dateInput').value=d.dates[item]||todayString();$('trackCheckbox').checked=d.tracked[item]===true;openModal('dateModal');setTimeout(()=>$('dateInput').focus(),50)}
+function confirmDate(){if(!activeDateItem)return;const d=state.data[state.currentSubject],val=$('dateInput').value,tracked=$('trackCheckbox').checked;pushUndo('設定檢核日期');if(val){d.dates[activeDateItem]=val;d.tracked[activeDateItem]=tracked}else{delete d.dates[activeDateItem];d.tracked[activeDateItem]=false}saveState();renderTable();closeModal('dateModal');activeDateItem=null}
+
+function toggleView(){
+  const table=$('tableView'),summary=$('summaryView');if(state.currentView==='table'){state.currentView='summary';table.classList.add('hidden');summary.classList.remove('hidden');$('viewToggleBtn').textContent='回到檢核表';renderSummary()}else{state.currentView='table';summary.classList.add('hidden');table.classList.remove('hidden');$('viewToggleBtn').textContent='查看未交總覽';renderTable()}
+}
+function trackedItemsForSubject(subjectName){const d=state.data[subjectName];return itemList(d).filter(item=>d.dates?.[item]&&d.tracked?.[item]===true)}
+function aggregateSubject(subjectName){
+  const d=state.data[subjectName],tracked=trackedItemsForSubject(subjectName),students=getStudentsForSubject(subjectName);const missing=[],pending=[];
+  students.forEach(no=>{let hasMissing=false,hasPending=false;tracked.forEach(item=>{const s=Number(d.records[`${no}_${item}`]||0);if(s===0)hasMissing=true;if(s===2)hasPending=true});if(hasMissing)missing.push(no);if(hasPending)pending.push(no)});
+  const ds=tracked.map(i=>d.dates[i]).filter(Boolean).sort();return{tracked,missing,pending,latestDate:ds.at(-1)||'',students};
+}
+function renderSummary(){
+  const c=$('summaryContent');c.replaceChildren();let any=false;
+  state.subjects.forEach(sub=>{const a=aggregateSubject(sub);if(!a.tracked.length)return;any=true;const block=document.createElement('section');block.className='summary-block';const head=document.createElement('div');head.className='summary-head';const h=document.createElement('h3');h.textContent=sub;const meta=document.createElement('div');meta.className='summary-meta';meta.textContent=`追蹤 ${a.tracked.length} 項${a.latestDate?'｜檢核至 '+formatDisplayDate(a.latestDate):''}${state.data[sub].specialEdPullout?'｜已抽班排除':''}`;head.append(h,meta);const grid=document.createElement('div');grid.className='summary-grid';grid.appendChild(summaryList('尚未交',a.missing,'missing'));grid.appendChild(summaryList('未訂正',a.pending,'pending'));block.append(head,grid);c.appendChild(block)});
+  if(!any){const e=document.createElement('div');e.className='empty-state';e.innerHTML='尚無可統計資料。<br>請先在檢核表點擊小節表頭，設定日期並勾選「📌 追蹤此項目」。';c.appendChild(e)}
+}
+function summaryList(label,arr,type){const box=document.createElement('div');box.className='summary-cell';const l=document.createElement('div');l.className=`summary-label ${type}`;l.textContent=`${label}（${arr.length} 人）`;const nums=document.createElement('div');nums.className='number-list';if(arr.length)nums.textContent=arr.join('、');else{const s=document.createElement('span');s.className='all-clear';s.textContent=type==='missing'?'全數繳交':'無'}box.append(l,nums);return box}
+
+function priorityKey(subject,item){return `${subject}\u0000${item}`}
+function getNoticeOptionsFromUI(){
+  noticeOptions.showMissing=$('noticeShowMissing').checked;
+  noticeOptions.showPending=$('noticeShowPending').checked;
+  noticeOptions.showPages=$('noticeShowPages').checked;
+  noticeOptions.priorityKeys=new Set([...document.querySelectorAll('#priorityItemsContainer input[type="checkbox"]:checked')].map(i=>i.value));
+  return noticeOptions
+}
+function renderPriorityItems(){
+  const c=$('priorityItemsContainer');c.replaceChildren();let any=false;
+  state.subjects.forEach(sub=>{const tracked=trackedItemsForSubject(sub);if(!tracked.length)return;any=true;const box=document.createElement('section');box.className='priority-subject';const title=document.createElement('div');title.className='priority-subject-title';title.textContent=sub;const items=document.createElement('div');items.className='priority-items';tracked.forEach(item=>{const label=document.createElement('label');label.className='priority-item';const cb=document.createElement('input');cb.type='checkbox';cb.value=priorityKey(sub,item);cb.checked=noticeOptions.priorityKeys.has(cb.value);const span=document.createElement('span');span.textContent=`${item}${state.data[sub].dates?.[item]?'（'+formatDisplayDate(state.data[sub].dates[item])+'）':''}`;label.append(cb,span);items.appendChild(label)});box.append(title,items);c.appendChild(box)});
+  if(!any){const e=document.createElement('div');e.className='empty-state';e.style.padding='24px 12px';e.textContent='目前沒有已設定日期且勾選追蹤的項目。';c.appendChild(e)}
+}
+function openNoticeSettingsModal(){
+  $('noticeShowMissing').checked=noticeOptions.showMissing;$('noticeShowPending').checked=noticeOptions.showPending;$('noticeShowPages').checked=noticeOptions.showPages;renderPriorityItems();openModal('noticeSettingsModal')
+}
+function confirmNoticeSettings(){
+  const opt=getNoticeOptionsFromUI();if(!opt.showMissing&&!opt.showPending){alert('「缺交」與「訂正」至少要勾選一項。');return}closeModal('noticeSettingsModal');renderNoticePreview();openModal('noticeModal')
+}
+function buildNoticeRows(options=noticeOptions){
+  const rows=[];
+  state.activeStudents.forEach(no=>{
+    if(Number(state.contactBook[no]||0)===2)return;
+    const missingSubjects=[],pendingSubjects=[];
+    state.subjects.forEach(sub=>{
+      const d=state.data[sub],tracked=trackedItemsForSubject(sub);if(!tracked.length)return;if(d.specialEdPullout&&state.specialEdStudents.includes(no))return;
+      const missingItems=[],pendingItems=[];
+      tracked.forEach(item=>{const key=`${no}_${item}`,status=Number(d.records[key]||0),priority=options.priorityKeys.has(priorityKey(sub,item));if(options.showMissing&&status===0)missingItems.push({item,priority});if(options.showPending&&status===2){const pages=String(d.correctionPages?.[key]||'').trim();pendingItems.push({item,priority,pages})}});
+      missingItems.sort((a,b)=>Number(b.priority)-Number(a.priority));pendingItems.sort((a,b)=>Number(b.priority)-Number(a.priority));
+      if(missingItems.length)missingSubjects.push(`${sub}（${missingItems.map(x=>`${x.priority?'★':''}${x.item}`).join('、')}）`);
+      if(pendingItems.length)pendingSubjects.push(`${sub}（${pendingItems.map(x=>`${x.priority?'★':''}${x.item}${options.showPages&&x.pages?'：'+x.pages:''}`).join('；')}）`);
+    });
+    const lineCount=(options.showMissing?Math.max(1,missingSubjects.length):0)+(options.showPending?Math.max(1,pendingSubjects.length):0);
+    if(missingSubjects.length||pendingSubjects.length)rows.push({no,missing:missingSubjects,pending:pendingSubjects,lineCount,wide:lineCount>5});
+  });
+  return rows;
+}
+function noticeDateText(){const d=new Date();return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`}
+function escapeHtml(text){return String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function buildNoticeSlipHtml(row,date,options=noticeOptions){
+  const lines=[];
+  if(options.showMissing){row.missing.forEach((item,i)=>lines.push(`<tr><td style="width:13mm;border-right:1px solid #94a3b8;border-bottom:1px solid #cbd5e1;padding:1.45mm 1.6mm;font-size:9.5pt;font-weight:800;vertical-align:top;text-align:center;white-space:nowrap;">${i===0?'缺交':''}</td><td style="border-bottom:1px solid #cbd5e1;padding:1.45mm 1.8mm;font-size:9.5pt;line-height:1.25;vertical-align:top;">${escapeHtml(item)}</td></tr>`));if(!row.missing.length)lines.push('<tr><td style="width:13mm;border-right:1px solid #94a3b8;border-bottom:1px solid #cbd5e1;padding:1.45mm 1.6mm;font-size:9.5pt;font-weight:800;text-align:center;">缺交</td><td style="border-bottom:1px solid #cbd5e1;padding:1.45mm 1.8mm;font-size:9.5pt;color:#94a3b8;">—</td></tr>')}
+  if(options.showPending){row.pending.forEach((item,i)=>lines.push(`<tr><td style="width:13mm;border-right:1px solid #94a3b8;border-bottom:1px solid #cbd5e1;padding:1.45mm 1.6mm;font-size:9.5pt;font-weight:800;vertical-align:top;text-align:center;white-space:nowrap;">${i===0?'訂正':''}</td><td style="border-bottom:1px solid #cbd5e1;padding:1.45mm 1.8mm;font-size:9.5pt;line-height:1.25;vertical-align:top;">${escapeHtml(item)}</td></tr>`));if(!row.pending.length)lines.push('<tr><td style="width:13mm;border-right:1px solid #94a3b8;border-bottom:1px solid #cbd5e1;padding:1.45mm 1.6mm;font-size:9.5pt;font-weight:800;text-align:center;">訂正</td><td style="border-bottom:1px solid #cbd5e1;padding:1.45mm 1.8mm;font-size:9.5pt;color:#94a3b8;">—</td></tr>')}
+  return `<table class="notice-slip" style="width:100%;border:1px solid #475569;border-collapse:collapse;page-break-inside:avoid;background:#fff;font-family:'Microsoft JhengHei','Noto Sans TC',sans-serif;"><tr><th colspan="2" class="notice-slip-title" style="border-bottom:1px solid #475569;padding:2.1mm 2.5mm;font-size:10.5pt;font-weight:800;line-height:1.25;text-align:left;">作業催繳與訂正通知：${escapeHtml(row.no)}號，（${escapeHtml(date)}）</th></tr>${lines.join('')}</table>`
+}
+function buildNoticeSheetHtml(rows,date,options=noticeOptions){
+  if(!rows.length)return '<div id="noticePaper" class="notice-paper"><div class="notice-empty">目前沒有符合本次篩選條件的催繳或訂正作業。</div></div>';
+  const tableRows=[];let half=[];const flushHalf=()=>{if(!half.length)return;const cells=half.map(r=>`<td class="notice-slot" style="width:50%;vertical-align:top;padding:2.2mm;border:0;">${buildNoticeSlipHtml(r,date,options)}</td>`);if(cells.length===1)cells.push('<td class="notice-slot" style="width:50%;vertical-align:top;padding:2.2mm;border:0;"></td>');tableRows.push(`<tr>${cells.join('')}</tr>`);half=[]};
+  rows.forEach(row=>{if(row.wide){flushHalf();tableRows.push(`<tr><td colspan="2" class="notice-slot" style="vertical-align:top;padding:2.2mm;border:0;">${buildNoticeSlipHtml(row,date,options)}</td></tr>`)}else{half.push(row);if(half.length===2)flushHalf()}});flushHalf();
+  const parts=[];if(options.showMissing)parts.push('缺交');if(options.showPending)parts.push(`訂正${options.showPages?'（含頁數）':'（不含頁數）'}`);
+  return `<div id="noticePaper" class="notice-paper" style="width:210mm;min-height:297mm;margin:0 auto;background:#fff;padding:10mm;box-sizing:border-box;font-family:'Microsoft JhengHei','Noto Sans TC',sans-serif;"><table class="notice-sheet" style="width:100%;border-collapse:collapse;table-layout:fixed;"><tbody>${tableRows.join('')}</tbody></table><div class="notice-note" style="font-size:8.5pt;color:#64748b;margin:3mm 2mm 0;">本次輸出：${parts.join('＋')}。僅列入已設定日期並勾選追蹤的項目；★ 為今日主力催繳。同科章節／小節合併於括號內。抽班科目中的特教生與今日標記「沒來」者不列入。</div></div>`
+}
+function renderNoticePreview(){const rows=buildNoticeRows(noticeOptions),date=noticeDateText();$('noticePreview').innerHTML=buildNoticeSheetHtml(rows,date,noticeOptions)}
+async function copyNoticeToWord(){
+  const paper=$('noticePaper');if(!paper){showToast('目前沒有可複製的催繳單');return}const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${paper.outerHTML}</body></html>`;const rows=buildNoticeRows(noticeOptions);const plain=rows.map(r=>{const lines=[`作業催繳與訂正通知：${r.no}號，（${noticeDateText()}）`];if(noticeOptions.showMissing)lines.push(`缺交：${r.missing.join('、')||'—'}`);if(noticeOptions.showPending)lines.push(`訂正：${r.pending.join('、')||'—'}`);return lines.join('\n')}).join('\n\n');
+  try{if(navigator.clipboard&&window.ClipboardItem){const item=new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([plain],{type:'text/plain'})});await navigator.clipboard.write([item]);showToast('已複製，可直接貼到 Word')}else throw new Error('ClipboardItem unavailable')}catch(err){const range=document.createRange();range.selectNode(paper);const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);let ok=false;try{ok=document.execCommand('copy')}catch(e){}sel.removeAllRanges();showToast(ok?'已複製，可直接貼到 Word':'瀏覽器限制自動複製，請在預覽中 Ctrl+A、Ctrl+C')}
+}
+function printNotice(){const modal=$('noticeModal');modal.classList.add('notice-print');window.print();setTimeout(()=>modal.classList.remove('notice-print'),300)}
+
+function bindEvents(){
+  document.addEventListener('click',e=>suppressTouchGeneratedEvent(e),true);
+  document.addEventListener('contextmenu',e=>suppressTouchGeneratedEvent(e),true);
+  document.addEventListener('keydown',handlePageEditShortcut);document.addEventListener('keydown',handleScoreShortcutDown);document.addEventListener('keyup',handleScoreShortcutUp);
+  $('viewToggleBtn').addEventListener('click',toggleView);$('noticeBtn').addEventListener('click',openNoticeSettingsModal);$('pageEditBtn').addEventListener('click',togglePageEditMode);$('scoreEditBtn').addEventListener('click',toggleScoreEditMode);$('exportScoresBtn').addEventListener('click',exportScoreTable);$('undoBtn').addEventListener('click',undoLastAction);
+  $('exportBtn').addEventListener('click',exportData);$('importBtn').addEventListener('click',triggerImport);$('importInput').addEventListener('change',async e=>{const f=e.target.files[0];if(f)await processImportText(await f.text());e.target.value=''});
+  $('syncDirBtn').addEventListener('click',handleSyncDirectoryButton);$('helpBtn').addEventListener('click',()=>openModal('helpModal'));$('devInfoBtn').addEventListener('click',()=>openModal('devInfoModal'));$('editStudentsBtn').addEventListener('click',openStudentsModal);$('resetContactBtn').addEventListener('click',resetContactBook);$('toggleItemsEditorBtn').addEventListener('click',toggleItemsEditor);
+  bindInfoPopover('contactInfoBtn','contactInfoWrap');bindInfoPopover('fieldsInfoBtn','fieldsInfoWrap');bindInfoPopover('pulloutInfoBtn','pulloutInfoWrap');
+  document.addEventListener('click',e=>{document.querySelectorAll('.info-wrap.open').forEach(w=>{if(!w.contains(e.target)){w.classList.remove('open');const b=w.querySelector('.info-btn');if(b)b.setAttribute('aria-expanded','false')}})});
+  $('addSubjectBtn').addEventListener('click',openNewSubjectModal);$('saveStudentsBtn').addEventListener('click',saveStudents);$('confirmAddSubjectBtn').addEventListener('click',confirmAddSubject);$('resetSubjectBtn').addEventListener('click',resetCurrentSubject);$('deleteSubjectBtn').addEventListener('click',deleteCurrentSubject);
+  $('itemsInput').addEventListener('change',updateItems);$('specialEdPulloutCheckbox').addEventListener('change',toggleSpecialEdPullout);$('confirmDateBtn').addEventListener('click',confirmDate);
+  $('saveCorrectionBtn').addEventListener('click',()=>saveCorrection(false));$('clearCorrectionBtn').addEventListener('click',()=>saveCorrection(true));$('saveScoreBtn').addEventListener('click',()=>saveScore(false));$('clearScoreBtn').addEventListener('click',()=>saveScore(true));$('confirmNoticeSettingsBtn').addEventListener('click',confirmNoticeSettings);$('prioritySelectAllBtn').addEventListener('click',()=>document.querySelectorAll('#priorityItemsContainer input[type="checkbox"]').forEach(cb=>cb.checked=true));$('priorityClearBtn').addEventListener('click',()=>document.querySelectorAll('#priorityItemsContainer input[type="checkbox"]').forEach(cb=>cb.checked=false));$('copyNoticeBtn').addEventListener('click',copyNoticeToWord);$('printNoticeBtn').addEventListener('click',printNotice);
+  $('newSubjectInput').addEventListener('keydown',e=>{if(e.key==='Enter')confirmAddSubject()});$('correctionInput').addEventListener('keydown',e=>{if(e.key==='Enter')saveCorrection(false)});$('scoreInput').addEventListener('keydown',e=>{if(e.key==='Enter')saveScore(false)});
+  document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>closeModal(b.dataset.close)));
+  document.querySelectorAll('.modal').forEach(m=>m.addEventListener('mousedown',e=>{if(e.target===m)closeModal(m.id)}));
+  document.addEventListener('contextmenu',e=>{if(e.target.closest('#mainTable'))e.preventDefault()});
+  document.addEventListener('focusout',()=>setTimeout(renderRemoteIfSafe,0));
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')mergeRemoteNow();else if(syncReady)writeLocalJournal()});
+  window.addEventListener('focus',()=>mergeRemoteNow());
+  window.addEventListener('beforeunload',()=>{persistLocalJournalCache();if(syncReady)writeLocalJournal()});
+}
+
+window.addEventListener('DOMContentLoaded',async()=>{bindEvents();await initSyncAndData();renderAll();updateUndoButton()});
+</script>
+</body>
+</html>
