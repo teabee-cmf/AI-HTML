@@ -535,6 +535,361 @@
       transform: translateX(-50%) translateY(0);
     }
 
+    /* ==========================================================================
+       3. 學習闖關按鈕與浮動題目視窗 (支援縮小 1 分鐘倒數計時)
+       ========================================================================== */
+    .tool-btn.btn-quiz {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      border-color: #b45309;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(217, 119, 6, 0.28);
+    }
+
+    .tool-btn.btn-quiz:hover {
+      background: linear-gradient(135deg, #d97706, #b45309);
+    }
+
+    /* 浮動闖關視窗 */
+    .quiz-modal {
+      position: absolute;
+      top: 62px;
+      right: 16px;
+      width: min(390px, calc(100vw - 24px));
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1.5px solid rgba(255, 255, 255, 0.98);
+      box-shadow: 0 14px 38px rgba(15, 23, 42, 0.22);
+      z-index: 35;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      animation: quizPopIn 0.22s ease-out;
+    }
+
+    .quiz-modal.is-open {
+      display: flex;
+    }
+
+    @keyframes quizPopIn {
+      from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .quiz-header {
+      padding: 10px 12px;
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      cursor: move;
+      touch-action: none;
+    }
+
+    .quiz-header-left {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13.5px;
+      font-weight: 700;
+    }
+
+    .quiz-stage-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.22);
+      color: #ffffff;
+    }
+
+    .quiz-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .quiz-win-btn {
+      height: 28px;
+      padding: 0 9px;
+      border-radius: 7px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.16);
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .quiz-win-btn:hover {
+      background: rgba(255, 255, 255, 0.28);
+    }
+
+    .quiz-win-btn.close-only {
+      width: 28px;
+      padding: 0;
+      justify-content: center;
+    }
+
+    /* 關卡進度條 */
+    .quiz-progress-row {
+      display: flex;
+      gap: 5px;
+      padding: 10px 14px 0;
+    }
+
+    .quiz-step-dot {
+      flex: 1;
+      height: 5px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      transition: background 0.25s ease;
+    }
+
+    .quiz-step-dot.done {
+      background: #10b981;
+    }
+
+    .quiz-step-dot.active {
+      background: #0284c7;
+    }
+
+    .quiz-body {
+      padding: 12px 14px 14px;
+    }
+
+    .quiz-q-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      color: #0369a1;
+      background: #e0f2fe;
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+
+    .quiz-q-tag.multi {
+      color: #b45309;
+      background: #fef3c7;
+    }
+
+    .quiz-question {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.5;
+      color: #0f172a;
+      margin-bottom: 10px;
+    }
+
+    .quiz-options {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .quiz-opt-btn {
+      width: 100%;
+      min-height: 40px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1.5px solid #cbd5e1;
+      background: #f8fafc;
+      color: #1e293b;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .quiz-opt-btn:hover {
+      background: #f0f9ff;
+      border-color: #38bdf8;
+    }
+
+    .quiz-opt-btn.selected {
+      background: #e0f2fe;
+      border-color: #0284c7;
+      color: #0369a1;
+    }
+
+    .quiz-opt-btn.correct {
+      background: #dcfce7;
+      border-color: #16a34a;
+      color: #14532d;
+    }
+
+    .quiz-opt-btn.wrong {
+      background: #fee2e2;
+      border-color: #dc2626;
+      color: #7f1d1d;
+    }
+
+    .quiz-check-box {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      border: 2px solid #94a3b8;
+      background: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .quiz-opt-btn.selected .quiz-check-box {
+      background: #0284c7;
+      border-color: #0284c7;
+    }
+
+    .quiz-opt-btn.correct .quiz-check-box {
+      background: #16a34a;
+      border-color: #16a34a;
+    }
+
+    .quiz-feedback {
+      margin-top: 10px;
+      padding: 8px 10px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.45;
+      display: none;
+    }
+
+    .quiz-feedback.show {
+      display: block;
+    }
+
+    .quiz-feedback.is-ok {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+
+    .quiz-feedback.is-err {
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    .quiz-footer {
+      margin-top: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .quiz-hint-tip {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .quiz-action-btn {
+      height: 36px;
+      padding: 0 14px;
+      border-radius: 9px;
+      border: none;
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      color: #ffffff;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
+      transition: transform 0.14s ease, opacity 0.14s ease;
+      white-space: nowrap;
+    }
+
+    .quiz-action-btn:hover {
+      opacity: 0.94;
+    }
+
+    .quiz-action-btn:active {
+      transform: scale(0.97);
+    }
+
+    .quiz-action-btn.btn-next {
+      background: linear-gradient(135deg, #10b981, #059669);
+      box-shadow: 0 2px 8px rgba(5, 150, 105, 0.28);
+    }
+
+    /* 縮小後的 1 分鐘倒數計時浮動膠囊 */
+    .quiz-mini-pill {
+      position: absolute;
+      top: 56px;
+      right: 12px;
+      padding: 6px 10px 6px 12px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1.5px solid rgba(56, 189, 248, 0.65);
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.28);
+      color: #ffffff;
+      display: none;
+      align-items: center;
+      gap: 9px;
+      z-index: 36;
+      animation: quizPopIn 0.2s ease-out;
+    }
+
+    .quiz-mini-pill.is-visible {
+      display: flex;
+    }
+
+    .quiz-mini-pill.is-urgent {
+      border-color: #f87171;
+      background: rgba(127, 29, 29, 0.94);
+    }
+
+    .mini-stage-txt {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #bae6fd;
+    }
+
+    .mini-timer-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13.5px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: #fde047;
+    }
+
+    .mini-expand-btn {
+      height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: none;
+      background: #0284c7;
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .mini-expand-btn:hover {
+      background: #0369a1;
+    }
+
     @media (max-width: 620px) {
       .topbar {
         padding: 0 8px;
@@ -626,6 +981,19 @@
           <circle cx="12" cy="10" r="3" />
         </svg>
         <span class="btn-txt">顯示地標</span>
+      </button>
+
+      <!-- 學習闖關按鈕 -->
+      <button id="btnQuizMode" class="tool-btn btn-quiz" type="button" title="開啟 5 關互動自然科學學習闖關">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+          <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+          <path d="M4 22h16" />
+          <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+          <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+          <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+        </svg>
+        <span class="btn-txt">學習闖關</span>
       </button>
 
       <!-- 下載 HTML 檔 -->
@@ -765,6 +1133,33 @@
       </div>
     </section>
 
+    <!-- 學習闖關：浮動題目視窗 -->
+    <div id="quizModal" class="quiz-modal" role="dialog" aria-labelledby="quizModalTitle">
+      <div id="quizHeader" class="quiz-header">
+        <div class="quiz-header-left">
+          <span id="quizModalTitle">🎯 學習闖關挑戰</span>
+          <span id="quizStagePill" class="quiz-stage-pill">第 1 / 5 關</span>
+        </div>
+        <div class="quiz-header-actions">
+          <button id="btnQuizMinimize" class="quiz-win-btn" type="button" title="縮小題目視窗並開始 1 分鐘實驗倒數計時">
+            <span>— 縮小 (1分鐘倒數)</span>
+          </button>
+          <button id="btnQuizClose" class="quiz-win-btn close-only" type="button" title="暫時關閉視窗">✕</button>
+        </div>
+      </div>
+
+      <div id="quizProgressRow" class="quiz-progress-row"></div>
+
+      <div id="quizBody" class="quiz-body"></div>
+    </div>
+
+    <!-- 學習闖關：縮小後的 1 分鐘倒數計時浮動列 -->
+    <div id="quizMiniPill" class="quiz-mini-pill" role="status" aria-live="polite">
+      <span id="miniStageTxt" class="mini-stage-txt">第 1/5 關實驗中</span>
+      <span class="mini-timer-box">⏱ <span id="miniTimerTxt">01:00</span></span>
+      <button id="btnQuizExpand" class="mini-expand-btn" type="button">展開題目</button>
+    </div>
+
     <div id="toastMsg" class="toast-msg" role="status" aria-live="polite"></div>
   </main>
 
@@ -796,24 +1191,24 @@
       const btnReset = document.getElementById('btnReset');
       const btnMagnifier = document.getElementById('btnMagnifier');
       const btnLandmarks = document.getElementById('btnLandmarks');
+      const btnQuizMode = document.getElementById('btnQuizMode');
       const btnDownload = document.getElementById('btnDownload');
       const btnZoomIn = document.getElementById('btnZoomIn');
       const btnZoomOut = document.getElementById('btnZoomOut');
       const btnZoomReset = document.getElementById('btnZoomReset');
       const toastMsg = document.getElementById('toastMsg');
 
-      const statusDot = document.getElementById('statusDot');
-      const turbidityBadge = document.getElementById('turbidityBadge');
-      const numErosion = document.getElementById('numErosion');
-      const barErosion = document.getElementById('barErosion');
-      const numTurbidity = document.getElementById('numTurbidity');
-      const barTurbidity = document.getElementById('barTurbidity');
-      const numDeposition = document.getElementById('numDeposition');
-      const barDeposition = document.getElementById('barDeposition');
-      const scienceNote = document.getElementById('scienceNote');
-
-      // --------------------------------------------------------------------------
-      // 模擬核心狀態變數 (補回完整的 state 物件宣告)
+      const quizModal = document.getElementById('quizModal');
+      const quizHeader = document.getElementById('quizHeader');
+      const quizStagePill = document.getElementById('quizStagePill');
+      const quizProgressRow = document.getElementById('quizProgressRow');
+      const quizBody = document.getElementById('quizBody');
+      const btnQuizMinimize = document.getElementById('btnQuizMinimize');
+      const btnQuizClose = document.getElementById('btnQuizClose');
+      const quizMiniPill = document.getElementById('quizMiniPill');
+      const miniStageTxt = document.getElementById('miniStageTxt');
+      const miniTimerTxt = document.getElementById('miniTimerTxt');
+      const btnQuizExpand = document.getElementById('btnQuizExpand');
       // --------------------------------------------------------------------------
       const state = {
         isPlaying: true,
@@ -2645,6 +3040,343 @@
           showToast('匯出失敗，請使用瀏覽器「另存網頁」功能');
         }
       });
+
+      // --------------------------------------------------------------------------
+      // 學習闖關模式 (5 關題庫、自動判題、多選題與縮小 1 分鐘倒數計時)
+      // --------------------------------------------------------------------------
+      const quizQuestions = [
+        {
+          type: 'single',
+          question: '試試看，當水量變多的時候，水位會不會跟著變多？',
+          options: [
+            '會，水位上升且河道變寬',
+            '不會，水位完全不會改變',
+            '反而會變少、河道乾涸'
+          ],
+          correctIndex: 0,
+          explain: '答對了！雨水水量增加時，匯入山谷的河水變多，河道水位明顯上升、河面也跟著變寬。'
+        },
+        {
+          type: 'single',
+          question: '試試看，當水量變多的時候，水的顏色會變成怎樣？',
+          options: [
+            '變得更加清澈透明',
+            '變得比較濁黃（夾帶更多泥沙）',
+            '變成深紫色'
+          ],
+          correctIndex: 1,
+          explain: '答對了！水量變大時水流沖刷力變強，帶走大量泥沙，使河水從清澈湛藍變成濁黃泥流。'
+        },
+        {
+          type: 'single',
+          question: '試試看，當坡度變陡的時候，下游的沉積會變多還是變少？',
+          options: [
+            '變多（上游侵蝕與搬運的泥沙增加，帶到下游堆積）',
+            '變少（下游完全沒有泥沙堆積）',
+            '完全不變'
+          ],
+          correctIndex: 0,
+          explain: '答對了！山谷坡度越陡，水流速度越快、侵蝕與搬運能力越強，把更多上游泥沙帶到下游三角洲堆積！'
+        },
+        {
+          type: 'single',
+          question: '試試看，當水量變多的時候，下游的沉積會變多還是變少？',
+          options: [
+            '變少（三角洲沙洲完全消失）',
+            '完全不變',
+            '變多（大量泥沙隨河水搬運至下游堆積）'
+          ],
+          correctIndex: 2,
+          explain: '答對了！水量變多能搬運更大量的泥沙，當河水流入平緩的下游與海口時流速減慢，泥沙便大量沉積。'
+        },
+        {
+          type: 'multi',
+          question: '當水量變多、坡度變陡的時候，什麼作用會增加？（多選題）',
+          options: [
+            '侵蝕作用',
+            '搬運作用',
+            '堆積作用'
+          ],
+          correctIndices: [0, 1, 2],
+          explain: '太棒了！當水量變多且坡度變陡時，上游「侵蝕作用」加劇，河水「搬運作用」帶走更多土石泥沙，最終在山麓與下游的「堆積作用」也跟著增加！'
+        }
+      ];
+
+      const quizState = {
+        currentIdx: 0,
+        solved: [false, false, false, false, false],
+        selectedMulti: new Set(),
+        completedAll: false,
+        isMinimized: false,
+        countdownSec: 60,
+        timerId: null
+      };
+
+      function stopMinimizeCountdown() {
+        if (quizState.timerId !== null) {
+          clearInterval(quizState.timerId);
+          quizState.timerId = null;
+        }
+      }
+
+      function updateMiniTimerDisplay() {
+        const mins = Math.floor(quizState.countdownSec / 60);
+        const secs = quizState.countdownSec % 60;
+        miniTimerTxt.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        quizMiniPill.classList.toggle('is-urgent', quizState.countdownSec <= 10);
+      }
+
+      function openQuizModal() {
+        stopMinimizeCountdown();
+        quizState.isMinimized = false;
+        quizMiniPill.classList.remove('is-visible');
+        quizModal.classList.add('is-open');
+        renderQuizStage();
+      }
+
+      function minimizeQuizModal() {
+        quizModal.classList.remove('is-open');
+        quizState.isMinimized = true;
+        quizState.countdownSec = 60;
+        miniStageTxt.textContent = `第 ${quizState.currentIdx + 1}/${quizQuestions.length} 關實驗中`;
+        updateMiniTimerDisplay();
+        quizMiniPill.classList.add('is-visible');
+
+        stopMinimizeCountdown();
+        quizState.timerId = setInterval(() => {
+          quizState.countdownSec -= 1;
+          updateMiniTimerDisplay();
+          if (quizState.countdownSec <= 0) {
+            stopMinimizeCountdown();
+            openQuizModal();
+            showToast('⏰ 1 分鐘實驗時間到！請繼續作答本關題目');
+          }
+        }, 1000);
+
+        showToast('已縮小題目視窗，開始 1 分鐘實驗操作倒數！');
+      }
+
+      function closeQuizModal() {
+        stopMinimizeCountdown();
+        quizState.isMinimized = false;
+        quizModal.classList.remove('is-open');
+        quizMiniPill.classList.remove('is-visible');
+      }
+
+      function renderQuizStage() {
+        const total = quizQuestions.length;
+        quizProgressRow.innerHTML = '';
+        for (let i = 0; i < total; i++) {
+          const dot = document.createElement('div');
+          dot.className = 'quiz-step-dot';
+          if (quizState.solved[i]) dot.classList.add('done');
+          else if (i === quizState.currentIdx && !quizState.completedAll) dot.classList.add('active');
+          quizProgressRow.appendChild(dot);
+        }
+
+        if (quizState.completedAll) {
+          quizStagePill.textContent = '全部過關 🎉';
+          quizBody.innerHTML = `
+            <div style="text-align:center; padding: 6px 2px;">
+              <div style="font-size: 32px; margin-bottom: 6px;">🏆</div>
+              <div style="font-size: 16px; font-weight: 800; color: #0f172a; margin-bottom: 6px;">恭喜完成全部 5 道學習闖關！</div>
+              <p style="font-size: 12.5px; line-height: 1.55; color: #334155; margin-bottom: 12px;">
+                你已經掌握了河流作用的核心規律：<br>
+                <strong>水量越大、坡度越陡</strong> ➔ 上游<strong>侵蝕</strong>越強、河水越濁黃（<strong>搬運</strong>越多）、下游三角洲<strong>堆積</strong>也隨之增加！
+              </p>
+              <div style="display:flex; gap:8px; justify-content:center;">
+                <button type="button" id="btnQuizRestart" class="quiz-action-btn">重新闖關</button>
+                <button type="button" id="btnQuizFinishClose" class="quiz-action-btn btn-next">返回自由探索</button>
+              </div>
+            </div>
+          `;
+          document.getElementById('btnQuizRestart').addEventListener('click', () => {
+            quizState.currentIdx = 0;
+            quizState.solved = [false, false, false, false, false];
+            quizState.selectedMulti.clear();
+            quizState.completedAll = false;
+            renderQuizStage();
+          });
+          document.getElementById('btnQuizFinishClose').addEventListener('click', closeQuizModal);
+          return;
+        }
+
+        const idx = quizState.currentIdx;
+        const q = quizQuestions[idx];
+        const isSolved = quizState.solved[idx];
+        quizStagePill.textContent = `第 ${idx + 1} / ${total} 關`;
+
+        if (q.type === 'single') {
+          const letters = ['A', 'B', 'C', 'D'];
+          const optionsHtml = q.options.map((opt, oIdx) => {
+            const cls = (isSolved && oIdx === q.correctIndex) ? 'quiz-opt-btn correct' : 'quiz-opt-btn';
+            return `
+              <button type="button" class="${cls}" data-opt-idx="${oIdx}">
+                <span class="quiz-check-box">${letters[oIdx]}</span>
+                <span>${opt}</span>
+              </button>
+            `;
+          }).join('');
+
+          quizBody.innerHTML = `
+            <span class="quiz-q-tag">單選實作題・第 ${idx + 1} 題</span>
+            <div class="quiz-question">${q.question}</div>
+            <div class="quiz-options">${optionsHtml}</div>
+            <div id="quizFeedback" class="quiz-feedback ${isSolved ? 'show is-ok' : ''}">${isSolved ? q.explain : ''}</div>
+            <div class="quiz-footer">
+              <span class="quiz-hint-tip">💡 可點右上角「縮小」去調整滑桿實驗</span>
+              ${isSolved ? `<button type="button" id="btnQuizNext" class="quiz-action-btn btn-next">${idx < total - 1 ? '下一關 →' : '完成闖關 🎉'}</button>` : ''}
+            </div>
+          `;
+
+          quizBody.querySelectorAll('.quiz-opt-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const chosen = Number(btn.dataset.optIdx);
+              const fb = document.getElementById('quizFeedback');
+              if (chosen === q.correctIndex) {
+                quizState.solved[idx] = true;
+                renderQuizStage();
+              } else {
+                quizBody.querySelectorAll('.quiz-opt-btn').forEach((b) => b.classList.remove('wrong'));
+                btn.classList.add('wrong');
+                fb.textContent = '再試一次喔！可以點右上角「— 縮小 (1分鐘倒數)」去調整下方滑桿觀察變化。';
+                fb.className = 'quiz-feedback show is-err';
+              }
+            });
+          });
+        } else {
+          // 第 5 題：多選題
+          const optionsHtml = q.options.map((opt, oIdx) => {
+            const checked = isSolved || quizState.selectedMulti.has(oIdx);
+            const cls = isSolved
+              ? 'quiz-opt-btn correct'
+              : (checked ? 'quiz-opt-btn selected' : 'quiz-opt-btn');
+            return `
+              <button type="button" class="${cls}" data-opt-idx="${oIdx}">
+                <span class="quiz-check-box">${checked ? '✓' : ''}</span>
+                <span>${opt}</span>
+              </button>
+            `;
+          }).join('');
+
+          quizBody.innerHTML = `
+            <span class="quiz-q-tag multi">多選綜合題・第 ${idx + 1} 題（可複選）</span>
+            <div class="quiz-question">${q.question}</div>
+            <div class="quiz-options">${optionsHtml}</div>
+            <div id="quizFeedback" class="quiz-feedback ${isSolved ? 'show is-ok' : ''}">${isSolved ? q.explain : ''}</div>
+            <div class="quiz-footer">
+              <span class="quiz-hint-tip">💡 勾選所有會增加的作用後送出</span>
+              ${isSolved
+                ? `<button type="button" id="btnQuizNext" class="quiz-action-btn btn-next">完成闖關 🎉</button>`
+                : `<button type="button" id="btnQuizSubmitMulti" class="quiz-action-btn">確認送出答案</button>`
+              }
+            </div>
+          `;
+
+          if (!isSolved) {
+            quizBody.querySelectorAll('.quiz-opt-btn').forEach((btn) => {
+              btn.addEventListener('click', () => {
+                const oIdx = Number(btn.dataset.optIdx);
+                if (quizState.selectedMulti.has(oIdx)) {
+                  quizState.selectedMulti.delete(oIdx);
+                } else {
+                  quizState.selectedMulti.add(oIdx);
+                }
+                renderQuizStage();
+              });
+            });
+
+            document.getElementById('btnQuizSubmitMulti').addEventListener('click', () => {
+              const fb = document.getElementById('quizFeedback');
+              if (quizState.selectedMulti.size === 0) {
+                fb.textContent = '請至少勾選一個選項再送出答案喔！';
+                fb.className = 'quiz-feedback show is-err';
+                return;
+              }
+              const allMatched = q.correctIndices.every((i) => quizState.selectedMulti.has(i)) &&
+                quizState.selectedMulti.size === q.correctIndices.length;
+
+              if (allMatched) {
+                quizState.solved[idx] = true;
+                renderQuizStage();
+              } else {
+                fb.textContent = '還差一點點！想想看：上游侵蝕變強後，河水搬運的泥沙以及下游三角洲的堆積是不是也跟著變多了呢？';
+                fb.className = 'quiz-feedback show is-err';
+              }
+            });
+          }
+        }
+
+        const btnNext = document.getElementById('btnQuizNext');
+        if (btnNext) {
+          btnNext.addEventListener('click', () => {
+            if (idx < total - 1) {
+              quizState.currentIdx += 1;
+              renderQuizStage();
+            } else {
+              quizState.completedAll = true;
+              renderQuizStage();
+            }
+          });
+        }
+      }
+
+      btnQuizMode.addEventListener('click', () => {
+        if (quizModal.classList.contains('is-open')) {
+          closeQuizModal();
+        } else {
+          openQuizModal();
+        }
+      });
+
+      btnQuizMinimize.addEventListener('click', minimizeQuizModal);
+      btnQuizExpand.addEventListener('click', openQuizModal);
+      btnQuizClose.addEventListener('click', closeQuizModal);
+
+      // 讓浮動闖關視窗標題列支援觸控與滑鼠拖曳移動位置
+      let quizDragging = false;
+      let qDragStartX = 0;
+      let qDragStartY = 0;
+      let qStartLeft = 0;
+      let qStartTop = 0;
+
+      quizHeader.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('button')) return;
+        quizDragging = true;
+        quizHeader.setPointerCapture(e.pointerId);
+        const rect = quizModal.getBoundingClientRect();
+        const wrapRect = stageWrap.getBoundingClientRect();
+        qDragStartX = e.clientX;
+        qDragStartY = e.clientY;
+        qStartLeft = rect.left - wrapRect.left;
+        qStartTop = rect.top - wrapRect.top;
+        quizModal.style.right = 'auto';
+        quizModal.style.left = `${qStartLeft}px`;
+        quizModal.style.top = `${qStartTop}px`;
+      });
+
+      quizHeader.addEventListener('pointermove', (e) => {
+        if (!quizDragging) return;
+        const dx = e.clientX - qDragStartX;
+        const dy = e.clientY - qDragStartY;
+        const maxLeft = Math.max(8, state.width - quizModal.offsetWidth - 8);
+        const maxTop = Math.max(8, state.height - quizModal.offsetHeight - 8);
+        const nextLeft = Math.max(8, Math.min(maxLeft, qStartLeft + dx));
+        const nextTop = Math.max(8, Math.min(maxTop, qStartTop + dy));
+        quizModal.style.left = `${nextLeft}px`;
+        quizModal.style.top = `${nextTop}px`;
+      });
+
+      function stopQuizHeaderDrag(e) {
+        if (!quizDragging) return;
+        quizDragging = false;
+        if (e.pointerId !== undefined && quizHeader.hasPointerCapture(e.pointerId)) {
+          quizHeader.releasePointerCapture(e.pointerId);
+        }
+      }
+
+      quizHeader.addEventListener('pointerup', stopQuizHeaderDrag);
+      quizHeader.addEventListener('pointercancel', stopQuizHeaderDrag);
 
       // Pointer Events：支援單指/滑鼠拖曳放大鏡、空白處平移地形與平板雙指捏合縮放
       function getPointerPos(e) {
