@@ -1,0 +1,2821 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>河流的侵蝕、搬運與堆積模擬</title>
+  <style>
+    /* ==========================================================================
+       全域重置與單頁滿版防溢出設定 (100vw x 100dvh, overflow: hidden)
+       ========================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    :root {
+      --header-h: 48px;
+      --bg-sky-top: #e8f2fc;
+      --bg-sky-bot: #d5e5f5;
+      --glass-bg: rgba(255, 255, 255, 0.88);
+      --glass-border: rgba(255, 255, 255, 0.95);
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --blue-main: #0284c7;
+      --blue-dark: #0369a1;
+      --amber-main: #d97706;
+      --emerald-main: #059669;
+      --panel-shadow: 0 8px 28px rgba(15, 23, 42, 0.13);
+    }
+
+    html, body {
+      width: 100vw;
+      height: 100dvh;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+      background: linear-gradient(170deg, var(--bg-sky-top) 0%, var(--bg-sky-bot) 100%);
+      color: var(--text-primary);
+    }
+
+    /* ==========================================================================
+       1. 精簡頂部標題與清晰控制列 (高度 48px，按鈕高度 36px 易觸控)
+       ========================================================================== */
+    .topbar {
+      width: 100%;
+      height: var(--header-h);
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.28);
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+      position: relative;
+      z-index: 30;
+    }
+
+    .brand-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .brand-text-wrap {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .brand-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0ea5e9, #0369a1);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+    }
+
+    .brand-title {
+      font-size: 14.5px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 960px) {
+      .brand-sub {
+        display: none;
+      }
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .tool-btn {
+      height: 36px;
+      padding: 0 11px;
+      border-radius: 9px;
+      border: 1px solid rgba(148, 163, 184, 0.38);
+      background: #ffffff;
+      color: var(--text-primary);
+      font-size: 12.5px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: all 0.16s ease;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    }
+
+    .tool-btn:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+
+    .tool-btn:active {
+      transform: scale(0.97);
+    }
+
+    .tool-btn svg {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+    }
+
+    .tool-btn.is-active {
+      background: #e0f2fe;
+      border-color: #0284c7;
+      color: #0369a1;
+    }
+
+    .tool-btn.btn-download {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      border-color: #0369a1;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.28);
+    }
+
+    .tool-btn.btn-download:hover {
+      background: linear-gradient(135deg, #0369a1, #075985);
+    }
+
+    /* ==========================================================================
+       2. 主模擬畫布容器與浮動面板佈局
+       ========================================================================== */
+    .stage-wrap {
+      position: relative;
+      width: 100%;
+      height: calc(100dvh - var(--header-h));
+      overflow: hidden;
+    }
+
+    #simCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      cursor: grab;
+    }
+
+    #simCanvas:active {
+      cursor: grabbing;
+    }
+
+    /* 左上角：地質作用即時觀測卡片 */
+    .telemetry-panel {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      width: 248px;
+      padding: 11px 13px;
+      border-radius: 14px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--panel-shadow);
+      z-index: 20;
+      pointer-events: auto;
+    }
+
+    .telemetry-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 9px;
+    }
+
+    .telemetry-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+      flex-shrink: 0;
+    }
+
+    .status-dot.paused {
+      background: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+    }
+
+    .turbidity-pill {
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #e0f2fe;
+      color: #0369a1;
+      white-space: nowrap;
+    }
+
+    .stat-item {
+      margin-bottom: 7px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 3px;
+    }
+
+    .stat-num {
+      font-weight: 700;
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .bar-bg {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.24);
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.25s ease;
+    }
+
+    .science-note {
+      margin-top: 8px;
+      padding-top: 7px;
+      border-top: 1px solid rgba(148, 163, 184, 0.25);
+      font-size: 11px;
+      line-height: 1.45;
+      color: #334155;
+      font-weight: 500;
+    }
+
+    /* 右上角：畫面縮放控制工具列 (支援放大、縮小與一鍵恢復 100%) */
+    .zoom-controls {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px;
+      border-radius: 12px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--panel-shadow);
+      z-index: 21;
+    }
+
+    .zoom-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: #ffffff;
+      color: var(--text-primary);
+      font-size: 16px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .zoom-btn:hover {
+      background: #e0f2fe;
+      border-color: #0284c7;
+      color: #0369a1;
+    }
+
+    .zoom-btn:active {
+      transform: scale(0.95);
+    }
+
+    .zoom-reset-btn {
+      min-width: 50px;
+      height: 34px;
+      padding: 0 7px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: rgba(241, 245, 249, 0.85);
+      color: var(--text-secondary);
+      font-size: 11.5px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .zoom-reset-btn:hover {
+      background: #e0f2fe;
+      color: #0369a1;
+    }
+
+    /* 底部浮動控制面板：情境預設、放大鏡快速定位與雙滑桿 */
+    .control-panel {
+      position: absolute;
+      left: 50%;
+      bottom: 12px;
+      transform: translateX(-50%);
+      width: min(760px, calc(100vw - 24px));
+      padding: 10px 14px 12px;
+      border-radius: 16px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--panel-shadow);
+      z-index: 22;
+    }
+
+    .chip-bar-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 14px;
+      margin-bottom: 9px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+    }
+
+    .chip-section {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .chip-label {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .chip-group {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .chip-btn {
+      height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.42);
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--text-primary);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .chip-btn:hover {
+      background: #e0f2fe;
+      border-color: #0284c7;
+      color: #0369a1;
+    }
+
+    .chip-btn:active {
+      transform: scale(0.96);
+    }
+
+    .sliders-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .slider-box {
+      background: rgba(248, 250, 252, 0.78);
+      border: 1px solid rgba(203, 213, 225, 0.65);
+      border-radius: 11px;
+      padding: 7px 11px;
+    }
+
+    .slider-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 5px;
+    }
+
+    .slider-name {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .slider-val {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;
+    }
+
+    .val-rain {
+      background: #e0f2fe;
+      color: #0369a1;
+    }
+
+    .val-slope {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #0284c7;
+      border: 2.5px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+      cursor: pointer;
+    }
+
+    #slopeSlider::-webkit-slider-thumb {
+      background: #d97706;
+    }
+
+    .slider-scale {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #64748b;
+      margin-top: 3px;
+      font-weight: 500;
+    }
+
+    .toast-msg {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-10px);
+      padding: 7px 15px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.88);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.22);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      z-index: 40;
+      white-space: nowrap;
+    }
+
+    .toast-msg.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 620px) {
+      .topbar {
+        padding: 0 8px;
+      }
+      .brand-title {
+        font-size: 13.5px;
+      }
+      .tool-btn .btn-txt {
+        display: none;
+      }
+      .tool-btn {
+        width: 36px;
+        padding: 0;
+      }
+      .telemetry-panel {
+        width: 210px;
+        padding: 8px 10px;
+        top: 8px;
+        left: 8px;
+      }
+      .zoom-controls {
+        top: 8px;
+        right: 8px;
+      }
+      .science-note {
+        display: none;
+      }
+      .sliders-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- ========================================================================
+       1. 精簡頂部標題與控制按鈕列
+       ======================================================================== -->
+  <header class="topbar">
+    <div class="brand-box">
+      <div class="brand-icon" aria-hidden="true">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 17c3-2 5 2 8 0s5-4 10-2" />
+          <path d="M3 11c4-3 6 1 9-1s4-5 9-3" />
+          <path d="m14 3 4 4-4 4" />
+        </svg>
+      </div>
+      <div class="brand-text-wrap">
+        <h1 class="brand-title">河流的侵蝕、搬運與堆積模擬</h1>
+        <span class="brand-sub">空拍斜俯瞰 3D 地質互動實驗</span>
+      </div>
+    </div>
+
+    <nav class="nav-actions" aria-label="模擬控制工具列">
+      <!-- 暫停 / 繼續 -->
+      <button id="btnPlayPause" class="tool-btn" type="button" title="暫停或繼續河流作用模擬">
+        <svg id="svgPause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="6" y="4" width="4" height="16" rx="1" />
+          <rect x="14" y="4" width="4" height="16" rx="1" />
+        </svg>
+        <svg id="svgPlay" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3" />
+        </svg>
+        <span id="txtPlayPause" class="btn-txt">暫停</span>
+      </button>
+
+      <!-- 重置地形 -->
+      <button id="btnReset" class="tool-btn btn-reset" type="button" title="重置山谷與河口堆積地形">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+          <path d="M3 3v5h5" />
+        </svg>
+        <span class="btn-txt">重置地形</span>
+      </button>
+
+      <!-- 放大鏡開關 -->
+      <button id="btnMagnifier" class="tool-btn is-active" type="button" title="開啟或關閉光學放大鏡觀察河床顆粒">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7" />
+          <line x1="20" y1="20" x2="16.2" y2="16.2" />
+        </svg>
+        <span class="btn-txt">放大鏡開關</span>
+      </button>
+
+      <!-- 地標標籤開關 -->
+      <button id="btnLandmarks" class="tool-btn is-active" type="button" title="顯示或隱藏上游、沖積扇、中游與三角洲地標">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+          <circle cx="12" cy="10" r="3" />
+        </svg>
+        <span class="btn-txt">顯示地標</span>
+      </button>
+
+      <!-- 下載 HTML 檔 -->
+      <button id="btnDownload" class="tool-btn btn-download" type="button" title="下載完整單一 HTML 離線教學網頁檔">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+        <span class="btn-txt">下載 HTML 檔</span>
+      </button>
+    </nav>
+  </header>
+
+  <!-- ========================================================================
+       主 3D 空拍斜俯瞰模擬畫布與浮動控制面板
+       ======================================================================== -->
+  <main class="stage-wrap" id="stageWrap">
+    <canvas id="simCanvas"></canvas>
+
+    <!-- 左上角：即時地質作用指標面板 -->
+    <aside class="telemetry-panel" aria-label="即時地形演變數據">
+      <div class="telemetry-head">
+        <div class="telemetry-title">
+          <span id="statusDot" class="status-dot"></span>
+          <span>地質作用即時觀測</span>
+        </div>
+        <span id="turbidityBadge" class="turbidity-pill">水質：適中</span>
+      </div>
+
+      <div class="stat-item">
+        <div class="stat-row">
+          <span>上游侵蝕強度</span>
+          <span id="numErosion" class="stat-num">14%</span>
+        </div>
+        <div class="bar-bg">
+          <div id="barErosion" class="bar-fill" style="width: 14%; background: #ef4444;"></div>
+        </div>
+      </div>
+
+      <div class="stat-item">
+        <div class="stat-row">
+          <span>河水含沙濁度</span>
+          <span id="numTurbidity" class="stat-num">34%</span>
+        </div>
+        <div class="bar-bg">
+          <div id="barTurbidity" class="bar-fill" style="width: 34%; background: #0284c7;"></div>
+        </div>
+      </div>
+
+      <div class="stat-item" style="margin-bottom: 0;">
+        <div class="stat-row">
+          <span>下游堆積速率</span>
+          <span id="numDeposition" class="stat-num">22%</span>
+        </div>
+        <div class="bar-bg">
+          <div id="barDeposition" class="bar-fill" style="width: 22%; background: #d97706;"></div>
+        </div>
+      </div>
+
+      <p id="scienceNote" class="science-note">
+        侵蝕以上游陡谷為主，泥沙隨水流搬運至平緩下游堆積成三角洲。
+      </p>
+    </aside>
+
+    <!-- 右上角：畫面放大 / 縮小與視角復原控制列 -->
+    <div class="zoom-controls" role="group" aria-label="畫面縮放控制">
+      <button id="btnZoomOut" class="zoom-btn" type="button" title="縮小畫面 (或向下滾動滾輪)">−</button>
+      <button id="btnZoomReset" class="zoom-reset-btn" type="button" title="恢復預設大小與置中視角">100%</button>
+      <button id="btnZoomIn" class="zoom-btn" type="button" title="放大畫面 (或向上滾動滾輪)">+</button>
+    </div>
+
+    <!-- 右下角/底部：情境預設、放大鏡快速定位與雙滑桿控制面板 -->
+    <section class="control-panel" aria-label="環境參數與放大鏡控制">
+      <div class="chip-bar-row">
+        <!-- 一鍵情境預設 -->
+        <div class="chip-section">
+          <span class="chip-label">情境預設：</span>
+          <div class="chip-group">
+            <button type="button" class="chip-btn preset-trigger" data-rain="20" data-slope="24">日常微流</button>
+            <button type="button" class="chip-btn preset-trigger" data-rain="95" data-slope="42">豪雨陡坡</button>
+            <button type="button" class="chip-btn preset-trigger" data-rain="35" data-slope="14">平緩堆積</button>
+          </div>
+        </div>
+
+        <!-- 放大鏡快速定位 -->
+        <div class="chip-section">
+          <span class="chip-label">放大鏡檢視：</span>
+          <div class="chip-group">
+            <button type="button" class="chip-btn mag-loc" data-zone="upstream">上游巨石</button>
+            <button type="button" class="chip-btn mag-loc" data-zone="midstream">中游卵石</button>
+            <button type="button" class="chip-btn mag-loc" data-zone="downstream">下游淤泥</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 雙滑桿：雨水水量 & 山谷坡度 -->
+      <div class="sliders-grid">
+        <div class="slider-box">
+          <div class="slider-top">
+            <label for="rainSlider" class="slider-name">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 16.2A4.5 4.5 0 0 0 17.5 8h-1.8A7 7 0 1 0 4 14.9" />
+                <path d="M16 14v6" />
+                <path d="M8 14v6" />
+                <path d="M12 16v6" />
+              </svg>
+              <span>雨水水量</span>
+            </label>
+            <span id="rainValBadge" class="slider-val val-rain">45% (適中陣雨)</span>
+          </div>
+          <input id="rainSlider" type="range" min="0" max="100" value="45" />
+          <div class="slider-scale">
+            <span>0% 晴朗乾旱</span>
+            <span>50% 陣雨</span>
+            <span>100% 豪雨洪水</span>
+          </div>
+        </div>
+
+        <div class="slider-box">
+          <div class="slider-top">
+            <label for="slopeSlider" class="slider-name">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m8 3 4 8 5-5 5 15H2L8 3z" />
+              </svg>
+              <span>山谷坡度</span>
+            </label>
+            <span id="slopeValBadge" class="slider-val val-slope">28° (中陡山谷)</span>
+          </div>
+          <input id="slopeSlider" type="range" min="12" max="46" value="28" />
+          <div class="slider-scale">
+            <span>12° 平緩丘陵</span>
+            <span>28° 山谷</span>
+            <span>46° 陡峭高山</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="toastMsg" class="toast-msg" role="status" aria-live="polite"></div>
+  </main>
+
+  <script>
+    /**
+     * ============================================================================
+     * 河流的侵蝕、搬運與堆積模擬引擎 (3D Isometric Geological Block + Optical Lens)
+     * ============================================================================
+     */
+    (function () {
+      'use strict';
+
+      // --------------------------------------------------------------------------
+      // DOM 元素參照
+      // --------------------------------------------------------------------------
+      const canvas = document.getElementById('simCanvas');
+      const ctx = canvas.getContext('2d');
+      const stageWrap = document.getElementById('stageWrap');
+
+      const rainSlider = document.getElementById('rainSlider');
+      const slopeSlider = document.getElementById('slopeSlider');
+      const rainValBadge = document.getElementById('rainValBadge');
+      const slopeValBadge = document.getElementById('slopeValBadge');
+
+      const btnPlayPause = document.getElementById('btnPlayPause');
+      const svgPause = document.getElementById('svgPause');
+      const svgPlay = document.getElementById('svgPlay');
+      const txtPlayPause = document.getElementById('txtPlayPause');
+      const btnReset = document.getElementById('btnReset');
+      const btnMagnifier = document.getElementById('btnMagnifier');
+      const btnLandmarks = document.getElementById('btnLandmarks');
+      const btnDownload = document.getElementById('btnDownload');
+      const btnZoomIn = document.getElementById('btnZoomIn');
+      const btnZoomOut = document.getElementById('btnZoomOut');
+      const btnZoomReset = document.getElementById('btnZoomReset');
+      const toastMsg = document.getElementById('toastMsg');
+
+      const statusDot = document.getElementById('statusDot');
+      const turbidityBadge = document.getElementById('turbidityBadge');
+      const numErosion = document.getElementById('numErosion');
+      const barErosion = document.getElementById('barErosion');
+      const numTurbidity = document.getElementById('numTurbidity');
+      const barTurbidity = document.getElementById('barTurbidity');
+      const numDeposition = document.getElementById('numDeposition');
+      const barDeposition = document.getElementById('barDeposition');
+      const scienceNote = document.getElementById('scienceNote');
+
+      // --------------------------------------------------------------------------
+      // 模擬核心狀態變數 (補回完整的 state 物件宣告)
+      // --------------------------------------------------------------------------
+      const state = {
+        isPlaying: true,
+        showMagnifier: true,
+        showLandmarks: true,
+        rainfall: 0.45,          // 雨水水量 (0.0 ~ 1.0)
+        slopeAngle: 28,          // 山谷坡度 (12° ~ 46°)
+        time: 0,
+
+        // 動態累積地質演變量 (0.0 ~ 1.0)
+        erosionLevel: 0.14,      // 上游峽谷下切與拓寬程度
+        fanDeposition: 0.16,     // 山麓沖積扇堆積量
+        meanderDeposition: 0.15, // 中游曲流凸岸堆積量
+        deltaDeposition: 0.16,   // 下游三角洲向外海擴張堆積量
+        turbidity: 0.34,         // 河水混濁度 (0: 清澈湛藍 ~ 1: 濁黃泥流)
+        transportRate: 0.34,     // 即時中游搬運量
+        depositionRate: 0.22,    // 即時下游堆積速率
+
+        // 畫面縮放與平移視角狀態 (1.0 為擴大後的預設滿版比例)
+        zoom: 1.0,
+        panX: 0,
+        panY: 0,
+
+        gridDirty: true,
+        viewDirty: true,
+        lastTerrainBuildTime: 0,
+
+        width: 0,
+        height: 0,
+        dpr: 1,
+
+        // 光學放大鏡狀態
+        mag: {
+          x: 0,
+          y: 0,
+          radius: 86,
+          dragging: false,
+          offsetX: 0,
+          offsetY: 0,
+          initialized: false,
+          targetX: null,
+          targetY: null
+        },
+
+        // 等角 3D 投影矩陣參數
+        iso: {
+          originX: 0,
+          originY: 0,
+          ux: 0,
+          uy: 0,
+          vx: 0,
+          vy: 0,
+          zScale: 0
+        }
+      };
+
+      // --------------------------------------------------------------------------
+      // 等角 3D 投影轉換與反推 (擴大畫面比例並支援即時縮放與平移)
+      // --------------------------------------------------------------------------
+      function getBaseTargetCenter() {
+        const isPortrait = state.height > state.width;
+        return {
+          x: isPortrait ? state.width * 0.46 : state.width * 0.45,
+          y: isPortrait ? state.height * 0.46 : state.height * 0.52
+        };
+      }
+
+      function updateIsoTransform() {
+        const w = state.width;
+        const h = state.height;
+        const isPortrait = h > w;
+
+        // 擴大整體山谷與河道在畫布中的基礎佔比，並乘上即時縮放倍率 state.zoom
+        const baseScale = isPortrait
+          ? Math.min(w * 0.90, h * 0.65)
+          : Math.min(w * 0.88, h * 0.92);
+        const scaleBase = baseScale * state.zoom;
+
+        // 扁平開闊的低仰角斜俯瞰基向量
+        const ux = scaleBase * 0.62;
+        const uy = -scaleBase * 0.20;
+        const vx = scaleBase * 0.44;
+        const vy = scaleBase * 0.17;
+        const zScale = scaleBase * 0.27;
+
+        const visualSlopeFactor = 0.78 + ((state.slopeAngle - 12) / (46 - 12)) * 0.36;
+        const centerZ = 0.17 * visualSlopeFactor;
+
+        const baseCenter = getBaseTargetCenter();
+        const targetX = baseCenter.x + state.panX;
+        const targetY = baseCenter.y + state.panY;
+
+        state.iso = {
+          originX: targetX - (0.50 * ux + 0.50 * vx),
+          originY: targetY - (0.50 * uy + 0.50 * vy - centerZ * zScale),
+          ux,
+          uy,
+          vx,
+          vy,
+          zScale
+        };
+      }
+
+      function clampPan() {
+        const maxPanX = state.width * 0.52 * state.zoom;
+        const maxPanY = state.height * 0.52 * state.zoom;
+        state.panX = Math.max(-maxPanX, Math.min(maxPanX, state.panX));
+        state.panY = Math.max(-maxPanY, Math.min(maxPanY, state.panY));
+      }
+
+      function setZoom(newZoom, pivotX, pivotY) {
+        const clamped = Math.max(0.70, Math.min(2.30, newZoom));
+        if (Math.abs(clamped - state.zoom) < 0.001) return;
+
+        const baseCenter = getBaseTargetCenter();
+        const px = pivotX !== undefined ? pivotX : baseCenter.x;
+        const py = pivotY !== undefined ? pivotY : baseCenter.y;
+        const ratio = clamped / state.zoom;
+
+        // 以游標或雙指中心為基準進行縮放，保持焦點位置不偏移
+        state.panX = (px - baseCenter.x) - ((px - baseCenter.x) - state.panX) * ratio;
+        state.panY = (py - baseCenter.y) - ((py - baseCenter.y) - state.panY) * ratio;
+        state.zoom = clamped;
+
+        clampPan();
+        btnZoomReset.textContent = `${Math.round(state.zoom * 100)}%`;
+        updateIsoTransform();
+        state.viewDirty = true;
+      }
+
+      // 離屏畫布快取 3D 地形與陰影 (保證平板流暢 60FPS)
+      const offCanvas = document.createElement('canvas');
+      const offCtx = offCanvas.getContext('2d');
+
+      // 3D 地形網格解析度 (NX: 左下海側0 -> 右上高山1, NY: 後側0 -> 前側剖面1)
+      const NX = 116;
+      const NY = 84;
+      const heightGrid = new Float32Array(NX * NY);
+      const waterGrid = new Float32Array(NX * NY);
+      const sedimentGrid = new Float32Array(NX * NY);
+      const bankWetnessGrid = new Float32Array(NX * NY);
+
+      // 動態粒子：河水波光、泥沙顆粒、雨滴、雲朵
+      const flowParticles = [];
+      const waterGlints = [];
+      const rainParticles = [];
+      const cloudList = [];
+
+      // --------------------------------------------------------------------------
+      // 數學插值、雜訊與天然河道幾何函式
+      // --------------------------------------------------------------------------
+      function lerp(a, b, t) {
+        return a + (b - a) * t;
+      }
+
+      function smoothstep(edge0, edge1, x) {
+        const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+        return t * t * (3 - 2 * t);
+      }
+
+      function hash2D(ix, iy) {
+        const n = Math.sin(ix * 127.1 + iy * 311.7) * 43758.5453123;
+        return n - Math.floor(n);
+      }
+
+      function noise2D(x, y) {
+        const ix = Math.floor(x);
+        const iy = Math.floor(y);
+        const fx = x - ix;
+        const fy = y - iy;
+        const ux = fx * fx * (3 - 2 * fx);
+        const uy = fy * fy * (3 - 2 * fy);
+        const a = hash2D(ix, iy);
+        const b = hash2D(ix + 1, iy);
+        const c = hash2D(ix, iy + 1);
+        const d = hash2D(ix + 1, iy + 1);
+        return lerp(lerp(a, b, ux), lerp(c, d, ux), uy) * 2 - 1;
+      }
+
+      function fbm(x, y, octaves = 3) {
+        let val = 0;
+        let amp = 0.5;
+        let freq = 1;
+        for (let i = 0; i < octaves; i++) {
+          val += amp * noise2D(x * freq, y * freq);
+          freq *= 2.02;
+          amp *= 0.5;
+        }
+        return val;
+      }
+
+      function ridgedNoise(x, y, octaves = 4) {
+        let val = 0;
+        let amp = 0.5;
+        let freq = 1;
+        for (let i = 0; i < octaves; i++) {
+          const n = 1 - Math.abs(noise2D(x * freq, y * freq));
+          val += amp * n * n;
+          freq *= 2.05;
+          amp *= 0.5;
+        }
+        return val;
+      }
+
+      // 河道中心線 v(u)：上游峽谷微彎 -> 山麓轉折 -> 中游 S 型曲流 -> 下游河口
+      function getRiverCenterV(u) {
+        if (u > 0.60) {
+          const t = (u - 0.60) / 0.40;
+          return 0.52 - 0.04 * Math.sin(t * Math.PI * 1.4) + 0.03 * t;
+        }
+        if (u > 0.28) {
+          const t = (u - 0.28) / 0.32;
+          const env = Math.sin(t * Math.PI);
+          return 0.50 + 0.115 * env * Math.sin(t * Math.PI * 2.35);
+        }
+        return 0.50;
+      }
+
+      // 河道曲率近似值 (用於判定中游曲流凹岸侵蝕與凸岸堆積)
+      function getRiverCurvature(u) {
+        const eps = 0.012;
+        const vPrev = getRiverCenterV(Math.max(0, u - eps));
+        const vCurr = getRiverCenterV(u);
+        const vNext = getRiverCenterV(Math.min(1, u + eps));
+        return (vPrev - 2 * vCurr + vNext) / (eps * eps);
+      }
+
+      // 海岸線位置 u(v)：隨下游三角洲堆積量向外海推進
+      function getCoastlineU(v) {
+        const centerDist = Math.abs(v - 0.50);
+        const lobe = Math.exp(-Math.pow(centerDist / 0.26, 2)) * (0.035 + state.deltaDeposition * 0.055);
+        const wave = 0.008 * Math.sin(v * 18.0);
+        return Math.max(0.06, 0.145 - lobe + wave);
+      }
+
+      // --------------------------------------------------------------------------
+      // 建構 3D 地形高程場、水深場、濕潤河岸與泥沙堆積場
+      // (視覺縱剖面坡度調緩更自然，底層物理機制 100% 維持完整靈敏度)
+      // --------------------------------------------------------------------------
+      function rebuildTerrainGrid() {
+        // 視覺專用緩坡係數 (範圍 0.78 ~ 1.14，讓整座山谷畫面扁平開闊、坡度自然)
+        const visualSlopeFactor = 0.78 + ((state.slopeAngle - 12) / (46 - 12)) * 0.36;
+        const seaLevel = 0.048;
+
+        for (let ix = 0; ix < NX; ix++) {
+          const u = ix / (NX - 1);
+          const riverV = getRiverCenterV(u);
+
+          // 柔和凹形河道縱剖面：上游緩順爬升 -> 沖積扇轉折 -> 中游緩坡 -> 下游三角洲平原
+          let baseZ = 0;
+          if (u > 0.60) {
+            const t = (u - 0.60) / 0.40;
+            baseZ = 0.125 + Math.pow(t, 1.52) * 0.54;
+          } else if (u > 0.28) {
+            const t = (u - 0.28) / 0.32;
+            baseZ = 0.060 + Math.pow(t, 1.24) * 0.065;
+          } else if (u > 0.14) {
+            const t = (u - 0.14) / 0.14;
+            baseZ = seaLevel + t * 0.012;
+          } else {
+            const t = u / 0.14;
+            baseZ = 0.014 + t * (seaLevel - 0.014);
+          }
+
+          baseZ *= visualSlopeFactor;
+          if (u <= 0.18) {
+            const blend = smoothstep(0.08, 0.24, u);
+            baseZ = lerp(0.014 + (u / 0.18) * (seaLevel - 0.014), baseZ, blend);
+          }
+
+          for (let iy = 0; iy < NY; iy++) {
+            const v = iy / (NY - 1);
+            const idx = ix * NY + iy;
+            const distToRiver = Math.abs(v - riverV);
+            const signedDist = v - riverV;
+
+            let h = baseZ;
+            let waterDepth = 0;
+            let sediment = 0;
+            let wetness = 0;
+
+            const mountainMask = smoothstep(0.28, 0.68, u);
+            const foothillMask = smoothstep(0.22, 0.45, u) * (1 - smoothstep(0.55, 0.75, u));
+
+            // V 型山谷兩側山脊抬升 (隨上游侵蝕程度略微拓寬峽谷)
+            const valleyOpen = lerp(0.044, 0.185, 1 - mountainMask) + state.erosionLevel * 0.025 * mountainMask;
+            const canyonWall = smoothstep(valleyOpen * 0.34, valleyOpen + 0.23, distToRiver);
+
+            const ridge = ridgedNoise(u * 6.2 + 1.2, v * 6.8 + 0.8, 4);
+            const detail = fbm(u * 13.5, v * 13.5, 3);
+
+            const mountainH = mountainMask * canyonWall * (0.17 + 0.30 * ridge + 0.06 * detail) * visualSlopeFactor;
+            const hillH = foothillMask * canyonWall * (0.022 + 0.038 * (ridge * 0.7 + detail * 0.3)) * Math.sqrt(visualSlopeFactor);
+
+            h += mountainH + hillH;
+
+            // 1. 上游 V 型峽谷與山澗支流 (水流越急、坡度越陡，侵蝕越深)
+            if (u > 0.58) {
+              const upFactor = smoothstep(0.58, 0.72, u);
+              const gorgeW = 0.021 + state.rainfall * 0.011 + state.erosionLevel * 0.016;
+              if (distToRiver < gorgeW * 2.4) {
+                const cut = Math.exp(-Math.pow(distToRiver / gorgeW, 2));
+                const cutDepth = (0.032 + state.erosionLevel * 0.038) * upFactor * visualSlopeFactor;
+                h -= cut * cutDepth;
+                const activeW = gorgeW * (0.56 + state.rainfall * 0.26);
+                if (distToRiver < activeW) {
+                  const nd = distToRiver / activeW;
+                  const streamStrength = 0.36 + state.rainfall * 0.64;
+                  waterDepth = Math.max(waterDepth, streamStrength * (1 - nd * nd * 0.75));
+                } else if (distToRiver < activeW * 1.48) {
+                  wetness = Math.max(wetness, 1 - (distToRiver - activeW) / (activeW * 0.48));
+                }
+              }
+
+              // 兩條高山細小支流山澗匯入主峽谷
+              if (u > 0.68 && u < 0.92) {
+                const trib1V = riverV - (u - 0.68) * 0.75;
+                const trib2V = riverV + (u - 0.72) * 0.72;
+                const dTrib = Math.min(Math.abs(v - trib1V), u > 0.72 ? Math.abs(v - trib2V) : 1);
+                const tribW = 0.008 + state.rainfall * 0.005;
+                if (dTrib < tribW) {
+                  h -= 0.008 * (1 - dTrib / tribW);
+                  waterDepth = Math.max(waterDepth, (0.30 + state.rainfall * 0.45) * (1 - dTrib / tribW));
+                }
+              }
+            }
+
+            // 2. 山麓沖積扇 (Alluvial Fan, u: 0.53 ~ 0.65)
+            const fanU = 0.61;
+            const fanV = getRiverCenterV(fanU);
+            const duFan = (u - fanU) * 1.4;
+            const dvFan = v - fanV;
+            const fanDist = Math.hypot(duFan, dvFan);
+            const fanRad = 0.135 + state.fanDeposition * 0.048;
+            if (u <= fanU + 0.03 && fanDist < fanRad) {
+              const angle = Math.atan2(dvFan, -duFan);
+              if (Math.abs(angle) < 1.08) {
+                const cone = (1 - fanDist / fanRad) * Math.cos(angle * 1.15);
+                h += Math.max(0, cone) * (0.014 + state.fanDeposition * 0.018) * Math.sqrt(visualSlopeFactor);
+                sediment = Math.max(sediment, cone * (0.55 + state.fanDeposition * 0.45));
+
+                // 沖積扇辮狀分流細水道
+                const braid = Math.sin(angle * 12.0 + fanDist * 28.0);
+                if (braid > 0.62 - state.rainfall * 0.28) {
+                  waterDepth = Math.max(waterDepth, 0.32 + state.rainfall * 0.52);
+                } else if (braid > 0.45 - state.rainfall * 0.25) {
+                  wetness = Math.max(wetness, 0.65);
+                }
+              }
+            }
+
+            // 3. 中游曲流 (Meander, u: 0.28 ~ 0.56)：凹岸侵蝕、凸岸堆積
+            if (u >= 0.26 && u <= 0.58) {
+              const midMask = smoothstep(0.26, 0.32, u) * (1 - smoothstep(0.53, 0.58, u));
+              const riverHalfW = (0.020 + state.rainfall * 0.016) * (1 + (0.55 - u) * 0.42);
+              const curv = getRiverCurvature(u);
+              const innerSign = curv > 0 ? 1 : -1;
+              const isConvexBank = signedDist * innerSign > 0; // 凸岸 (堆積側)
+
+              if (isConvexBank && distToRiver >= riverHalfW * 0.50 && distToRiver < riverHalfW * 2.2) {
+                const barAmp = Math.min(1, Math.abs(curv) * 0.064) * midMask;
+                const barShape = Math.sin(((distToRiver - riverHalfW * 0.50) / (riverHalfW * 1.7)) * Math.PI);
+                const dep = barAmp * barShape * (0.45 + state.meanderDeposition * 0.55);
+                sediment = Math.max(sediment, dep);
+                h += dep * 0.007;
+              }
+
+              // 凹岸 (侵蝕側)：深槽靠近凹岸外側
+              if (!isConvexBank && distToRiver < riverHalfW * 1.35) {
+                h -= midMask * Math.min(1, Math.abs(curv) * 0.05) * 0.006 * (0.35 + state.rainfall * 0.65);
+              }
+
+              if (distToRiver < riverHalfW) {
+                const nd = distToRiver / riverHalfW;
+                // 深槽 (Thalweg) 偏向凹岸外側，呈現真實非對稱河床水深
+                const thalwegShift = isConvexBank ? nd * 1.15 : nd * 0.72;
+                const depthProfile = Math.max(0.18, 1 - Math.min(1, thalwegShift * thalwegShift));
+                h -= depthProfile * 0.010;
+                waterDepth = Math.max(waterDepth, depthProfile * (0.42 + state.rainfall * 0.58));
+              } else if (distToRiver < riverHalfW * 1.38) {
+                wetness = Math.max(wetness, 1 - (distToRiver - riverHalfW) / (riverHalfW * 0.38));
+              }
+            }
+
+            // 4. 下游三角洲 (Delta, u: 0.06 ~ 0.30) 與入海口
+            const coastU = getCoastlineU(v);
+            if (u <= 0.30) {
+              const deltaZone = smoothstep(0.055, 0.14, u) * (1 - smoothstep(0.26, 0.31, u));
+              const spread = (0.31 - u) * (0.76 + state.deltaDeposition * 0.38);
+              const distCenter = Math.abs(v - 0.50);
+
+              if (distCenter < spread && u >= coastU - 0.025) {
+                const radial = 1 - distCenter / spread;
+                const seaward = smoothstep(coastU - 0.02, coastU + 0.06, u);
+                const deltaElev = radial * seaward * (0.008 + state.deltaDeposition * 0.012);
+                h = Math.max(h, seaLevel + deltaElev - 0.002);
+                sediment = Math.max(sediment, radial * (0.65 + state.deltaDeposition * 0.35));
+
+                // 5 條扇狀分岔水道 (Distributaries)
+                const relV = (v - 0.50) / Math.max(0.04, spread);
+                const b1 = Math.abs(relV - 0.02 * Math.sin(u * 25));
+                const b2 = Math.abs(relV - (0.34 + 0.06 * Math.sin(u * 22)));
+                const b3 = Math.abs(relV + (0.32 + 0.06 * Math.cos(u * 20)));
+                const b4 = Math.abs(relV - (0.68 + 0.05 * Math.cos(u * 18)));
+                const b5 = Math.abs(relV + (0.66 + 0.05 * Math.sin(u * 19)));
+                const minB = Math.min(b1, b2, b3, b4, b5);
+                const chW = (0.072 + state.rainfall * 0.044) * (1 - 0.15 * state.deltaDeposition);
+
+                if (minB < chW && deltaZone > 0.08) {
+                  const nd = minB / chW;
+                  waterDepth = Math.max(waterDepth, (1 - nd * nd * 0.6) * (0.42 + state.rainfall * 0.58));
+                  h = seaLevel - 0.0018;
+                } else if (minB < chW * 1.45 && deltaZone > 0.08) {
+                  wetness = Math.max(wetness, 1 - (minB - chW) / (chW * 0.45));
+                }
+              }
+
+              if (h < seaLevel) {
+                waterDepth = Math.max(waterDepth, Math.min(1, (seaLevel - h) * 24 + 0.25));
+              }
+            }
+
+            heightGrid[idx] = Math.max(0.008, h);
+            waterGrid[idx] = waterDepth;
+            sedimentGrid[idx] = Math.min(1, sediment);
+            bankWetnessGrid[idx] = Math.min(1, wetness);
+          }
+        }
+      }
+
+      function worldToScreen(u, v, z) {
+        const { originX, originY, ux, uy, vx, vy, zScale } = state.iso;
+        return {
+          x: originX + u * ux + v * vx,
+          y: originY + u * uy + v * vy - z * zScale
+        };
+      }
+
+      function screenToWorldUV(sx, sy) {
+        let bestU = 0.5;
+        let bestV = 0.5;
+        let minD2 = Infinity;
+        for (let ix = 0; ix < NX; ix += 2) {
+          const u = ix / (NX - 1);
+          for (let iy = 0; iy < NY; iy += 2) {
+            const v = iy / (NY - 1);
+            const z = heightGrid[ix * NY + iy];
+            const pt = worldToScreen(u, v, z);
+            const dx = pt.x - sx;
+            const dy = pt.y - sy;
+            const d2 = dx * dx + dy * dy;
+            if (d2 < minD2) {
+              minD2 = d2;
+              bestU = u;
+              bestV = v;
+            }
+          }
+        }
+        return { u: bestU, v: bestV };
+      }
+
+      function getInterpolatedZ(u, v) {
+        const fx = Math.max(0, Math.min(NX - 1.001, u * (NX - 1)));
+        const fy = Math.max(0, Math.min(NY - 1.001, v * (NY - 1)));
+        const ix = Math.floor(fx);
+        const iy = Math.floor(fy);
+        const tx = fx - ix;
+        const ty = fy - iy;
+        const z00 = heightGrid[ix * NY + iy];
+        const z10 = heightGrid[(ix + 1) * NY + iy];
+        const z01 = heightGrid[ix * NY + (iy + 1)];
+        const z11 = heightGrid[(ix + 1) * NY + (iy + 1)];
+        return lerp(lerp(z00, z10, tx), lerp(z01, z11, tx), ty);
+      }
+
+      function mixRGB(c1, c2, t) {
+        const k = Math.max(0, Math.min(1, t));
+        return [
+          Math.round(c1[0] + (c2[0] - c1[0]) * k),
+          Math.round(c1[1] + (c2[1] - c1[1]) * k),
+          Math.round(c1[2] + (c2[2] - c1[2]) * k)
+        ];
+      }
+
+      function rgbStr(rgb, a = 1) {
+        return a < 1 ? `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a.toFixed(3)})` : `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+      }
+
+      // --------------------------------------------------------------------------
+      // 渲染 3D 立體地形與地質剖面至離屏畫布
+      // --------------------------------------------------------------------------
+      function renderTerrainToOffscreen() {
+        const w = state.width;
+        const h = state.height;
+        const dpr = state.dpr;
+
+        if (offCanvas.width !== Math.floor(w * dpr) || offCanvas.height !== Math.floor(h * dpr)) {
+          offCanvas.width = Math.floor(w * dpr);
+          offCanvas.height = Math.floor(h * dpr);
+        }
+
+        offCtx.save();
+        offCtx.scale(dpr, dpr);
+        offCtx.clearRect(0, 0, w, h);
+
+        // 地塊底部立體懸浮環境陰影
+        const c00 = worldToScreen(0, 0, 0);
+        const c01 = worldToScreen(0, 1, 0);
+        const c11 = worldToScreen(1, 1, 0);
+        const c10 = worldToScreen(1, 0, 0);
+        offCtx.save();
+        offCtx.beginPath();
+        offCtx.moveTo(c00.x, c00.y + 8);
+        offCtx.lineTo(c01.x, c01.y + 12);
+        offCtx.lineTo(c11.x, c11.y + 10);
+        offCtx.lineTo(c10.x, c10.y + 6);
+        offCtx.closePath();
+        offCtx.fillStyle = 'rgba(15, 23, 42, 0.15)';
+        offCtx.filter = 'blur(14px)';
+        offCtx.fill();
+        offCtx.restore();
+
+        // 左上方日照光源方向 (產生鮮明山脊向光面與山谷背光陰影)
+        const lx = -0.60, ly = -0.44, lz = 0.67;
+        const lLen = Math.hypot(lx, ly, lz);
+        const sunX = lx / lLen, sunY = ly / lLen, sunZ = lz / lLen;
+
+        // 多層次河水色票：深槽湛藍 <-> 淺灘青綠，隨含沙濁度平滑漸變為琥珀濁黃泥流
+        const clearDeepRiver = [12, 114, 182];
+        const clearShallowRiver = [62, 198, 218];
+        const muddyDeepRiver = [154, 96, 32];
+        const muddyShallowRiver = [214, 166, 78];
+
+        const curDeepRiver = mixRGB(clearDeepRiver, muddyDeepRiver, state.turbidity);
+        const curShallowRiver = mixRGB(clearShallowRiver, muddyShallowRiver, state.turbidity);
+
+        // 由遠到近繪製地表網格 (ix: NX-2 -> 0, iy: 0 -> NY-2)
+        for (let ix = NX - 2; ix >= 0; ix--) {
+          const u = ix / (NX - 1);
+          const uNext = (ix + 1) / (NX - 1);
+
+          for (let iy = 0; iy < NY - 1; iy++) {
+            const v = iy / (NY - 1);
+            const vNext = (iy + 1) / (NY - 1);
+
+            const i00 = ix * NY + iy;
+            const i10 = (ix + 1) * NY + iy;
+            const i11 = (ix + 1) * NY + (iy + 1);
+            const i01 = ix * NY + (iy + 1);
+
+            const z00 = heightGrid[i00];
+            const z10 = heightGrid[i10];
+            const z11 = heightGrid[i11];
+            const z01 = heightGrid[i01];
+
+            const p00 = worldToScreen(u, v, z00);
+            const p10 = worldToScreen(uNext, v, z10);
+            const p11 = worldToScreen(uNext, vNext, z11);
+            const p01 = worldToScreen(u, vNext, z01);
+
+            const dzdu = (z10 - z00) * 18.0;
+            const dzdv = (z01 - z00) * 18.0;
+            let nx = -dzdu, ny = -dzdv, nz = 1.0;
+            const nLen = Math.hypot(nx, ny, nz);
+            nx /= nLen; ny /= nLen; nz /= nLen;
+
+            const dot = nx * sunX + ny * sunY + nz * sunZ;
+            const shade = 0.62 + 0.54 * Math.max(-0.40, dot);
+
+            const avgZ = (z00 + z10 + z11 + z01) * 0.25;
+            const water = (waterGrid[i00] + waterGrid[i10] + waterGrid[i11] + waterGrid[i01]) * 0.25;
+            const maxWater = Math.max(waterGrid[i00], waterGrid[i10], waterGrid[i11], waterGrid[i01]);
+            const sed = (sedimentGrid[i00] + sedimentGrid[i10] + sedimentGrid[i11] + sedimentGrid[i01]) * 0.25;
+            const wetness = (bankWetnessGrid[i00] + bankWetnessGrid[i10] + bankWetnessGrid[i11] + bankWetnessGrid[i01]) * 0.25;
+            const steepness = Math.hypot(dzdu, dzdv);
+
+            let baseRGB;
+            let effectiveShade = shade;
+
+            if (maxWater > 0.18) {
+              const coastU = getCoastlineU(v);
+              if (u < coastU - 0.015 && sed < 0.35) {
+                // 海洋深度漸層、近岸碧綠淺海與河口泥沙擴散羽流 (Sediment Plume)
+                const depthT = smoothstep(0.0, coastU, u);
+                baseRGB = mixRGB([10, 98, 166], [54, 192, 226], Math.pow(depthT, 0.85));
+
+                // 海岸邊緣浪花亮帶
+                const surfEdge = smoothstep(coastU - 0.032, coastU - 0.012, u);
+                if (surfEdge > 0.05) {
+                  baseRGB = mixRGB(baseRGB, [224, 248, 255], surfEdge * 0.42);
+                }
+
+                // 河口向海洋擴散的半透明泥沙羽流
+                const plumeDist = Math.hypot((u - coastU) * 1.32, (v - 0.50) * 1.02);
+                const plumeStrength = Math.exp(-plumeDist * 8.2) * (0.18 + state.turbidity * 0.72);
+                if (plumeStrength > 0.02) {
+                  baseRGB = mixRGB(baseRGB, [202, 148, 66], plumeStrength);
+                }
+                effectiveShade = 0.94 + 0.08 * dot;
+              } else {
+                // 多層次河道水體：淺灘清透 <-> 深槽深邃 + 上游湍急白沫
+                const depthMix = smoothstep(0.20, 0.92, water);
+                baseRGB = mixRGB(curShallowRiver, curDeepRiver, depthMix);
+
+                if (u > 0.58) {
+                  const riffle = Math.max(0, noise2D(u * 48, v * 48) + 0.25);
+                  const foam = Math.min(0.45, (0.12 + state.rainfall * 0.38) * riffle);
+                  baseRGB = mixRGB(baseRGB, [246, 251, 255], foam);
+                }
+                effectiveShade = 0.88 + 0.16 * dot;
+              }
+            } else {
+              const tex = noise2D(u * 35, v * 35) * 0.08;
+              if (u < 0.29) {
+                // 下游三角洲金黃色沙洲與沿海沖積平原
+                const deltaSand = [230, 182, 86];
+                const moistSilt = [192, 138, 56];
+                const plainGreen = [132, 186, 86];
+                const deltaMask = smoothstep(0.36, 0.14, Math.abs(v - 0.50)) * smoothstep(0.30, 0.18, u);
+                const siltCol = mixRGB(deltaSand, moistSilt, sed * 0.65 + tex);
+                baseRGB = mixRGB(plainGreen, siltCol, Math.max(deltaMask, sed * 0.92));
+              } else if (u < 0.62) {
+                // 中游山麓曲流平原 (翠綠植被、田野與金黃點砂洲/沖積扇)
+                const grassLight = [138, 194, 88];
+                const forestMid = [74, 146, 66];
+                const farmPatch = ((Math.floor(u * 26) + Math.floor(v * 22)) % 3 === 0) ? 0.14 : 0;
+                let landRGB = mixRGB(grassLight, forestMid, smoothstep(0.07, 0.20, avgZ) + tex);
+                landRGB = mixRGB(landRGB, [186, 206, 98], farmPatch * (1 - smoothstep(0.09, 0.17, avgZ)));
+
+                if (sed > 0.10) {
+                  landRGB = mixRGB(landRGB, [216, 174, 92], Math.min(0.94, sed * 1.20));
+                }
+                baseRGB = landRGB;
+              } else {
+                // 上游高山峽谷 (深翠森林 + 陡峭岩壁 + 侵蝕裸露風化岩層)
+                const deepForest = [48, 114, 58];
+                const ridgeGreen = [88, 154, 74];
+                const rockGrey = [118, 130, 142];
+                const erodedRock = [166, 152, 126];
+
+                let mtnRGB = mixRGB(deepForest, ridgeGreen, 0.45 + tex * 2.5);
+                const rockMask = smoothstep(0.45, 1.15, steepness) * 0.72 + smoothstep(0.32, 0.62, avgZ) * 0.42;
+                mtnRGB = mixRGB(mtnRGB, rockGrey, Math.min(0.86, rockMask));
+
+                // 峽谷兩側受侵蝕剝落的裸岩壁 (隨 erosionLevel 擴大)
+                const riverV = getRiverCenterV(u);
+                const distR = Math.abs(v - riverV);
+                const scar = 1 - smoothstep(0.015, 0.052 + state.erosionLevel * 0.045, distR);
+                if (scar > 0.04) {
+                  mtnRGB = mixRGB(mtnRGB, erodedRock, scar * (0.45 + state.erosionLevel * 0.55));
+                }
+                baseRGB = mtnRGB;
+              }
+
+              // 濕潤深色河岸水際線 (Wet Shoreline Rim)
+              if (wetness > 0.08) {
+                baseRGB = mixRGB(baseRGB, [92, 76, 52], wetness * 0.44);
+              }
+            }
+
+            const finalRGB = [
+              Math.min(255, Math.max(0, Math.round(baseRGB[0] * effectiveShade))),
+              Math.min(255, Math.max(0, Math.round(baseRGB[1] * effectiveShade))),
+              Math.min(255, Math.max(0, Math.round(baseRGB[2] * effectiveShade)))
+            ];
+
+            offCtx.beginPath();
+            offCtx.moveTo(p00.x, p00.y);
+            offCtx.lineTo(p10.x, p10.y);
+            offCtx.lineTo(p11.x, p11.y);
+            offCtx.lineTo(p01.x, p01.y);
+            offCtx.closePath();
+            offCtx.fillStyle = rgbStr(finalRGB);
+            offCtx.fill();
+            offCtx.strokeStyle = rgbStr(finalRGB);
+            offCtx.lineWidth = 0.6;
+            offCtx.stroke();
+          }
+        }
+
+        // 前左側海水與海底大陸棚剖面 (u = 0)
+        drawFrontLeftCutaway(offCtx);
+
+        // 前右側高山地層剖面 (v = 1)
+        drawFrontRightCutaway(offCtx);
+
+        offCtx.restore();
+      }
+
+      function drawFrontLeftCutaway(c) {
+        const baseDepth = 0.042;
+        const seaZ = 0.048;
+
+        // 海水剖面層
+        c.beginPath();
+        for (let iy = 0; iy < NY; iy++) {
+          const v = iy / (NY - 1);
+          const pt = worldToScreen(0, v, Math.max(heightGrid[iy], seaZ));
+          if (iy === 0) c.moveTo(pt.x, pt.y);
+          else c.lineTo(pt.x, pt.y);
+        }
+        for (let iy = NY - 1; iy >= 0; iy--) {
+          const v = iy / (NY - 1);
+          const pt = worldToScreen(0, v, heightGrid[iy]);
+          c.lineTo(pt.x, pt.y);
+        }
+        c.closePath();
+        const seaGrad = c.createLinearGradient(0, worldToScreen(0, 0, seaZ).y, 0, worldToScreen(0, 1, 0).y + 24);
+        seaGrad.addColorStop(0, '#38bdf8');
+        seaGrad.addColorStop(1, '#0284c7');
+        c.fillStyle = seaGrad;
+        c.fill();
+
+        // 海底大陸棚基岩剖面
+        c.beginPath();
+        for (let iy = 0; iy < NY; iy++) {
+          const v = iy / (NY - 1);
+          const pt = worldToScreen(0, v, heightGrid[iy]);
+          if (iy === 0) c.moveTo(pt.x, pt.y);
+          else c.lineTo(pt.x, pt.y);
+        }
+        for (let iy = NY - 1; iy >= 0; iy--) {
+          const v = iy / (NY - 1);
+          const pt = worldToScreen(0, v, -baseDepth);
+          c.lineTo(pt.x, pt.y);
+        }
+        c.closePath();
+        c.fillStyle = '#64748b';
+        c.fill();
+        c.strokeStyle = '#475569';
+        c.lineWidth = 1;
+        c.stroke();
+      }
+
+      function drawFrontRightCutaway(c) {
+        const baseDepth = 0.042;
+        const iyFront = NY - 1;
+
+        // 1. 深灰色陡峭基岩主體
+        c.beginPath();
+        for (let ix = 0; ix < NX; ix++) {
+          const u = ix / (NX - 1);
+          const pt = worldToScreen(u, 1, heightGrid[ix * NY + iyFront]);
+          if (ix === 0) c.moveTo(pt.x, pt.y);
+          else c.lineTo(pt.x, pt.y);
+        }
+        c.lineTo(worldToScreen(1, 1, -baseDepth).x, worldToScreen(1, 1, -baseDepth).y);
+        c.lineTo(worldToScreen(0, 1, -baseDepth).x, worldToScreen(0, 1, -baseDepth).y);
+        c.closePath();
+
+        const rockGrad = c.createLinearGradient(
+          worldToScreen(0, 1, 0).x, worldToScreen(0, 1, 0).y,
+          worldToScreen(1, 1, 0.8).x, worldToScreen(1, 1, 0).y
+        );
+        rockGrad.addColorStop(0, '#64748b');
+        rockGrad.addColorStop(0.38, '#475569');
+        rockGrad.addColorStop(1, '#262d37');
+        c.fillStyle = rockGrad;
+        c.fill();
+
+        c.save();
+        c.clip();
+
+        // 2. 風化礫石與表土層 (緊貼地表下方)
+        c.beginPath();
+        for (let ix = 0; ix < NX; ix++) {
+          const u = ix / (NX - 1);
+          const pt = worldToScreen(u, 1, heightGrid[ix * NY + iyFront]);
+          if (ix === 0) c.moveTo(pt.x, pt.y);
+          else c.lineTo(pt.x, pt.y);
+        }
+        for (let ix = NX - 1; ix >= 0; ix--) {
+          const u = ix / (NX - 1);
+          const thick = lerp(0.022, 0.048, u);
+          const pt = worldToScreen(u, 1, heightGrid[ix * NY + iyFront] - thick);
+          c.lineTo(pt.x, pt.y);
+        }
+        c.closePath();
+        c.fillStyle = 'rgba(154, 120, 82, 0.58)';
+        c.fill();
+
+        // 3. 地質斜向岩層節理線
+        c.strokeStyle = 'rgba(15, 23, 42, 0.28)';
+        c.lineWidth = 1.2;
+        for (let s = 1; s <= 5; s++) {
+          c.beginPath();
+          for (let ix = 0; ix < NX; ix += 2) {
+            const u = ix / (NX - 1);
+            const zLine = heightGrid[ix * NY + iyFront] * (1 - s * 0.17) - 0.02 * s + 0.015 * Math.sin(u * 12 + s);
+            const pt = worldToScreen(u, 1, zLine);
+            if (ix === 0) c.moveTo(pt.x, pt.y);
+            else c.lineTo(pt.x, pt.y);
+          }
+          c.stroke();
+        }
+
+        // 4. 岩石礦物斑點顆粒
+        for (let k = 0; k < 420; k++) {
+          const ru = ((k * 73) % 100) / 100;
+          const rzFrac = ((k * 137) % 100) / 100;
+          const ix = Math.min(NX - 1, Math.floor(ru * NX));
+          const maxZ = heightGrid[ix * NY + iyFront];
+          const zPos = lerp(-baseDepth, maxZ - 0.01, rzFrac);
+          const pt = worldToScreen(ru, 1, zPos);
+          c.fillStyle = (k % 2 === 0) ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.18)';
+          c.fillRect(pt.x, pt.y, 2, 1.5);
+        }
+
+        c.restore();
+
+        // 表土植被邊緣高光線
+        c.beginPath();
+        for (let ix = 0; ix < NX; ix++) {
+          const u = ix / (NX - 1);
+          const pt = worldToScreen(u, 1, heightGrid[ix * NY + iyFront]);
+          if (ix === 0) c.moveTo(pt.x, pt.y);
+          else c.lineTo(pt.x, pt.y);
+        }
+        c.strokeStyle = 'rgba(236, 253, 245, 0.48)';
+        c.lineWidth = 1.4;
+        c.stroke();
+      }
+
+      // --------------------------------------------------------------------------
+      // 初始化與更新動態粒子 (河水絲滑流線、陽光波光、泥沙、雨絲、雲層)
+      // --------------------------------------------------------------------------
+      function initParticles() {
+        flowParticles.length = 0;
+        for (let i = 0; i < 190; i++) {
+          flowParticles.push({
+            u: 0.11 + Math.random() * 0.87,
+            vOff: (Math.random() - 0.5) * 0.022,
+            branch: Math.floor(Math.random() * 5),
+            len: 0.024 + Math.random() * 0.024,
+            size: 1.4 + Math.random() * 2.2,
+            isSediment: Math.random() < 0.36
+          });
+        }
+
+        waterGlints.length = 0;
+        for (let i = 0; i < 75; i++) {
+          waterGlints.push({
+            u: 0.12 + Math.random() * 0.84,
+            vOff: (Math.random() - 0.5) * 0.018,
+            branch: Math.floor(Math.random() * 5),
+            phase: Math.random() * Math.PI * 2
+          });
+        }
+
+        rainParticles.length = 0;
+        for (let i = 0; i < 180; i++) {
+          rainParticles.push({
+            x: Math.random(),
+            y: Math.random(),
+            len: 10 + Math.random() * 14,
+            speed: 520 + Math.random() * 280
+          });
+        }
+
+        cloudList.length = 0;
+        cloudList.push(
+          { u: 0.85, v: 0.28, scale: 1.15, speed: 0.008 },
+          { u: 0.72, v: 0.68, scale: 0.95, speed: 0.006 },
+          { u: 0.46, v: 0.24, scale: 0.85, speed: 0.007 },
+          { u: 0.91, v: 0.55, scale: 1.05, speed: 0.005 }
+        );
+      }
+
+      function updateSimulation(dt) {
+        // 平滑移動放大鏡至快速定位目標
+        if (state.mag.targetX !== null && state.mag.targetY !== null && !state.mag.dragging) {
+          const dx = state.mag.targetX - state.mag.x;
+          const dy = state.mag.targetY - state.mag.y;
+          if (Math.hypot(dx, dy) < 1.2) {
+            state.mag.x = state.mag.targetX;
+            state.mag.y = state.mag.targetY;
+            state.mag.targetX = null;
+            state.mag.targetY = null;
+          } else {
+            const ease = Math.min(1, dt * 10);
+            state.mag.x += dx * ease;
+            state.mag.y += dy * ease;
+          }
+        }
+
+        if (!state.isPlaying) return;
+
+        state.time += dt;
+
+        // 坡度與水量共同決定水流能量 (Stream Power)
+        const slopeFactor = Math.sin((state.slopeAngle * Math.PI) / 180) / Math.sin((28 * Math.PI) / 180);
+        const streamPower = Math.pow(state.rainfall, 1.28) * Math.pow(slopeFactor, 1.45);
+
+        // 河水混濁度與中游搬運量隨水量與坡度即時變化
+        const targetTurbidity = Math.min(1, Math.max(0.03, streamPower * 0.68 + state.erosionLevel * 0.20));
+        state.turbidity += (targetTurbidity - state.turbidity) * Math.min(1, dt * 2.0);
+        state.transportRate = Math.min(1, Math.max(0.04, streamPower * 0.72));
+
+        // 侵蝕以上游為主、堆積以下游為主，隨時間漸進演化
+        const erosionRate = streamPower * 0.020;
+        state.depositionRate = Math.min(1, Math.max(0.03, streamPower * 0.65));
+        if (erosionRate > 0.001) {
+          const prevE = state.erosionLevel;
+          const prevD = state.deltaDeposition;
+
+          state.erosionLevel = Math.min(1, state.erosionLevel + erosionRate * dt);
+          state.fanDeposition = Math.min(1, state.fanDeposition + erosionRate * 0.85 * dt);
+          state.meanderDeposition = Math.min(1, state.meanderDeposition + erosionRate * 0.90 * dt);
+          state.deltaDeposition = Math.min(1, state.deltaDeposition + erosionRate * 1.30 * dt);
+
+          if (
+            Math.abs(state.erosionLevel - prevE) > 0.0025 ||
+            Math.abs(state.deltaDeposition - prevD) > 0.0025 ||
+            state.time - state.lastTerrainBuildTime > 0.35
+          ) {
+            state.gridDirty = true;
+          }
+        }
+
+        // 更新水流與泥沙顆粒沿河道移動
+        for (let i = 0; i < flowParticles.length; i++) {
+          const p = flowParticles[i];
+          const zoneSpeed = p.u > 0.62 ? 0.145 : (p.u > 0.30 ? 0.088 : 0.045);
+          const vel = zoneSpeed * (0.25 + state.rainfall * 1.15) * (0.65 + slopeFactor * 0.55);
+
+          p.u -= vel * dt;
+          if (p.u < 0.09) {
+            p.u = 0.94 + Math.random() * 0.05;
+            p.vOff = (Math.random() - 0.5) * 0.020;
+            p.branch = Math.floor(Math.random() * 5);
+          }
+        }
+
+        // 更新水面陽光波光閃爍
+        for (let i = 0; i < waterGlints.length; i++) {
+          const g = waterGlints[i];
+          const zoneSpeed = g.u > 0.62 ? 0.11 : (g.u > 0.30 ? 0.065 : 0.032);
+          g.u -= zoneSpeed * (0.25 + state.rainfall * 1.0) * dt;
+          g.phase += dt * 6.5;
+          if (g.u < 0.10) {
+            g.u = 0.93 + Math.random() * 0.05;
+          }
+        }
+
+        // 更新雨絲位置
+        const activeRain = Math.floor(rainParticles.length * state.rainfall);
+        for (let i = 0; i < activeRain; i++) {
+          const r = rainParticles[i];
+          r.y += (r.speed * (0.65 + state.rainfall * 0.65) * dt) / Math.max(400, state.height);
+          r.x -= (95 * dt) / Math.max(400, state.width);
+          if (r.y > 1) { r.y -= 1; r.x = Math.random(); }
+          if (r.x < 0) { r.x += 1; }
+        }
+
+        // 雲層飄動
+        for (let i = 0; i < cloudList.length; i++) {
+          cloudList[i].v += cloudList[i].speed * dt;
+          if (cloudList[i].v > 0.88) cloudList[i].v = 0.12;
+        }
+      }
+
+      // --------------------------------------------------------------------------
+      // 主畫面渲染流程
+      // --------------------------------------------------------------------------
+      function renderScene() {
+        const w = state.width;
+        const h = state.height;
+        const dpr = state.dpr;
+
+        if (state.gridDirty) {
+          rebuildTerrainGrid();
+          state.gridDirty = false;
+          state.viewDirty = true;
+          state.lastTerrainBuildTime = state.time;
+        }
+
+        if (state.viewDirty) {
+          renderTerrainToOffscreen();
+          state.viewDirty = false;
+        }
+
+        ctx.save();
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, w, h);
+
+        // 1. 貼上離屏 3D 地形與陰影
+        ctx.drawImage(offCanvas, 0, 0, w, h);
+
+        // 2. 海洋波浪波紋
+        drawOceanWaves();
+
+        // 3. 河道絲滑流線波紋、陽光波光與泥沙顆粒
+        drawFlowParticles();
+
+        // 4. 雲朵與地面柔和雲影
+        drawClouds();
+
+        // 5. 斜向雨絲
+        drawRain();
+
+        // 6. 地貌立體標示牌 (上游、沖積扇、中游、下游・三角洲)
+        if (state.showLandmarks) {
+          drawLandformMarkers();
+        }
+
+        // 7. 互動式光學放大鏡
+        if (state.showMagnifier) {
+          drawOpticalMagnifier();
+        }
+
+        ctx.restore();
+      }
+
+      function getParticleRiverV(u, vOff, branch) {
+        if (u < 0.29) {
+          const spread = (0.31 - u) * (0.76 + state.deltaDeposition * 0.38);
+          const offsets = [0, 0.34, -0.32, 0.68, -0.66];
+          return 0.50 + offsets[branch % offsets.length] * spread + vOff * 0.32;
+        }
+        return getRiverCenterV(u) + vOff;
+      }
+
+      function drawOceanWaves() {
+        ctx.save();
+        const waveCycle = (state.time * 0.35) % 1;
+
+        for (let k = 0; k < 5; k++) {
+          const phase = (k / 5 + waveCycle * 0.2) % 1;
+          const alpha = (1 - phase) * 0.44;
+          ctx.strokeStyle = `rgba(255, 255, 255, ${alpha.toFixed(3)})`;
+          ctx.lineWidth = k === 0 ? 1.8 : 1.2;
+
+          ctx.beginPath();
+          let started = false;
+          for (let iy = 2; iy < NY - 2; iy += 2) {
+            const v = iy / (NY - 1);
+            const coastU = getCoastlineU(v);
+            const uW = coastU - 0.012 - phase * 0.12 + 0.004 * Math.sin(v * 20 + state.time * 2);
+            if (uW > 0.01) {
+              const pt = worldToScreen(uW, v, 0.049);
+              if (!started) { ctx.moveTo(pt.x, pt.y); started = true; }
+              else ctx.lineTo(pt.x, pt.y);
+            }
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawFlowParticles() {
+        ctx.save();
+        ctx.lineCap = 'round';
+        const isMuddy = state.turbidity > 0.45;
+        const visibleCount = Math.floor(flowParticles.length * (0.45 + state.rainfall * 0.55));
+
+        for (let i = 0; i < visibleCount; i++) {
+          const p = flowParticles[i];
+          const u1 = p.u;
+          const u2 = Math.max(0.08, u1 - p.len * (0.5 + state.rainfall * 0.7));
+          const v1 = getParticleRiverV(u1, p.vOff, p.branch);
+          const v2 = getParticleRiverV(u2, p.vOff, p.branch);
+
+          if (v1 < 0.03 || v1 > 0.97) continue;
+          const z1 = getInterpolatedZ(u1, v1) + 0.003;
+          const pt1 = worldToScreen(u1, v1, z1);
+
+          if (p.isSediment && state.turbidity > 0.20) {
+            ctx.fillStyle = isMuddy ? 'rgba(138, 84, 22, 0.78)' : 'rgba(182, 132, 54, 0.52)';
+            ctx.beginPath();
+            ctx.arc(pt1.x, pt1.y, p.size * (0.75 + state.turbidity * 0.45), 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            // 沿河道曲線貼合的絲滑水流波紋線
+            const z2 = getInterpolatedZ(u2, v2) + 0.003;
+            const pt2 = worldToScreen(u2, v2, z2);
+            const uMid = (u1 + u2) * 0.5;
+            const vMid = getParticleRiverV(uMid, p.vOff, p.branch);
+            const ptMid = worldToScreen(uMid, vMid, (z1 + z2) * 0.5);
+
+            ctx.strokeStyle = u1 > 0.62
+              ? 'rgba(255, 255, 255, 0.85)'
+              : (isMuddy ? 'rgba(254, 243, 199, 0.56)' : 'rgba(224, 242, 254, 0.72)');
+            ctx.lineWidth = u1 > 0.62 ? 2.0 : 1.45;
+            ctx.beginPath();
+            ctx.moveTo(pt1.x, pt1.y);
+            ctx.quadraticCurveTo(ptMid.x, ptMid.y, pt2.x, pt2.y);
+            ctx.stroke();
+          }
+        }
+
+        // 水面細碎陽光波光閃爍 (Specular Water Glints)
+        for (let i = 0; i < waterGlints.length; i++) {
+          const g = waterGlints[i];
+          const sparkle = Math.sin(g.phase);
+          if (sparkle <= 0.35) continue;
+
+          const v = getParticleRiverV(g.u, g.vOff, g.branch);
+          if (v < 0.04 || v > 0.96) continue;
+          const z = getInterpolatedZ(g.u, v) + 0.0035;
+          const pt = worldToScreen(g.u, v, z);
+          const alpha = ((sparkle - 0.35) / 0.65) * 0.85;
+
+          ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`;
+          ctx.beginPath();
+          ctx.ellipse(pt.x, pt.y, 2.6, 1.1, -0.3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.restore();
+      }
+
+      function drawClouds() {
+        if (state.rainfall < 0.08) return;
+        const opacity = 0.32 + state.rainfall * 0.52;
+        const cRGB = mixRGB([255, 255, 255], [148, 163, 184], Math.max(0, (state.rainfall - 0.3) * 1.4));
+
+        ctx.save();
+        for (let i = 0; i < cloudList.length; i++) {
+          const c = cloudList[i];
+          const gz = getInterpolatedZ(c.u, c.v);
+          const shPt = worldToScreen(c.u, c.v, gz);
+          const clPt = worldToScreen(c.u - 0.03, c.v - 0.02, gz + 0.34);
+          const r = 25 * c.scale * (0.8 + state.rainfall * 0.4);
+
+          ctx.fillStyle = `rgba(15, 23, 42, ${(0.06 + state.rainfall * 0.08).toFixed(3)})`;
+          ctx.beginPath();
+          ctx.ellipse(shPt.x, shPt.y, r * 1.15, r * 0.6, -0.35, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = rgbStr(cRGB, opacity);
+          ctx.beginPath();
+          ctx.arc(clPt.x, clPt.y, r * 0.65, 0, Math.PI * 2);
+          ctx.arc(clPt.x + r * 0.55, clPt.y - r * 0.12, r * 0.55, 0, Math.PI * 2);
+          ctx.arc(clPt.x - r * 0.52, clPt.y + r * 0.08, r * 0.48, 0, Math.PI * 2);
+          ctx.arc(clPt.x + r * 0.12, clPt.y - r * 0.38, r * 0.52, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      function drawRain() {
+        if (state.rainfall < 0.10) return;
+        const count = Math.floor(rainParticles.length * Math.pow(state.rainfall, 1.15));
+        ctx.save();
+        ctx.strokeStyle = `rgba(186, 230, 253, ${(0.22 + state.rainfall * 0.38).toFixed(2)})`;
+        ctx.lineWidth = state.rainfall > 0.7 ? 1.5 : 1.1;
+
+        for (let i = 0; i < count; i++) {
+          const r = rainParticles[i];
+          const x = r.x * state.width;
+          const y = r.y * state.height;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x - 3.8, y + r.len);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // --------------------------------------------------------------------------
+      // 地標標籤 (上游、沖積扇、中游、下游・三角洲)
+      // --------------------------------------------------------------------------
+      function drawLandformMarkers() {
+        const markers = [
+          {
+            u: 0.84,
+            v: getRiverCenterV(0.84),
+            title: '上游',
+            sub: '侵蝕為主・巨石稜角',
+            color: '#0284c7',
+            stem: 44
+          },
+          {
+            u: 0.60,
+            v: getRiverCenterV(0.60) + 0.04,
+            title: '沖積扇',
+            sub: '流速驟減・扇形堆積',
+            color: '#d97706',
+            stem: 40
+          },
+          {
+            u: 0.42,
+            v: getRiverCenterV(0.42) - 0.03,
+            title: '中游',
+            sub: '曲流搬運・凹侵凸積',
+            color: '#059669',
+            stem: 42
+          },
+          {
+            u: 0.21,
+            v: 0.50,
+            title: '下游・三角洲',
+            sub: '堆積為主・細緻淤泥',
+            color: '#b45309',
+            stem: 44
+          }
+        ];
+
+        ctx.save();
+        for (let i = 0; i < markers.length; i++) {
+          const m = markers[i];
+          const z = getInterpolatedZ(m.u, m.v);
+          const pt = worldToScreen(m.u, m.v, z);
+          const topY = pt.y - m.stem;
+
+          ctx.strokeStyle = m.color;
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(pt.x, pt.y);
+          ctx.lineTo(pt.x, topY);
+          ctx.stroke();
+
+          ctx.fillStyle = '#ef4444';
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.3;
+          ctx.stroke();
+
+          ctx.font = 'bold 12px "PingFang TC", "Microsoft JhengHei", sans-serif';
+          const w1 = ctx.measureText(m.title).width;
+          ctx.font = '600 9.5px "PingFang TC", "Microsoft JhengHei", sans-serif';
+          const w2 = ctx.measureText(m.sub).width;
+          const cardW = Math.max(w1, w2) + 16;
+          const cardH = 33;
+          const cardX = pt.x - cardW / 2;
+          const cardY = topY - cardH;
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.16)';
+          roundRect(ctx, cardX + 1, cardY + 2, cardW, cardH, 7);
+          ctx.fill();
+
+          ctx.fillStyle = m.color;
+          roundRect(ctx, cardX, cardY, cardW, cardH, 7);
+          ctx.fill();
+
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.lineWidth = 1.1;
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.font = 'bold 12px "PingFang TC", "Microsoft JhengHei", sans-serif';
+          ctx.fillText(m.title, pt.x, cardY + 13.5);
+
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+          ctx.font = '600 9.5px "PingFang TC", "Microsoft JhengHei", sans-serif';
+          ctx.fillText(m.sub, pt.x, cardY + 26.5);
+        }
+        ctx.restore();
+      }
+
+      function roundRect(c, x, y, w, h, r) {
+        c.beginPath();
+        c.moveTo(x + r, y);
+        c.lineTo(x + w - r, y);
+        c.quadraticCurveTo(x + w, y, x + w, y + r);
+        c.lineTo(x + w, y + h - r);
+        c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        c.lineTo(x + r, y + h);
+        c.quadraticCurveTo(x, y + h, x, y + h - r);
+        c.lineTo(x, y + r);
+        c.quadraticCurveTo(x, y, x + r, y);
+        c.closePath();
+      }
+
+      // --------------------------------------------------------------------------
+      // 5. 互動式光學放大鏡 (河床微距石塊顆粒與解說)
+      // --------------------------------------------------------------------------
+      function drawOpticalMagnifier() {
+        const mag = state.mag;
+        if (!mag.initialized) {
+          const midPt = worldToScreen(0.45, getRiverCenterV(0.45), getInterpolatedZ(0.45, getRiverCenterV(0.45)));
+          mag.x = Math.min(state.width - 135, Math.max(135, midPt.x - 85));
+          mag.y = Math.min(state.height - 175, Math.max(145, midPt.y - 35));
+          mag.initialized = true;
+        }
+
+        const uv = screenToWorldUV(mag.x, mag.y);
+        const u = uv.u;
+        const v = uv.v;
+        const riverV = getRiverCenterV(u);
+        const curv = getRiverCurvature(u);
+        const innerSign = curv > 0 ? 1 : -1;
+        const isConvex = (v - riverV) * innerSign > 0;
+
+        let zoneType, badgeColor, descText;
+        if (u >= 0.56) {
+          zoneType = 'upstream';
+          badgeColor = '#0284c7';
+          descText = '上游：石頭最多最大、稜角分明（侵蝕與搬運為主）';
+        } else if (u >= 0.30) {
+          zoneType = 'midstream';
+          badgeColor = '#059669';
+          descText = '中游：石頭較卵圓形、大小適中（滾動磨圓與搬運）';
+        } else {
+          zoneType = 'downstream';
+          badgeColor = '#b45309';
+          descText = '下游：幾乎都是細緻淤泥（水流平緩、堆積為主）';
+        }
+
+        const r = mag.radius;
+        ctx.save();
+
+        // 鏡框投影
+        ctx.beginPath();
+        ctx.arc(mag.x + 4, mag.y + 8, r + 5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.28)';
+        ctx.fill();
+
+        // 圓形鏡片裁切區
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(mag.x, mag.y, r, 0, Math.PI * 2);
+        ctx.clip();
+
+        renderMagnifierBed(ctx, mag.x, mag.y, r, zoneType, isConvex);
+
+        // 光學玻璃反光與邊緣暗角
+        const lensGrad = ctx.createRadialGradient(
+          mag.x - r * 0.3, mag.y - r * 0.35, r * 0.1,
+          mag.x, mag.y, r
+        );
+        lensGrad.addColorStop(0, 'rgba(255, 255, 255, 0.24)');
+        lensGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.02)');
+        lensGrad.addColorStop(1, 'rgba(15, 23, 42, 0.26)');
+        ctx.fillStyle = lensGrad;
+        ctx.fillRect(mag.x - r, mag.y - r, r * 2, r * 2);
+
+        ctx.beginPath();
+        ctx.ellipse(mag.x - r * 0.36, mag.y - r * 0.42, r * 0.36, r * 0.16, -0.55, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.38)';
+        ctx.fill();
+
+        ctx.restore();
+
+        // 放大鏡手把
+        const ang = Math.PI * 0.26;
+        const hx1 = mag.x + Math.cos(ang) * (r + 3);
+        const hy1 = mag.y + Math.sin(ang) * (r + 3);
+        const hx2 = mag.x + Math.cos(ang) * (r + 36);
+        const hy2 = mag.y + Math.sin(ang) * (r + 36);
+
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 11;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(hx1, hy1);
+        ctx.lineTo(hx2, hy2);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 4.5;
+        ctx.beginPath();
+        ctx.moveTo(hx1 + 2, hy1 + 1);
+        ctx.lineTo(hx2 - 2, hy2 - 2);
+        ctx.stroke();
+
+        // 雙層金屬邊框
+        ctx.beginPath();
+        ctx.arc(mag.x, mag.y, r + 2.5, 0, Math.PI * 2);
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 6.5;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(mag.x, mag.y, r + 2.5, 0, Math.PI * 2);
+        ctx.strokeStyle = '#f1f5f9';
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+
+        // 準星
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.72)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(mag.x - 8, mag.y);
+        ctx.lineTo(mag.x + 8, mag.y);
+        ctx.moveTo(mag.x, mag.y - 8);
+        ctx.lineTo(mag.x, mag.y + 8);
+        ctx.stroke();
+
+        // 頂部拖曳提示
+        const hintW = 92;
+        const hintH = 18;
+        const hintX = mag.x - hintW / 2;
+        const hintY = mag.y - r - 23;
+        if (hintY > 6) {
+          ctx.fillStyle = 'rgba(2, 132, 199, 0.92)';
+          roundRect(ctx, hintX, hintY, hintW, hintH, 9);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 10px "PingFang TC", "Microsoft JhengHei", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('✥ 拖曳觀察河床', mag.x, hintY + 12.5);
+        }
+
+        // 下方解說卡片 (自動避開視窗邊界)
+        const cardW = 248;
+        const cardH = 44;
+        let cardX = mag.x - cardW / 2;
+        let cardY = mag.y + r + 13;
+        cardX = Math.max(10, Math.min(state.width - cardW - 10, cardX));
+        if (cardY + cardH > state.height - 10) {
+          cardY = mag.y - r - cardH - 13;
+        }
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+        roundRect(ctx, cardX, cardY, cardW, cardH, 10);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = badgeColor;
+        roundRect(ctx, cardX + 8, cardY + 8, 5, cardH - 16, 2.5);
+        ctx.fill();
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = '600 11px "PingFang TC", "Microsoft JhengHei", sans-serif';
+        ctx.textAlign = 'left';
+        drawWrappedText(ctx, descText, cardX + 18, cardY + 18, cardW - 26, 14.5);
+
+        ctx.restore();
+      }
+
+      function drawWrappedText(c, text, x, y, maxW, lineH) {
+        let line = '';
+        let curY = y;
+        for (let i = 0; i < text.length; i++) {
+          const test = line + text[i];
+          if (c.measureText(test).width > maxW && line.length > 0) {
+            c.fillText(line, x, curY);
+            line = text[i];
+            curY += lineH;
+          } else {
+            line = test;
+          }
+        }
+        if (line) c.fillText(line, x, curY);
+      }
+
+      function renderMagnifierBed(c, cx, cy, r, zoneType, isConvex) {
+        const flowSpeed = (20 + state.rainfall * 95) * (zoneType === 'upstream' ? 1.85 : zoneType === 'midstream' ? 1.0 : 0.30);
+        const shift = (state.time * flowSpeed) % 160;
+
+        const clearW = [38, 152, 206];
+        const muddyW = [184, 128, 48];
+        const waterRGB = mixRGB(clearW, muddyW, state.turbidity);
+
+        if (zoneType === 'upstream') {
+          // 【上游】石頭最多最大、稜角分明的巨石與粗礫
+          c.fillStyle = '#475569';
+          c.fillRect(cx - r, cy - r, r * 2, r * 2);
+
+          const boulders = [
+            { dx: -44, dy: -28, rad: 32, rot: 0.4, fill: '#64748b', edge: '#334155' },
+            { dx: 26, dy: -36, rad: 35, rot: 1.2, fill: '#78716c', edge: '#44403c' },
+            { dx: -16, dy: 24, rad: 37, rot: 2.1, fill: '#57534e', edge: '#292524' },
+            { dx: 46, dy: 22, rad: 30, rot: 0.9, fill: '#6b7280', edge: '#374151' },
+            { dx: -56, dy: 34, rad: 25, rot: 1.7, fill: '#71717a', edge: '#3f3f46' },
+            { dx: 12, dy: -4, rad: 23, rot: 2.7, fill: '#858a94', edge: '#475569' }
+          ];
+
+          for (let i = 0; i < boulders.length; i++) {
+            const b = boulders[i];
+            const jitter = (state.rainfall > 0.72 && state.slopeAngle > 34)
+              ? Math.sin(state.time * 18 + i * 2) * 1.5
+              : 0;
+            drawAngularBoulder(c, cx + b.dx + jitter, cy + b.dy, b.rad, b.rot, b.fill, b.edge, i);
+          }
+
+          c.fillStyle = rgbStr(waterRGB, 0.40);
+          c.fillRect(cx - r, cy - r, r * 2, r * 2);
+
+          if (state.rainfall > 0.1) {
+            c.strokeStyle = 'rgba(255, 255, 255, 0.78)';
+            c.lineWidth = 2.3;
+            for (let s = -3; s <= 3; s++) {
+              const wy = cy + s * 22;
+              const wx = cx - r + ((shift * 1.4 + (s + 4) * 37) % (r * 2));
+              c.beginPath();
+              c.moveTo(wx - 22, wy + 6);
+              c.quadraticCurveTo(wx, wy - 4, wx + 24, wy + 5);
+              c.stroke();
+            }
+          }
+
+        } else if (zoneType === 'midstream') {
+          // 【中游】石頭較卵圓形、大小適中的鵝卵石與粗砂
+          c.fillStyle = isConvex ? '#d4a857' : '#a18456';
+          c.fillRect(cx - r, cy - r, r * 2, r * 2);
+
+          for (let s = 0; s < 65; s++) {
+            const sx = cx - r + ((s * 53) % (r * 2));
+            const sy = cy - r + ((s * 97) % (r * 2));
+            c.fillStyle = (s % 2 === 0) ? 'rgba(254, 243, 199, 0.5)' : 'rgba(120, 83, 32, 0.45)';
+            c.beginPath();
+            c.arc(sx, sy, 1.5, 0, Math.PI * 2);
+            c.fill();
+          }
+
+          const count = isConvex ? 24 : 16;
+          const colors = ['#94a3b8', '#a8a29e', '#cbd5e1', '#78716c', '#b4a89a'];
+          for (let p = 0; p < count; p++) {
+            const ang = p * 2.39996;
+            const dist = Math.sqrt((p + 0.5) / count) * (r * 0.85);
+            const px = cx + Math.cos(ang) * dist;
+            const py = cy + Math.sin(ang) * dist;
+            const rx = 10 + (p % 4) * 2.6;
+            const ry = rx * (0.62 + (p % 3) * 0.08);
+            const rot = (p * 0.9) % Math.PI;
+
+            c.save();
+            c.translate(px, py);
+            c.rotate(rot);
+
+            c.fillStyle = 'rgba(15, 23, 42, 0.24)';
+            c.beginPath();
+            c.ellipse(1.5, 2, rx, ry, 0, 0, Math.PI * 2);
+            c.fill();
+
+            c.fillStyle = colors[p % colors.length];
+            c.beginPath();
+            c.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+            c.fill();
+            c.strokeStyle = 'rgba(51, 65, 85, 0.45)';
+            c.lineWidth = 1;
+            c.stroke();
+
+            c.fillStyle = 'rgba(255, 255, 255, 0.34)';
+            c.beginPath();
+            c.ellipse(-rx * 0.28, -ry * 0.28, rx * 0.35, ry * 0.22, 0, 0, Math.PI * 2);
+            c.fill();
+
+            c.restore();
+          }
+
+          c.fillStyle = rgbStr(waterRGB, isConvex ? 0.34 : 0.50);
+          c.fillRect(cx - r, cy - r, r * 2, r * 2);
+
+          if (state.rainfall > 0.08) {
+            c.strokeStyle = 'rgba(255, 255, 255, 0.42)';
+            c.lineWidth = 1.6;
+            for (let l = -2; l <= 2; l++) {
+              const ly = cy + l * 28;
+              const lx = cx - r + ((shift + (l + 3) * 45) % (r * 2));
+              c.beginPath();
+              c.moveTo(lx - 18, ly);
+              c.lineTo(lx + 18, ly);
+              c.stroke();
+            }
+          }
+
+        } else {
+          // 【下游】幾乎都是細緻金黃色淤泥與粉砂顆粒
+          const siltRGB = mixRGB([214, 168, 86], [176, 120, 46], state.turbidity * 0.65 + state.deltaDeposition * 0.35);
+          c.fillStyle = rgbStr(siltRGB);
+          c.fillRect(cx - r, cy - r, r * 2, r * 2);
+
+          c.strokeStyle = 'rgba(133, 88, 28, 0.36)';
+          c.lineWidth = 2;
+          for (let row = -5; row <= 5; row++) {
+            const ry = cy + row * 16;
+            c.beginPath();
+            for (let dx = -r; dx <= r; dx += 10) {
+              const wy = ry + Math.sin((dx + row * 12) * 0.08) * 3.2;
+              if (dx === -r) c.moveTo(cx + dx, wy);
+              else c.lineTo(cx + dx, wy);
+            }
+            c.stroke();
+          }
+
+          for (let m = 0; m < 90; m++) {
+            const mx = cx - r + (((m * 37) + shift * 0.3) % (r * 2));
+            const my = cy - r + ((m * 61) % (r * 2));
+            c.fillStyle = (m % 3 === 0) ? 'rgba(254, 240, 138, 0.48)' : 'rgba(120, 74, 20, 0.44)';
+            c.beginPath();
+            c.arc(mx, my, 1.1 + (m % 2) * 0.55, 0, Math.PI * 2);
+            c.fill();
+          }
+
+          c.fillStyle = rgbStr(waterRGB, 0.46);
+          c.fillRect(cx - r, cy - r, r * 2, r * 2);
+        }
+      }
+
+      function drawAngularBoulder(c, x, y, rad, rot, fillHex, strokeHex, seed) {
+        const sides = 7;
+        c.save();
+        c.translate(x, y);
+        c.rotate(rot);
+
+        c.beginPath();
+        for (let i = 0; i < sides; i++) {
+          const a = (i / sides) * Math.PI * 2;
+          const rm = rad * (0.74 + 0.32 * Math.sin(seed * 3.1 + i * 2.4));
+          const px = Math.cos(a) * rm + 2.5;
+          const py = Math.sin(a) * rm + 3.0;
+          if (i === 0) c.moveTo(px, py);
+          else c.lineTo(px, py);
+        }
+        c.closePath();
+        c.fillStyle = 'rgba(15, 23, 42, 0.32)';
+        c.fill();
+
+        c.beginPath();
+        for (let i = 0; i < sides; i++) {
+          const a = (i / sides) * Math.PI * 2;
+          const rm = rad * (0.74 + 0.32 * Math.sin(seed * 3.1 + i * 2.4));
+          const px = Math.cos(a) * rm;
+          const py = Math.sin(a) * rm;
+          if (i === 0) c.moveTo(px, py);
+          else c.lineTo(px, py);
+        }
+        c.closePath();
+        c.fillStyle = fillHex;
+        c.fill();
+        c.strokeStyle = strokeHex;
+        c.lineWidth = 1.6;
+        c.stroke();
+
+        c.beginPath();
+        c.moveTo(-rad * 0.35, -rad * 0.25);
+        c.lineTo(rad * 0.15, -rad * 0.05);
+        c.lineTo(rad * 0.25, rad * 0.35);
+        c.strokeStyle = 'rgba(255, 255, 255, 0.26)';
+        c.lineWidth = 1.2;
+        c.stroke();
+
+        c.restore();
+      }
+
+      // --------------------------------------------------------------------------
+      // 更新 UI 數據與標籤
+      // --------------------------------------------------------------------------
+      function updateTelemetryUI() {
+        const ePct = Math.round(state.erosionLevel * 100);
+        const tuPct = Math.round(state.turbidity * 100);
+        const dPct = Math.round(state.depositionRate * 100);
+
+        numErosion.textContent = `${ePct}%`;
+        barErosion.style.width = `${Math.max(5, ePct)}%`;
+
+        numTurbidity.textContent = `${tuPct}%`;
+        barTurbidity.style.width = `${Math.max(5, tuPct)}%`;
+
+        numDeposition.textContent = `${dPct}%`;
+        barDeposition.style.width = `${Math.max(5, dPct)}%`;
+
+        if (tuPct >= 68) {
+          turbidityBadge.textContent = '水質：濁黃泥流';
+          turbidityBadge.style.background = '#fef3c7';
+          turbidityBadge.style.color = '#b45309';
+          scienceNote.textContent = '水量大且坡度陡：上游強烈下切侵蝕，大量泥沙隨濁黃河水在下游堆積！';
+        } else if (tuPct >= 35) {
+          turbidityBadge.textContent = '水質：微濁搬運';
+          turbidityBadge.style.background = '#e0f2fe';
+          turbidityBadge.style.color = '#0369a1';
+          scienceNote.textContent = '侵蝕以上游陡谷為主，泥沙隨水流搬運至中游凸岸與下游三角洲堆積。';
+        } else {
+          turbidityBadge.textContent = '水質：清澈平緩';
+          turbidityBadge.style.background = '#dcfce7';
+          turbidityBadge.style.color = '#065f46';
+          scienceNote.textContent = '水流平緩、侵蝕與搬運力弱，河水清澈見底，僅細微泥沙緩慢沉降。';
+        }
+      }
+
+      function updateSliderLabels() {
+        const rPct = Math.round(state.rainfall * 100);
+        let rDesc = '適中陣雨';
+        if (rPct === 0) rDesc = '晴朗無雨';
+        else if (rPct <= 28) rDesc = '毛毛小雨';
+        else if (rPct <= 60) rDesc = '適中陣雨';
+        else if (rPct <= 85) rDesc = '豐沛大雨';
+        else rDesc = '豪雨洪水';
+        rainValBadge.textContent = `${rPct}% (${rDesc})`;
+
+        const deg = state.slopeAngle;
+        let sDesc = '中陡山谷';
+        if (deg <= 18) sDesc = '平緩丘陵';
+        else if (deg <= 32) sDesc = '中陡山谷';
+        else sDesc = '陡峭高山';
+        slopeValBadge.textContent = `${deg}° (${sDesc})`;
+      }
+
+      function showToast(text) {
+        toastMsg.textContent = text;
+        toastMsg.classList.add('visible');
+        clearTimeout(showToast._tid);
+        showToast._tid = setTimeout(() => {
+          toastMsg.classList.remove('visible');
+        }, 2500);
+      }
+
+      // --------------------------------------------------------------------------
+      // 事件監聽：滑桿、按鈕、縮放控制、情境預設、放大鏡快速定位與觸控拖曳
+      // --------------------------------------------------------------------------
+      rainSlider.addEventListener('input', () => {
+        state.rainfall = Number(rainSlider.value) / 100;
+        updateSliderLabels();
+        state.gridDirty = true;
+      });
+
+      slopeSlider.addEventListener('input', () => {
+        state.slopeAngle = Number(slopeSlider.value);
+        updateSliderLabels();
+        updateIsoTransform();
+        state.gridDirty = true;
+      });
+
+      btnZoomIn.addEventListener('click', () => {
+        setZoom(state.zoom + 0.18);
+      });
+
+      btnZoomOut.addEventListener('click', () => {
+        setZoom(state.zoom - 0.18);
+      });
+
+      btnZoomReset.addEventListener('click', () => {
+        state.zoom = 1.0;
+        state.panX = 0;
+        state.panY = 0;
+        btnZoomReset.textContent = '100%';
+        updateIsoTransform();
+        state.viewDirty = true;
+        showToast('已恢復預設畫面大小與置中視角');
+      });
+
+      // 滑鼠滾輪支援以游標位置為中心平滑放大 / 縮小
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const pt = getPointerPos(e);
+        const factor = e.deltaY < 0 ? 1.12 : 0.89;
+        setZoom(state.zoom * factor, pt.x, pt.y);
+      }, { passive: false });
+
+      btnPlayPause.addEventListener('click', () => {
+        state.isPlaying = !state.isPlaying;
+        svgPause.style.display = state.isPlaying ? 'block' : 'none';
+        svgPlay.style.display = state.isPlaying ? 'none' : 'block';
+        txtPlayPause.textContent = state.isPlaying ? '暫停' : '繼續';
+        statusDot.classList.toggle('paused', !state.isPlaying);
+      });
+
+      btnReset.addEventListener('click', () => {
+        state.erosionLevel = 0.14;
+        state.fanDeposition = 0.16;
+        state.meanderDeposition = 0.15;
+        state.deltaDeposition = 0.16;
+        state.turbidity = 0.34;
+        state.gridDirty = true;
+        updateTelemetryUI();
+        showToast('已重置為初始自然山谷地形');
+      });
+
+      btnMagnifier.addEventListener('click', () => {
+        state.showMagnifier = !state.showMagnifier;
+        btnMagnifier.classList.toggle('is-active', state.showMagnifier);
+        showToast(state.showMagnifier ? '已開啟放大鏡：可自由拖曳或點擊快速定位' : '已關閉光學放大鏡');
+      });
+
+      btnLandmarks.addEventListener('click', () => {
+        state.showLandmarks = !state.showLandmarks;
+        btnLandmarks.classList.toggle('is-active', state.showLandmarks);
+        showToast(state.showLandmarks ? '已顯示河段與地形標示' : '已隱藏地標標籤');
+      });
+
+      // 一鍵情境預設按鈕 (日常微流 / 豪雨陡坡 / 平緩堆積)
+      document.querySelectorAll('.preset-trigger').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const rain = Number(btn.dataset.rain);
+          const slope = Number(btn.dataset.slope);
+          rainSlider.value = String(rain);
+          slopeSlider.value = String(slope);
+          state.rainfall = rain / 100;
+          state.slopeAngle = slope;
+          updateSliderLabels();
+          updateIsoTransform();
+          state.gridDirty = true;
+          showToast(`已切換情境：${btn.textContent}`);
+        });
+      });
+
+      // 放大鏡快速定位按鈕 (上游巨石 / 中游卵石 / 下游淤泥)
+      document.querySelectorAll('.mag-loc').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (!state.showMagnifier) {
+            state.showMagnifier = true;
+            btnMagnifier.classList.add('is-active');
+          }
+          const zone = btn.dataset.zone;
+          let targetU = 0.45;
+          let targetV = getRiverCenterV(0.45);
+          if (zone === 'upstream') {
+            targetU = 0.78;
+            targetV = getRiverCenterV(0.78);
+          } else if (zone === 'midstream') {
+            targetU = 0.42;
+            targetV = getRiverCenterV(0.42);
+          } else if (zone === 'downstream') {
+            targetU = 0.21;
+            targetV = 0.50;
+          }
+          const z = getInterpolatedZ(targetU, targetV);
+          const pt = worldToScreen(targetU, targetV, z);
+          const pad = state.mag.radius + 14;
+          state.mag.targetX = Math.max(pad, Math.min(state.width - pad, pt.x));
+          state.mag.targetY = Math.max(pad, Math.min(state.height - pad, pt.y));
+          showToast(`放大鏡已定位至：${btn.textContent}`);
+        });
+      });
+
+      // 下載獨立 HTML 檔
+      btnDownload.addEventListener('click', () => {
+        try {
+          const htmlText = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+          const blob = new Blob([htmlText], { type: 'text/html;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = '河流的侵蝕搬運與堆積模擬.html';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          showToast('已匯出下載：河流的侵蝕搬運與堆積模擬.html');
+        } catch (err) {
+          showToast('匯出失敗，請使用瀏覽器「另存網頁」功能');
+        }
+      });
+
+      // Pointer Events：支援單指/滑鼠拖曳放大鏡、空白處平移地形與平板雙指捏合縮放
+      function getPointerPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      }
+
+      const activePointers = new Map();
+      let dragMode = 'none'; // 'none' | 'magnifier' | 'pan' | 'pinch'
+      let pointerDownX = 0;
+      let pointerDownY = 0;
+      let panStartX = 0;
+      let panStartY = 0;
+      let hasPanned = false;
+      let pinchStartDist = 0;
+      let pinchStartZoom = 1;
+
+      canvas.addEventListener('pointerdown', (e) => {
+        const pt = getPointerPos(e);
+        activePointers.set(e.pointerId, pt);
+        canvas.setPointerCapture(e.pointerId);
+
+        if (activePointers.size === 2) {
+          // 進入平板雙指捏合縮放模式
+          const pts = Array.from(activePointers.values());
+          pinchStartDist = Math.max(10, Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y));
+          pinchStartZoom = state.zoom;
+          state.mag.dragging = false;
+          dragMode = 'pinch';
+          return;
+        }
+
+        if (activePointers.size === 1) {
+          state.mag.targetX = null;
+          state.mag.targetY = null;
+
+          const dist = Math.hypot(pt.x - state.mag.x, pt.y - state.mag.y);
+          if (state.showMagnifier && dist <= state.mag.radius + 42) {
+            dragMode = 'magnifier';
+            state.mag.dragging = true;
+            state.mag.offsetX = pt.x - state.mag.x;
+            state.mag.offsetY = pt.y - state.mag.y;
+          } else {
+            dragMode = 'pan';
+            pointerDownX = pt.x;
+            pointerDownY = pt.y;
+            panStartX = state.panX;
+            panStartY = state.panY;
+            hasPanned = false;
+          }
+        }
+      });
+
+      canvas.addEventListener('pointermove', (e) => {
+        if (!activePointers.has(e.pointerId)) return;
+        const pt = getPointerPos(e);
+        activePointers.set(e.pointerId, pt);
+
+        if (dragMode === 'pinch' && activePointers.size >= 2) {
+          const pts = Array.from(activePointers.values());
+          const curDist = Math.max(10, Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y));
+          const midX = (pts[0].x + pts[1].x) * 0.5;
+          const midY = (pts[0].y + pts[1].y) * 0.5;
+          const nextZoom = pinchStartZoom * (curDist / pinchStartDist);
+          setZoom(nextZoom, midX, midY);
+          return;
+        }
+
+        if (dragMode === 'magnifier' && state.mag.dragging) {
+          const pad = state.mag.radius + 10;
+          state.mag.x = Math.max(pad, Math.min(state.width - pad, pt.x - state.mag.offsetX));
+          state.mag.y = Math.max(pad, Math.min(state.height - pad, pt.y - state.mag.offsetY));
+          return;
+        }
+
+        if (dragMode === 'pan') {
+          const dx = pt.x - pointerDownX;
+          const dy = pt.y - pointerDownY;
+          if (Math.hypot(dx, dy) > 5) {
+            hasPanned = true;
+          }
+          if (hasPanned) {
+            state.panX = panStartX + dx;
+            state.panY = panStartY + dy;
+            clampPan();
+            updateIsoTransform();
+            state.viewDirty = true;
+          }
+        }
+      });
+
+      function stopDrag(e) {
+        const pt = activePointers.get(e.pointerId);
+        activePointers.delete(e.pointerId);
+
+        if (e.pointerId !== undefined && canvas.hasPointerCapture(e.pointerId)) {
+          canvas.releasePointerCapture(e.pointerId);
+        }
+
+        // 若僅為輕點畫布空白處 (未拖曳平移)，則將放大鏡直接移動至該點擊位置觀察
+        if (dragMode === 'pan' && !hasPanned && state.showMagnifier && pt) {
+          const pad = state.mag.radius + 10;
+          state.mag.x = Math.max(pad, Math.min(state.width - pad, pt.x));
+          state.mag.y = Math.max(pad, Math.min(state.height - pad, pt.y));
+        }
+
+        if (activePointers.size === 0) {
+          state.mag.dragging = false;
+          dragMode = 'none';
+        } else if (activePointers.size === 1) {
+          dragMode = 'none';
+        }
+      }
+
+      canvas.addEventListener('pointerup', stopDrag);
+      canvas.addEventListener('pointercancel', stopDrag);
+
+      // --------------------------------------------------------------------------
+      // 視窗尺寸自適應與主動畫迴圈
+      // --------------------------------------------------------------------------
+      function handleResize() {
+        const rect = stageWrap.getBoundingClientRect();
+        state.width = Math.max(300, rect.width);
+        state.height = Math.max(300, rect.height);
+        state.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        canvas.width = Math.floor(state.width * state.dpr);
+        canvas.height = Math.floor(state.height * state.dpr);
+
+        state.mag.radius = state.width < 640 ? 70 : 86;
+        if (state.mag.initialized) {
+          const pad = state.mag.radius + 10;
+          state.mag.x = Math.max(pad, Math.min(state.width - pad, state.mag.x));
+          state.mag.y = Math.max(pad, Math.min(state.height - pad, state.mag.y));
+        }
+
+        clampPan();
+        updateIsoTransform();
+        state.gridDirty = true;
+      }
+
+      window.addEventListener('resize', handleResize);
+
+      let lastTime = 0;
+      let uiTimer = 0;
+
+      function mainLoop(ts) {
+        if (!lastTime) lastTime = ts;
+        const dt = Math.min(0.05, (ts - lastTime) / 1000);
+        lastTime = ts;
+
+        updateSimulation(dt);
+        renderScene();
+
+        uiTimer += dt;
+        if (uiTimer >= 0.15) {
+          updateTelemetryUI();
+          uiTimer = 0;
+        }
+
+        requestAnimationFrame(mainLoop);
+      }
+
+      window.addEventListener('load', () => {
+        updateSliderLabels();
+        initParticles();
+        handleResize();
+        updateTelemetryUI();
+        requestAnimationFrame(mainLoop);
+      });
+    })();
+  </script>
+</body>
+</html>
